@@ -88,3 +88,9 @@ def test_red_crrc_covers_full_order():
     assert lookup("red", "2100").builder == "CRRC"
     assert lookup("red", "2151").builder == "CRRC"
     assert lookup("red", "2152") is None
+
+
+def test_green_type10_on_order_series():
+    v = lookup("green", "4050")
+    assert v.builder == "CAF"
+    assert v.fleet_key == "green-type10"

@@ -134,6 +134,18 @@
    "length_ft": 74
   },
   {
+   "group": "green",
+   "from": "4001",
+   "to": "4102",
+   "fleet_key": "green-type10",
+   "fleet_label": "Green Line Type 10 (CAF)",
+   "builder": "CAF",
+   "model": "Type 10",
+   "propulsion": "electric",
+   "years": "2026–31",
+   "length_ft": 114
+  },
+  {
    "group": "mattapan",
    "from": "3087",
    "to": "3087",
