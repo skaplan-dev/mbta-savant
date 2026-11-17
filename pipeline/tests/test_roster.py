@@ -82,3 +82,9 @@ def test_required_fields(group):
     assert rows
     for s in rows:
         assert keys <= set(s)
+
+
+def test_red_crrc_covers_full_order():
+    assert lookup("red", "2100").builder == "CRRC"
+    assert lookup("red", "2151").builder == "CRRC"
+    assert lookup("red", "2152") is None
