@@ -1,0 +1,886 @@
+{
+ "source": "The MBTA Vehicle Inventory Page, 11/17/26 version",
+ "series": [
+  {
+   "group": "blue",
+   "from": "0700",
+   "to": "0793",
+   "fleet_key": "blue-siemens",
+   "fleet_label": "Blue Line #5 (Siemens)",
+   "builder": "Siemens",
+   "model": "#5",
+   "propulsion": "electric",
+   "years": "2007–09",
+   "length_ft": 48.5
+  },
+  {
+   "group": "orange",
+   "from": "1400",
+   "to": "1551",
+   "fleet_key": "orange-crrc",
+   "fleet_label": "Orange Line #14 (CRRC)",
+   "builder": "CRRC",
+   "model": "#14",
+   "propulsion": "electric",
+   "years": "2018–25",
+   "length_ft": 65
+  },
+  {
+   "group": "red",
+   "from": "01500",
+   "to": "01523",
+   "fleet_key": "red-1500",
+   "fleet_label": "Red Line #1 (1500s)",
+   "builder": "Pullman-Standard",
+   "model": "#1",
+   "propulsion": "electric",
+   "years": "1969–70",
+   "length_ft": 69.5
+  },
+  {
+   "group": "red",
+   "from": "01600",
+   "to": "01651",
+   "fleet_key": "red-1600",
+   "fleet_label": "Red Line #1 (1600s)",
+   "builder": "Pullman-Standard",
+   "model": "#1",
+   "propulsion": "electric",
+   "years": "1969–70",
+   "length_ft": 69.5
+  },
+  {
+   "group": "red",
+   "from": "01700",
+   "to": "01757",
+   "fleet_key": "red-utdc",
+   "fleet_label": "Red Line #2 (UTDC)",
+   "builder": "UTDC",
+   "model": "#2",
+   "propulsion": "electric",
+   "years": "1987–89",
+   "length_ft": 69.75
+  },
+  {
+   "group": "red",
+   "from": "01800",
+   "to": "01885",
+   "fleet_key": "red-bombardier",
+   "fleet_label": "Red Line #3 (Bombardier)",
+   "builder": "Bombardier",
+   "model": "#3",
+   "propulsion": "electric",
+   "years": "1993–94",
+   "length_ft": 69.5
+  },
+  {
+   "group": "red",
+   "from": "1900",
+   "to": "1967",
+   "fleet_key": "red-crrc",
+   "fleet_label": "Red Line #4 (CRRC)",
+   "builder": "CRRC",
+   "model": "#4",
+   "propulsion": "electric",
+   "years": "2019–29",
+   "length_ft": 69.5
+  },
+  {
+   "group": "green",
+   "from": "3600",
+   "to": "3699",
+   "fleet_key": "green-type7-ks",
+   "fleet_label": "Green Line Type 7 (3600s)",
+   "builder": "Kinki-Sharyo",
+   "model": "Type 7",
+   "propulsion": "electric",
+   "years": "1986–88",
+   "length_ft": 72
+  },
+  {
+   "group": "green",
+   "from": "3700",
+   "to": "3719",
+   "fleet_key": "green-type7-adtranz",
+   "fleet_label": "Green Line Type 7 (3700s)",
+   "builder": "Kinki-Sharyo",
+   "model": "Type 7",
+   "propulsion": "electric",
+   "years": "1997",
+   "length_ft": 72
+  },
+  {
+   "group": "green",
+   "from": "3800",
+   "to": "3894",
+   "fleet_key": "green-type8",
+   "fleet_label": "Green Line Type 8 (Breda)",
+   "builder": "Breda",
+   "model": "Type 8",
+   "propulsion": "electric",
+   "years": "1999–2007",
+   "length_ft": 74
+  },
+  {
+   "group": "green",
+   "from": "3900",
+   "to": "3923",
+   "fleet_key": "green-type9",
+   "fleet_label": "Green Line Type 9 (CAF)",
+   "builder": "CAF",
+   "model": "Type 9",
+   "propulsion": "electric",
+   "years": "2018–20",
+   "length_ft": 74
+  },
+  {
+   "group": "mattapan",
+   "from": "3087",
+   "to": "3087",
+   "fleet_key": "mattapan-pcc-westinghouse",
+   "fleet_label": "Mattapan PCC (original)",
+   "builder": "Pullman-Standard",
+   "model": "PCC",
+   "propulsion": "electric",
+   "years": "1945–46",
+   "length_ft": 46
+  },
+  {
+   "group": "mattapan",
+   "from": "3230",
+   "to": "3230",
+   "fleet_key": "mattapan-pcc-westinghouse",
+   "fleet_label": "Mattapan PCC (original)",
+   "builder": "Pullman-Standard",
+   "model": "PCC",
+   "propulsion": "electric",
+   "years": "1945–46",
+   "length_ft": 46
+  },
+  {
+   "group": "mattapan",
+   "from": "3262",
+   "to": "3262",
+   "fleet_key": "mattapan-pcc-westinghouse",
+   "fleet_label": "Mattapan PCC (original)",
+   "builder": "Pullman-Standard",
+   "model": "PCC",
+   "propulsion": "electric",
+   "years": "1945–46",
+   "length_ft": 46
+  },
+  {
+   "group": "mattapan",
+   "from": "3263",
+   "to": "3263",
+   "fleet_key": "mattapan-pcc-westinghouse",
+   "fleet_label": "Mattapan PCC (original)",
+   "builder": "Pullman-Standard",
+   "model": "PCC",
+   "propulsion": "electric",
+   "years": "1945–46",
+   "length_ft": 46
+  },
+  {
+   "group": "mattapan",
+   "from": "3268",
+   "to": "3268",
+   "fleet_key": "mattapan-pcc-westinghouse",
+   "fleet_label": "Mattapan PCC (original)",
+   "builder": "Pullman-Standard",
+   "model": "PCC",
+   "propulsion": "electric",
+   "years": "1945–46",
+   "length_ft": 46
+  },
+  {
+   "group": "mattapan",
+   "from": "3234",
+   "to": "3234",
+   "fleet_key": "mattapan-pcc-brookville",
+   "fleet_label": "Mattapan PCC (Brookville rebuild)",
+   "builder": "Pullman-Standard",
+   "model": "PCC",
+   "propulsion": "electric",
+   "years": "1945–46",
+   "length_ft": 46
+  },
+  {
+   "group": "mattapan",
+   "from": "3238",
+   "to": "3238",
+   "fleet_key": "mattapan-pcc-brookville",
+   "fleet_label": "Mattapan PCC (Brookville rebuild)",
+   "builder": "Pullman-Standard",
+   "model": "PCC",
+   "propulsion": "electric",
+   "years": "1945–46",
+   "length_ft": 46
+  },
+  {
+   "group": "mattapan",
+   "from": "3254",
+   "to": "3254",
+   "fleet_key": "mattapan-pcc-brookville",
+   "fleet_label": "Mattapan PCC (Brookville rebuild)",
+   "builder": "Pullman-Standard",
+   "model": "PCC",
+   "propulsion": "electric",
+   "years": "1945–46",
+   "length_ft": 46
+  },
+  {
+   "group": "mattapan",
+   "from": "3260",
+   "to": "3260",
+   "fleet_key": "mattapan-pcc-brookville",
+   "fleet_label": "Mattapan PCC (Brookville rebuild)",
+   "builder": "Pullman-Standard",
+   "model": "PCC",
+   "propulsion": "electric",
+   "years": "1945–46",
+   "length_ft": 46
+  },
+  {
+   "group": "mattapan",
+   "from": "3265",
+   "to": "3265",
+   "fleet_key": "mattapan-pcc-brookville",
+   "fleet_label": "Mattapan PCC (Brookville rebuild)",
+   "builder": "Pullman-Standard",
+   "model": "PCC",
+   "propulsion": "electric",
+   "years": "1945–46",
+   "length_ft": 46
+  },
+  {
+   "group": "bus",
+   "from": "0756",
+   "to": "0910",
+   "fleet_key": "bus-d40lf-2008",
+   "fleet_label": "2008 New Flyer D40LF diesel",
+   "builder": "New Flyer",
+   "model": "D40LF",
+   "propulsion": "diesel",
+   "years": "2008",
+   "length_ft": 40
+  },
+  {
+   "group": "bus",
+   "from": "1200",
+   "to": "1224",
+   "fleet_key": "bus-de60lfr-2010",
+   "fleet_label": "2010 New Flyer DE60LFR articulated hybrid",
+   "builder": "New Flyer",
+   "model": "DE60LFR",
+   "propulsion": "hybrid",
+   "years": "2010",
+   "length_ft": 60
+  },
+  {
+   "group": "bus",
+   "from": "1250",
+   "to": "1293",
+   "fleet_key": "bus-xde60-2016",
+   "fleet_label": "2016-17 New Flyer XDE60 articulated hybrid",
+   "builder": "New Flyer",
+   "model": "XDE60",
+   "propulsion": "hybrid",
+   "years": "2016–17",
+   "length_ft": 60
+  },
+  {
+   "group": "bus",
+   "from": "1294",
+   "to": "1294",
+   "fleet_key": "bus-xde60-2018",
+   "fleet_label": "2018 New Flyer XDE60 articulated hybrid (extended-range battery)",
+   "builder": "New Flyer",
+   "model": "XDE60",
+   "propulsion": "hybrid",
+   "years": "2018",
+   "length_ft": 60
+  },
+  {
+   "group": "bus",
+   "from": "1295",
+   "to": "1299",
+   "fleet_key": "bus-xe60-2019",
+   "fleet_label": "2019 New Flyer XE60 articulated battery",
+   "builder": "New Flyer",
+   "model": "XE60",
+   "propulsion": "battery",
+   "years": "2019",
+   "length_ft": 60
+  },
+  {
+   "group": "bus",
+   "from": "1300",
+   "to": "1328",
+   "fleet_key": "bus-xde60-2022",
+   "fleet_label": "2022-23 New Flyer XDE60 articulated hybrid",
+   "builder": "New Flyer",
+   "model": "XDE60",
+   "propulsion": "hybrid",
+   "years": "2022–23",
+   "length_ft": 60
+  },
+  {
+   "group": "bus",
+   "from": "1329",
+   "to": "1344",
+   "fleet_key": "bus-xde60-2023",
+   "fleet_label": "2023 New Flyer XDE60 articulated hybrid",
+   "builder": "New Flyer",
+   "model": "XDE60",
+   "propulsion": "hybrid",
+   "years": "2023",
+   "length_ft": 60
+  },
+  {
+   "group": "bus",
+   "from": "1400",
+   "to": "1459",
+   "fleet_key": "bus-xde40-2014",
+   "fleet_label": "2014-15 New Flyer XDE40 hybrid",
+   "builder": "New Flyer",
+   "model": "XDE40",
+   "propulsion": "hybrid",
+   "years": "2014–15",
+   "length_ft": 40
+  },
+  {
+   "group": "bus",
+   "from": "1600",
+   "to": "1774",
+   "fleet_key": "bus-xn40-2016",
+   "fleet_label": "2016-17 New Flyer XN40 CNG",
+   "builder": "New Flyer",
+   "model": "XN40",
+   "propulsion": "cng",
+   "years": "2016–17",
+   "length_ft": 40
+  },
+  {
+   "group": "bus",
+   "from": "1775",
+   "to": "1924",
+   "fleet_key": "bus-xde40-2016",
+   "fleet_label": "2016-17 New Flyer XDE40 hybrid",
+   "builder": "New Flyer",
+   "model": "XDE40",
+   "propulsion": "hybrid",
+   "years": "2016–17",
+   "length_ft": 40
+  },
+  {
+   "group": "bus",
+   "from": "1925",
+   "to": "2118",
+   "fleet_key": "bus-xde40-2019",
+   "fleet_label": "2019-20 New Flyer XDE40 hybrid",
+   "builder": "New Flyer",
+   "model": "XDE40",
+   "propulsion": "hybrid",
+   "years": "2019–20",
+   "length_ft": 40
+  },
+  {
+   "group": "bus",
+   "from": "3000",
+   "to": "3005",
+   "fleet_key": "bus-xde40-2017",
+   "fleet_label": "2017 New Flyer XDE40 hybrid",
+   "builder": "New Flyer",
+   "model": "XDE40",
+   "propulsion": "hybrid",
+   "years": "2017",
+   "length_ft": 40
+  },
+  {
+   "group": "bus",
+   "from": "3100",
+   "to": "3159",
+   "fleet_key": "bus-xde40-2020",
+   "fleet_label": "2020 New Flyer XDE40 hybrid",
+   "builder": "New Flyer",
+   "model": "XDE40",
+   "propulsion": "hybrid",
+   "years": "2020",
+   "length_ft": 40
+  },
+  {
+   "group": "bus",
+   "from": "3200",
+   "to": "3359",
+   "fleet_key": "bus-xde40-2023",
+   "fleet_label": "2023 New Flyer XDE40 hybrid",
+   "builder": "New Flyer",
+   "model": "XDE40",
+   "propulsion": "hybrid",
+   "years": "2023",
+   "length_ft": 40
+  },
+  {
+   "group": "bus",
+   "from": "4200",
+   "to": "4231",
+   "fleet_key": "bus-xe40-2024",
+   "fleet_label": "2024-26 New Flyer XE40 battery electric",
+   "builder": "New Flyer",
+   "model": "XE40",
+   "propulsion": "battery",
+   "years": "2024–26",
+   "length_ft": 40
+  },
+  {
+   "group": "bus",
+   "from": "4300",
+   "to": "4304",
+   "fleet_key": "bus-xe40-2025",
+   "fleet_label": "2025 New Flyer XE40 battery electric",
+   "builder": "New Flyer",
+   "model": "XE40",
+   "propulsion": "battery",
+   "years": "2025",
+   "length_ft": 40
+  }
+ ],
+ "garages": [
+  {
+   "name": "Quincy",
+   "from": "0756",
+   "to": "0799"
+  },
+  {
+   "name": "Quincy",
+   "from": "0801",
+   "to": "0836"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0837",
+   "to": "0837"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0838",
+   "to": "0838"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0839",
+   "to": "0839"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0840",
+   "to": "0840"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0841",
+   "to": "0841"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0842",
+   "to": "0842"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0843",
+   "to": "0843"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0845",
+   "to": "0845"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0846",
+   "to": "0846"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0847",
+   "to": "0847"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0848",
+   "to": "0848"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0849",
+   "to": "0849"
+  },
+  {
+   "name": "Quincy",
+   "from": "0850",
+   "to": "0850"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0851",
+   "to": "0851"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0852",
+   "to": "0852"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0853",
+   "to": "0853"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0854",
+   "to": "0854"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0855",
+   "to": "0855"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0856",
+   "to": "0856"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0857",
+   "to": "0857"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0858",
+   "to": "0858"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0859",
+   "to": "0859"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0860",
+   "to": "0860"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0861",
+   "to": "0861"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0862",
+   "to": "0862"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0863",
+   "to": "0863"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0864",
+   "to": "0864"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0865",
+   "to": "0865"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0866",
+   "to": "0866"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0867",
+   "to": "0867"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0868",
+   "to": "0868"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0869",
+   "to": "0869"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0870",
+   "to": "0870"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0871",
+   "to": "0871"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0872",
+   "to": "0872"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0873",
+   "to": "0873"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0874",
+   "to": "0874"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0875",
+   "to": "0875"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0876",
+   "to": "0876"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0877",
+   "to": "0877"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0878",
+   "to": "0878"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0879",
+   "to": "0879"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0880",
+   "to": "0880"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0881",
+   "to": "0881"
+  },
+  {
+   "name": "Quincy",
+   "from": "0882",
+   "to": "0882"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0883",
+   "to": "0883"
+  },
+  {
+   "name": "Quincy",
+   "from": "0884",
+   "to": "0884"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0885",
+   "to": "0885"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0886",
+   "to": "0886"
+  },
+  {
+   "name": "Quincy",
+   "from": "0887",
+   "to": "0887"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0888",
+   "to": "0888"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0889",
+   "to": "0889"
+  },
+  {
+   "name": "Quincy",
+   "from": "0890",
+   "to": "0890"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0891",
+   "to": "0891"
+  },
+  {
+   "name": "Quincy",
+   "from": "0892",
+   "to": "0892"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0893",
+   "to": "0893"
+  },
+  {
+   "name": "Quincy",
+   "from": "0894",
+   "to": "0894"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0895",
+   "to": "0895"
+  },
+  {
+   "name": "Quincy",
+   "from": "0896",
+   "to": "0896"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0897",
+   "to": "0897"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0898",
+   "to": "0898"
+  },
+  {
+   "name": "Fellsway",
+   "from": "0899",
+   "to": "0899"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0900",
+   "to": "0900"
+  },
+  {
+   "name": "Albany St.",
+   "from": "0901",
+   "to": "0901"
+  },
+  {
+   "name": "Quincy",
+   "from": "0902",
+   "to": "0909"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "0910",
+   "to": "0910"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "1200",
+   "to": "1224"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "1250",
+   "to": "1293"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "1294",
+   "to": "1294"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "1295",
+   "to": "1299"
+  },
+  {
+   "name": "Southampton St.",
+   "from": "1300",
+   "to": "1344"
+  },
+  {
+   "name": "Fellsway",
+   "from": "1400",
+   "to": "1459"
+  },
+  {
+   "name": "Arborway",
+   "from": "1600",
+   "to": "1719"
+  },
+  {
+   "name": "Cabot",
+   "from": "1720",
+   "to": "1774"
+  },
+  {
+   "name": "Cabot",
+   "from": "1775",
+   "to": "1924"
+  },
+  {
+   "name": "Charlestown",
+   "from": "1925",
+   "to": "2087"
+  },
+  {
+   "name": "Lynn",
+   "from": "2088",
+   "to": "2088"
+  },
+  {
+   "name": "Charlestown",
+   "from": "2089",
+   "to": "2118"
+  },
+  {
+   "name": "Paul Revere (contractor)",
+   "from": "3000",
+   "to": "3005"
+  },
+  {
+   "name": "Lynn",
+   "from": "3100",
+   "to": "3129"
+  },
+  {
+   "name": "Charlestown",
+   "from": "3130",
+   "to": "3159"
+  },
+  {
+   "name": "Albany St.",
+   "from": "3200",
+   "to": "3299"
+  },
+  {
+   "name": "Lynn",
+   "from": "3300",
+   "to": "3359"
+  },
+  {
+   "name": "Charlestown",
+   "from": "4200",
+   "to": "4231"
+  },
+  {
+   "name": "Charlestown",
+   "from": "4300",
+   "to": "4304"
+  }
+ ]
+}
