@@ -34,9 +34,15 @@ jobs:
         run: uv python install 3.13
         working-directory: pipeline
       - name: Resolve date
+        env:
+          INPUT_DATE: ${{ inputs.date }}
         run: |
-          if [ -n "${{ inputs.date }}" ]; then
-            echo "INGEST_DATE=${{ inputs.date }}" >> "$GITHUB_ENV"
+          if [ -n "$INPUT_DATE" ]; then
+            if ! [[ "$INPUT_DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+              echo "Invalid date input: expected YYYY-MM-DD" >&2
+              exit 1
+            fi
+            echo "INGEST_DATE=$INPUT_DATE" >> "$GITHUB_ENV"
           else
             echo "INGEST_DATE=$(TZ=America/New_York date -d yesterday +%F)" >> "$GITHUB_ENV"
           fi
@@ -52,6 +58,7 @@ jobs:
         run: aws s3 sync ./work/segments s3://$BUCKET/segments
       - name: Publish data
         run: |
+          test -s out/data/meta.json || { echo "out/data/meta.json missing or empty; refusing to --delete" >&2; exit 1; }
           aws s3 sync ./out/data s3://$BUCKET/data --delete \
             --content-type application/json \
             --cache-control "public, max-age=3600"
