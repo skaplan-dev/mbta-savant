@@ -95,12 +95,17 @@ def parse_occupancy(value: str | None) -> list[float | None]:
 
 def _benchmark(dep: dict, arr: dict) -> float | None:
     try:
-        b = float(arr.get("scheduled_tt")) - float(dep.get("scheduled_tt"))
+        # older monthly archives only carry scheduled_travel_time (v5 fallback)
+        b = float(_sched(arr)) - float(_sched(dep))
     except (TypeError, ValueError):
         return None
     if math.isnan(b) or math.isinf(b) or b < 1:
         return None
     return b
+
+
+def _sched(row: dict):
+    return row.get("scheduled_tt") or row.get("scheduled_travel_time")
 
 
 def _place(stop_id: str) -> str:
@@ -152,7 +157,8 @@ def build_segments(group: str, rows: list[dict]) -> list[dict]:
 
     out: list[dict] = []
     for (service_date, trip_id), events in trips.items():
-        events.sort(key=lambda e: e[0])
+        # at equal timestamps an ARR comes before the same stop's DEP
+        events.sort(key=lambda e: (e[0], e[1]["event_type"] != ARRIVAL))
         sd = date.fromisoformat(service_date)
         stops = _trip_stops(events)
         for a, b in zip(stops, stops[1:]):
@@ -162,6 +168,10 @@ def build_segments(group: str, rows: list[dict]) -> list[dict]:
             if travel <= 0:
                 continue
             dep = a.departure
+            try:
+                direction = int(dep.get("direction_id"))
+            except (TypeError, ValueError):
+                continue  # one bad row must not fail the whole day
             from_station, to_station = station_for_stop(dep["stop_id"]), station_for_stop(b.arrival["stop_id"])
             distance = distance_miles(from_station, to_station) if from_station and to_station else None
             out.append(
@@ -169,7 +179,7 @@ def build_segments(group: str, rows: list[dict]) -> list[dict]:
                     "service_date": service_date,
                     "group": group,
                     "route_id": dep["route_id"],
-                    "direction": int(dep["direction_id"]),
+                    "direction": direction,
                     "trip_id": trip_id,
                     "from_stop": dep["stop_id"],
                     "to_stop": b.arrival["stop_id"],

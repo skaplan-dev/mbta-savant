@@ -184,3 +184,47 @@ def test_write_day_round_trip(tmp_path, segs):
     assert got[-1]["occupancy_pct"] == []
     # leaves no temp files behind
     assert sorted(p.name for p in path.parent.iterdir()) == ["2024-05-01.parquet"]
+
+
+def _ev(stop, etype, t, **kw):
+    row = {"service_date": "2024-05-01", "route_id": "Orange", "trip_id": "t9", "direction_id": "0",
+           "stop_id": stop, "vehicle_label": "1402", "vehicle_consist": "", "event_type": etype,
+           "event_time": f"2024-05-01 {t}-04:00", "scheduled_tt": "", "occupancy_percentage": ""}
+    row.update(kw)
+    return row
+
+
+def test_same_second_arr_sorts_before_dep():
+    rows = [
+        _ev("70036", "DEP", "08:00:00"),
+        _ev("70034", "DEP", "08:02:00"),
+        _ev("70034", "ARR", "08:02:00"),
+        _ev("70032", "ARR", "08:04:00"),
+    ]
+    segs = segments.build_segments("orange", rows)
+    assert [(s["from_stop"], s["to_stop"]) for s in segs] == [("70036", "70034"), ("70034", "70032")]
+
+
+def test_benchmark_falls_back_to_scheduled_travel_time():
+    rows = [
+        _ev("70036", "DEP", "08:00:00", scheduled_tt=None, scheduled_travel_time="0"),
+        _ev("70034", "ARR", "08:02:00", scheduled_tt=None, scheduled_travel_time="110"),
+    ]
+    for r in rows:
+        del r["scheduled_tt"]
+    (s,) = segments.build_segments("orange", rows)
+    assert s["benchmark_sec"] == 110.0
+
+
+@pytest.mark.parametrize("bad", ["", None])
+def test_bad_direction_skips_segment_only(bad):
+    rows = [
+        _ev("70036", "DEP", "08:00:00", direction_id=bad),
+        _ev("70034", "ARR", "08:02:00"),
+        _ev("70034", "DEP", "08:02:30"),
+        _ev("70032", "ARR", "08:04:00"),
+    ]
+    if bad is None:
+        del rows[0]["direction_id"]
+    segs = segments.build_segments("orange", rows)
+    assert [(s["from_stop"], s["to_stop"]) for s in segs] == [("70034", "70032")]
