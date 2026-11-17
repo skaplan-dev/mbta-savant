@@ -1,0 +1,27 @@
+[project]
+name = "savant"
+version = "0.1.0"
+description = "MBTA Savant: Baseball-Savant-style stats for MBTA vehicles"
+requires-python = ">=3.13"
+dependencies = [
+    "boto3",
+    "duckdb",
+]
+
+[project.scripts]
+savant = "savant.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["savant"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
