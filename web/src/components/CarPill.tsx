@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
-import { GROUPS, type GroupId } from '../format';
-import { seasonParam } from '../search';
+import { GROUPS, type GroupId } from '../groups';
+
+const PILL = 'inline-block rounded-full text-center font-medium';
 
 const SIZES = {
     md: 'min-w-[56px] px-3 py-0.5',
@@ -23,12 +24,16 @@ export default function CarPill({
         <Link
             to="/car/$group/$number"
             params={{ group, number }}
-            // A number serializes as ?season=2026; validateSeasonSearch reads it back as a string.
-            search={season ? { season: seasonParam(season) as string } : {}}
-            className={`inline-block rounded-full text-center font-medium no-underline hover:brightness-110 ${SIZES[size]} ${group === 'bus' ? 'text-ink' : 'text-white'}`}
+            search={{ season }}
+            className={`${PILL} no-underline hover:brightness-110 ${SIZES[size]} ${GROUPS[group].onColor}`}
             style={{ background: GROUPS[group].color }}
         >
             {number}
         </Link>
     );
 }
+
+/** A bus route name in a bus-yellow pill (not a link). */
+export const RoutePill = ({ route }: { route: string }) => (
+    <span className={`${PILL} bg-line-bus text-ink ${SIZES.sm}`}>{route}</span>
+);

@@ -12,6 +12,15 @@
     --color-panel-line: #cbdadd;
     --color-track: #dde7ea;
     --color-wash: #f2f6f7;
+    /* Dashed rules between list rows, and solid rules between table rows. */
+    --color-row-rule: #d6e1e4;
+    --color-table-rule: #e3eaec;
+    /* The middle of the percentile scale; also a day with no Time Saved. */
+    --color-average: #9aa5a9;
+    /* The tooltip's link, readable on ink. */
+    --color-tip-link: #9fd3de;
+    /* The scale gradient's midpoint. */
+    --color-scale-mid: #c8c8c8;
     --color-poor: rgb(50, 96, 180);
     --color-great: rgb(214, 41, 41);
     --color-line-red: #da291c;

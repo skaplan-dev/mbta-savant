@@ -1,3 +1,6 @@
+import type { ReactNode } from 'react';
+import { GROUPS, type ArtKind, type GroupId } from '../../groups';
+
 // Hero art: side elevations drawn in the line color. All share a 640×130 viewBox so the hero
 // frames them the same way.
 
@@ -271,33 +274,38 @@ function Bus({ n, color, articulated }: { n: string; color: string; articulated:
     );
 }
 
+const ART: Record<
+    ArtKind,
+    (p: { n: string; mate: string | null; color: string; lengthFt?: number }) => ReactNode
+> = {
+    'heavy-rail': ({ n, mate, color }) =>
+        mate ? (
+            <>
+                <HeavyRailCar x={0} n={n} color={color} />
+                <HeavyRailCar x={310} n={mate} color={color} />
+            </>
+        ) : (
+            <HeavyRailCar x={155} n={n} color={color} />
+        ),
+    'light-rail': ({ n, color }) => <LightRail n={n} color={color} />,
+    pcc: ({ n, color }) => <PCC n={n} color={color} />,
+    bus: ({ n, color, lengthFt }) => (
+        <Bus n={n} color={color} articulated={(lengthFt ?? 0) >= 60} />
+    ),
+};
+
 export default function CarArt({
     group,
     number,
     mate,
-    color,
     lengthFt,
 }: {
-    group: string;
+    group: GroupId;
     number: string;
     mate: string | null;
-    color: string;
     lengthFt?: number;
 }) {
-    let art;
-
-    if (group === 'bus') art = <Bus n={number} color={color} articulated={(lengthFt ?? 0) >= 60} />;
-    else if (group === 'green') art = <LightRail n={number} color={color} />;
-    else if (group === 'mattapan') art = <PCC n={number} color={color} />;
-    else
-        art = mate ? (
-            <>
-                <HeavyRailCar x={0} n={number} color={color} />
-                <HeavyRailCar x={310} n={mate} color={color} />
-            </>
-        ) : (
-            <HeavyRailCar x={155} n={number} color={color} />
-        );
+    const { art, color } = GROUPS[group];
 
     return (
         <svg
@@ -305,7 +313,7 @@ export default function CarArt({
             aria-hidden="true"
             className="absolute bottom-[26%] left-1/2 h-auto w-[112%] -translate-x-1/2"
         >
-            {art}
+            {ART[art]({ n: number, mate, color, lengthFt })}
         </svg>
     );
 }

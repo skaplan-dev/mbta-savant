@@ -1,50 +1,36 @@
 import { useRouterState } from '@tanstack/react-router';
 import { useEffect, type ReactNode } from 'react';
 import { useDocumentTitle } from '../../components/useDocumentTitle';
-import { GLOSSARY, HOW_RANKINGS, LEDE, type GlossaryEntry, type StatId } from '../../glossary';
+import { CalendarIcon, StopwatchIcon } from '../../components/icons';
+import SectionHeading from '../../components/SectionHeading';
+import {
+    GLOSSARY,
+    HOW_RANKINGS,
+    LEDE,
+    STAT_IDS,
+    type GlossaryEntry,
+    type StatId,
+} from '../../glossary';
 import { GLOSSARY_TITLE } from '../../titles';
 
-const ids = Object.keys(GLOSSARY) as StatId[];
-const inSection = (s: GlossaryEntry['section']) => ids.filter((id) => GLOSSARY[id].section === s);
+type Section = GlossaryEntry['section'];
 
-const SECTIONS: { key: GlossaryEntry['section']; title: string; icon?: ReactNode }[] = [
+const inSection = (s: Section) => STAT_IDS.filter((id) => GLOSSARY[id].section === s);
+
+const SECTIONS: { key: Section; title: string; toc: string; icon?: ReactNode }[] = [
     {
         key: 'performance',
         title: 'Performance',
-        icon: (
-            <svg viewBox="0 0 40 40" aria-hidden="true" className="size-[34px]">
-                <circle cx="20" cy="23" r="13" fill="none" stroke="#1d2427" strokeWidth="3.5" />
-                <path d="M20 23 L20 14" stroke="#1d2427" strokeWidth="3.5" strokeLinecap="round" />
-                <rect x="16" y="4" width="8" height="5" fill="#1d2427" />
-            </svg>
-        ),
+        toc: 'PERFORMANCE',
+        icon: <StopwatchIcon className="size-[34px]" />,
     },
     {
         key: 'workload',
         title: 'Workload',
-        icon: (
-            <svg viewBox="0 0 40 40" aria-hidden="true" className="size-[34px]">
-                <rect
-                    x="5"
-                    y="8"
-                    width="30"
-                    height="27"
-                    rx="2"
-                    fill="none"
-                    stroke="#1d2427"
-                    strokeWidth="3.5"
-                />
-                <path d="M5 16 H35" stroke="#1d2427" strokeWidth="3.5" />
-                <path
-                    d="M12 4 V11 M28 4 V11"
-                    stroke="#1d2427"
-                    strokeWidth="3.5"
-                    strokeLinecap="round"
-                />
-            </svg>
-        ),
+        toc: 'WORKLOAD',
+        icon: <CalendarIcon className="size-[34px]" />,
     },
-    { key: 'fun', title: 'Fun facts (not ranked)' },
+    { key: 'fun', title: 'Fun facts (not ranked)', toc: 'FUN FACTS' },
 ];
 
 const tocH = 'text-ink-3 mt-[18px] mb-1.5 text-[15px] font-medium tracking-[0.08em]';
@@ -77,9 +63,7 @@ export default function GlossaryPage() {
                 </a>
                 {SECTIONS.map((s) => (
                     <div key={s.key}>
-                        <h2 className={tocH}>
-                            {s.key === 'fun' ? 'FUN FACTS' : s.title.toUpperCase()}
-                        </h2>
+                        <h2 className={tocH}>{s.toc}</h2>
                         {inSection(s.key).map((id) => (
                             <a key={id} className={tocA} href={`#${id}`}>
                                 {GLOSSARY[id].name}
@@ -100,7 +84,7 @@ export default function GlossaryPage() {
                     <div className="max-w-[70ch] text-[19px] leading-[1.5]">
                         {HOW_RANKINGS.map((p, i) => (
                             <div key={i}>
-                                {i === 2 && <ScaleDemo />}
+                                {p.scale && <ScaleDemo />}
                                 <p className="my-3">
                                     {p.lead && <strong>{p.lead} </strong>}
                                     {p.body}
@@ -126,10 +110,10 @@ export default function GlossaryPage() {
 
 function H2({ children, icon }: { children: ReactNode; icon?: ReactNode }) {
     return (
-        <h2 className="border-brand-2 mt-[46px] mb-1.5 flex items-center gap-3 border-b pb-2 text-[30px] font-bold">
+        <SectionHeading className="mt-[46px] mb-1.5 flex items-center gap-3 text-[30px]">
             {icon}
             {children}
-        </h2>
+        </SectionHeading>
     );
 }
 
@@ -150,7 +134,7 @@ function ScaleDemo() {
                 className="relative h-3.5 flex-[0_1_360px] rounded-[7px]"
                 style={{
                     background:
-                        'linear-gradient(90deg, var(--color-poor), #c8c8c8, var(--color-great))',
+                        'linear-gradient(90deg, var(--color-poor), var(--color-scale-mid), var(--color-great))',
                 }}
             >
                 {bubble('6%', 'var(--color-poor)', '5')}
@@ -169,7 +153,7 @@ function Term({ id, e, active }: { id: StatId; e: GlossaryEntry; active: boolean
         <div
             id={id}
             tabIndex={-1}
-            className={`grid scroll-mt-5 grid-cols-1 gap-1.5 border-b border-dashed border-[#d6e1e4] py-[22px] outline-none ${active ? 'from-brand/10 bg-gradient-to-r to-transparent' : ''} min-[901px]:grid-cols-[220px_minmax(0,1fr)] min-[901px]:gap-7`}
+            className={`border-row-rule grid scroll-mt-5 grid-cols-1 gap-1.5 border-b border-dashed py-[22px] outline-none ${active ? 'from-brand/10 bg-gradient-to-r to-transparent' : ''} min-[901px]:grid-cols-[220px_minmax(0,1fr)] min-[901px]:gap-7`}
         >
             <dt className="text-[25px] font-medium">
                 {e.name}

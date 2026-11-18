@@ -1,48 +1,55 @@
+import { getRouteApi } from '@tanstack/react-router';
 import { useRef, useState, type KeyboardEvent } from 'react';
 import type { Car } from '../../api';
-import { fmtNum, GROUPS, pctColor, signed, type GroupId } from '../../format';
-import CarPill from '../../components/CarPill';
-import { ShareBar } from './BioPanel';
+import { fmtInt, fmtSaved, pctColor } from '../../format';
+import { GROUPS, type GroupId } from '../../groups';
 import { dayScore } from './calendar';
-import { routeCounts } from './shared';
+import PartnerTable from './PartnerTable';
 
 export type TabId = 'log' | 'mates';
 
+const route = getRouteApi('/car/$group/$number');
+
 const PAGE = 15;
 const th = 'border-ink-2 border-b px-2.5 py-2.5 text-right font-bold first:text-left';
-const td = 'border-b border-[#e3eaec] px-2.5 py-2 text-right first:text-left';
+const td = 'border-b border-table-rule px-2.5 py-2 text-right first:text-left';
 
-/** Pill tabs: GAME LOG, plus COUPLED WITH (rail) or ROUTES (bus). */
+/** Pill tabs: GAME LOG, plus COUPLED WITH (rail) or ROUTES (bus). The tab lives in `?tab=`. */
 export default function CarTabs({
     group,
     season,
     car,
     avg,
     tab,
-    onTab,
 }: {
     group: GroupId;
     season: string;
     car: Car;
     avg: number | null;
     tab: TabId;
-    onTab: (t: TabId) => void;
 }) {
-    const isBus = group === 'bus';
+    const navigate = route.useNavigate();
 
     const tabs: [TabId, string][] = [
         ['log', 'GAME LOG'],
-        ['mates', isBus ? 'ROUTES' : 'COUPLED WITH'],
+        ['mates', GROUPS[group].partner.tab],
     ];
 
     const refs = useRef<(HTMLButtonElement | null)[]>([]);
+
+    const select = (t: TabId) =>
+        void navigate({
+            search: (prev) => ({ ...prev, tab: t === 'mates' ? t : undefined }),
+            replace: true,
+            resetScroll: false,
+        });
 
     const onKey = (e: KeyboardEvent, i: number) => {
         const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
 
         if (!d) return;
         const j = (i + d + tabs.length) % tabs.length;
-        onTab(tabs[j][0]);
+        select(tabs[j][0]);
         refs.current[j]?.focus();
     };
 
@@ -64,7 +71,7 @@ export default function CarTabs({
                         aria-selected={tab === id}
                         aria-controls={`panel-${id}`}
                         tabIndex={tab === id ? 0 : -1}
-                        onClick={() => onTab(id)}
+                        onClick={() => select(id)}
                         onKeyDown={(e) => onKey(e, i)}
                         className={`cursor-pointer rounded-full border px-3.5 py-3 text-[15px] tracking-[0.04em] sm:px-[34px] sm:text-lg ${
                             tab === id
@@ -83,19 +90,18 @@ export default function CarTabs({
                 className="overflow-x-auto"
             >
                 {tab === 'log' ? (
-                    <GameLog car={car} avg={avg} isBus={isBus} />
-                ) : isBus ? (
-                    <RoutesTable car={car} />
+                    <GameLog car={car} avg={avg} group={group} />
                 ) : (
-                    <MatesTable car={car} group={group} season={season} />
+                    <PartnerTable car={car} group={group} season={season} />
                 )}
             </div>
         </div>
     );
 }
 
-function GameLog({ car, avg, isBus }: { car: Car; avg: number | null; isBus: boolean }) {
+function GameLog({ car, avg, group }: { car: Car; avg: number | null; group: GroupId }) {
     const [all, setAll] = useState(false);
+    const { showMiles, placesLabel } = GROUPS[group];
     const rows = [...car.game_log].reverse();
     const shown = all ? rows : rows.slice(0, PAGE);
 
@@ -109,9 +115,9 @@ function GameLog({ car, avg, isBus }: { car: Car; avg: number | null; isBus: boo
                     <tr>
                         <th className={th}>Date</th>
                         <th className={th}>Trips</th>
-                        {!isBus && <th className={`${th} max-sm:hidden`}>Miles</th>}
+                        {showMiles && <th className={`${th} max-sm:hidden`}>Miles</th>}
                         <th className={th}>Time Saved / stop</th>
-                        <th className={`${th} max-sm:hidden`}>{isBus ? 'Routes' : 'Lines'}</th>
+                        <th className={`${th} max-sm:hidden`}>{placesLabel}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -128,8 +134,8 @@ function GameLog({ car, avg, isBus }: { car: Car; avg: number | null; isBus: boo
                                     })}
                                 </td>
                                 <td className={td}>{g.trips}</td>
-                                {!isBus && (
-                                    <td className={`${td} max-sm:hidden`}>{fmtNum(g.miles, 0)}</td>
+                                {showMiles && (
+                                    <td className={`${td} max-sm:hidden`}>{fmtInt(g.miles)}</td>
                                 )}
                                 <td className={td}>
                                     <span
@@ -137,11 +143,11 @@ function GameLog({ car, avg, isBus }: { car: Car; avg: number | null; isBus: boo
                                         style={{
                                             background:
                                                 saved == null
-                                                    ? '#9aa5a9'
+                                                    ? 'var(--color-average)'
                                                     : pctColor(dayScore(g.ttoe_sec, avg)),
                                         }}
                                     >
-                                        {signed(saved, 1, ' s')}
+                                        {fmtSaved(saved)}
                                     </span>
                                 </td>
                                 <td className={`${td} max-sm:hidden`}>{g.routes.join(', ')}</td>
@@ -162,76 +168,5 @@ function GameLog({ car, avg, isBus }: { car: Car; avg: number | null; isBus: boo
                 </div>
             )}
         </>
-    );
-}
-
-function MatesTable({ car, group, season }: { car: Car; group: GroupId; season: string }) {
-    if (!car.teammates.length)
-        return <p className="text-ink-2 text-center text-lg">No coupled cars recorded.</p>;
-    const max = car.teammates[0][1];
-
-    return (
-        <table className="mb-8 w-full border-collapse text-base sm:text-lg">
-            <thead>
-                <tr>
-                    <th className={th}>Car</th>
-                    <th className={`${th} w-1/2 text-left!`}>Trips together</th>
-                    <th className={th}>Trips</th>
-                    <th className={th}>Share</th>
-                </tr>
-            </thead>
-            <tbody>
-                {car.teammates.map(([n, k]) => (
-                    <tr key={n} className="hover:[&>td]:bg-wash">
-                        <td className={td}>
-                            <CarPill group={group} number={n} season={season} />
-                        </td>
-                        <td className={td}>
-                            <ShareBar frac={k / max} color={GROUPS[group].color} />
-                        </td>
-                        <td className={td}>{k.toLocaleString('en-US')}</td>
-                        <td className={td}>{Math.round((k / car.trips) * 100)}%</td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-    );
-}
-
-function RoutesTable({ car }: { car: Car }) {
-    const routes = routeCounts(car);
-
-    if (!routes.length)
-        return <p className="text-ink-2 text-center text-lg">No routes recorded.</p>;
-    const max = routes[0].days;
-    const total = car.game_log.length;
-
-    return (
-        <table className="mb-8 w-full border-collapse text-base sm:text-lg">
-            <thead>
-                <tr>
-                    <th className={th}>Route</th>
-                    <th className={`${th} w-1/2 text-left!`}>Days on route</th>
-                    <th className={th}>Days</th>
-                    <th className={th}>Share</th>
-                </tr>
-            </thead>
-            <tbody>
-                {routes.map((r) => (
-                    <tr key={r.route} className="hover:[&>td]:bg-wash">
-                        <td className={td}>
-                            <span className="bg-line-bus text-ink inline-block min-w-[54px] rounded-full px-1.5 py-px text-center text-[15px] font-medium">
-                                {r.route}
-                            </span>
-                        </td>
-                        <td className={td}>
-                            <ShareBar frac={r.days / max} color={GROUPS.bus.color} />
-                        </td>
-                        <td className={td}>{r.days}</td>
-                        <td className={td}>{Math.round((r.days / total) * 100)}%</td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
     );
 }

@@ -1,64 +1,63 @@
-import { useState } from 'react';
-import LoadError from '../../components/LoadError';
-import DateBox from '../../components/DateBox';
-import NotFound from '../../components/NotFound';
-import SeasonToggle from '../../components/SeasonToggle';
+import { useQuery } from '@tanstack/react-query';
+import { getRouteApi } from '@tanstack/react-router';
+import ResourceView from '../../components/ResourceView';
+import SeasonBar from '../../components/SeasonBar';
 import { useDocumentTitle } from '../../components/useDocumentTitle';
-import { GROUPS, seasonLabel, type GroupId } from '../../format';
+import { GROUPS, type GroupId } from '../../groups';
+import { groupQuery } from '../../queries';
+import { seasonLabel } from '../../seasons';
 import { carTitle } from '../../titles';
-import { useGroup } from '../../queries';
 import BioPanel from './BioPanel';
 import CalendarPanel from './CalendarPanel';
-import CarTabs, { type TabId } from './GameLog';
+import CarTabs from './CarTabs';
 import PercentilePanel from './PercentilePanel';
-import { useCarData } from './useCarData';
+import { useCarData, type CarData } from './useCarData';
 
-export default function CarPage({
-    group,
-    number,
-    season: requested,
-}: {
-    group: GroupId;
-    number: string;
-    season: string | undefined;
-}) {
-    const data = useCarData(group, number, requested);
-    const [tab, setTab] = useState<TabId>('log');
-    const season = data?.season;
-    const { data: groupFile } = useGroup(season ?? '', group);
+const route = getRouteApi('/car/$group/$number');
 
-    const found = !!data && !data.failed && !!season && data.available.length > 0;
-    // NotFound sets its own title.
-    useDocumentTitle(found ? carTitle(group, number) : undefined);
+export default function CarPage() {
+    const { group, number } = route.useParams();
 
-    if (!data) return <p className="text-ink-2 py-16 text-center text-xl">Loading…</p>;
+    // A new car starts fresh (e.g. the game log collapses again).
+    return <CarLoader key={`${group}/${number}`} group={group} number={number} />;
+}
 
-    if (data.failed) return <LoadError onRetry={data.retry} />;
+function CarLoader({ group, number }: { group: GroupId; number: string }) {
+    const { season } = route.useSearch();
+    const resource = useCarData(group, number, season);
 
-    if (!season || !data.available.length) return <NotFound />;
+    return (
+        <ResourceView resource={resource}>
+            {(data) => <CarView group={group} number={number} data={data} />}
+        </ResourceView>
+    );
+}
 
-    const car = data.cars[season];
-    const years = data.available.filter((k) => k !== 'last30');
+function CarView({ group, number, data }: { group: GroupId; number: string; data: CarData }) {
+    const { meta, files, season, car } = data;
+    const { tab = 'log' } = route.useSearch();
+    // The line averages only color the calendar and game log, so the page doesn't wait for them.
+    const { data: groupFile } = useQuery(groupQuery(season, group));
     const avg = groupFile?.averages.ttoe_sec ?? null;
-    // Bio and season table come from the newest file the car has, even when the selected season is empty.
-    const bioCar = car ?? data.cars[data.available[0]]!;
+
+    useDocumentTitle(carTitle(group, number));
 
     return (
         <>
-            <div className="mt-2 mb-[34px] flex flex-col justify-between gap-4 md:flex-row md:items-stretch">
-                <DateBox latest={data.meta.latest_service_date} />
-                <SeasonToggle options={data.available} value={season} />
-            </div>
+            <SeasonBar
+                latest={meta.latest_service_date}
+                options={files.map((f) => f.window)}
+                value={season}
+                className="mt-2 mb-[34px]"
+            />
             <main className="grid grid-cols-1 items-stretch gap-4 min-[761px]:grid-cols-2 min-[1180px]:grid-cols-3">
                 <BioPanel
                     group={group}
                     number={number}
                     season={season}
                     hasSeasonData={!!car}
-                    car={bioCar}
-                    cars={data.cars}
-                    years={years}
-                    onTab={setTab}
+                    car={data.bio}
+                    files={files}
                 />
                 {car ? (
                     <>
@@ -72,29 +71,20 @@ export default function CarPage({
                             season={season}
                             car={car}
                             avg={avg}
-                            window={data.meta.windows.find((w) => w.key === season)}
-                            latest={data.meta.latest_service_date}
+                            window={meta.windows.find((w) => w.key === season)}
+                            latest={meta.latest_service_date}
                         />
                     </>
                 ) : (
                     <section className="panel grid place-items-center p-8 text-center min-[1180px]:col-span-2">
                         <p className="text-ink-2 m-0 text-xl">
-                            {group === 'bus' ? 'Bus' : 'Car'} {number} has no {GROUPS[group].name}{' '}
-                            data for {seasonLabel(season)}. Pick another season above.
+                            {GROUPS[group].noun} {number} has no {GROUPS[group].name} data for{' '}
+                            {seasonLabel(season)}. Pick another season above.
                         </p>
                     </section>
                 )}
             </main>
-            {car && (
-                <CarTabs
-                    group={group}
-                    season={season}
-                    car={car}
-                    avg={avg}
-                    tab={tab}
-                    onTab={setTab}
-                />
-            )}
+            {car && <CarTabs group={group} season={season} car={car} avg={avg} tab={tab} />}
         </>
     );
 }

@@ -1,6 +1,7 @@
 import { Link, useRouterState } from '@tanstack/react-router';
-import { GROUP_IDS, GROUPS } from '../format';
+import { GROUP_IDS, GROUPS } from '../groups';
 import Emblem from './Emblem';
+import LineDot from './LineDot';
 import Search from './Search';
 
 const navLink =
@@ -42,11 +43,8 @@ export default function Masthead() {
                 </Link>
                 {GROUP_IDS.map((g) => (
                     <Link key={g} to="/line/$group" params={{ group: g }} className={navLink}>
-                        <span
-                            className="inline-block size-[11px] rounded-full"
-                            style={{ background: GROUPS[g].color }}
-                        />
-                        {GROUPS[g].name.replace(' Line', '')}
+                        <LineDot group={g} className="inline-block size-[11px]" />
+                        {GROUPS[g].short}
                     </Link>
                 ))}
                 <Link to="/glossary" className={navLink}>
