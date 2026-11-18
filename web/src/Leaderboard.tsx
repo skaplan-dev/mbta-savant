@@ -1,11 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchGroup, fmtMetric, fmt, METRICS, UNRANKED, type CarStats, type GroupFile, type Metric } from './api';
+import {
+    fetchGroup,
+    fmtMetric,
+    fmtVsAvg,
+    fmt,
+    isVsAvg,
+    METRICS,
+    UNRANKED,
+    VS_AVG,
+    type CarStats,
+    type GroupFile,
+    type Metric,
+} from './api';
 
 type SortKey = Metric | 'number';
 
 function sortValue(c: CarStats, key: SortKey): number | string | null {
     if (key === 'number') return c.number;
-    const v = c[key];
+    // centering preserves order within the group, but sort on what is displayed
+    const v = isVsAvg(key) ? c[VS_AVG[key].field] : c[key];
     return Array.isArray(v) ? v.length : v;
 }
 
@@ -59,7 +72,7 @@ export default function Leaderboard({ window, group }: { window: string; group: 
                     <th>Fleet</th>
                     {METRICS.map((m) => (
                         <th key={m} className="sortable" onClick={() => head(m)}>
-                            {m}
+                            {isVsAvg(m) ? VS_AVG[m].label : m}
                             {sort.key === m ? (sort.dir === 1 ? ' ▲' : ' ▼') : ''}
                         </th>
                     ))}
@@ -74,7 +87,7 @@ export default function Leaderboard({ window, group }: { window: string; group: 
                         <td>{c.vehicle.fleet_label}</td>
                         {METRICS.map((m) => (
                             <td key={m}>
-                                {fmtMetric(m, c[m])}
+                                {isVsAvg(m) ? fmtVsAvg(m, c[VS_AVG[m].field]) : fmtMetric(m, c[m])}
                                 {UNRANKED.has(m) ? '' : ` (${fmt(c.pct[m])})`}
                             </td>
                         ))}

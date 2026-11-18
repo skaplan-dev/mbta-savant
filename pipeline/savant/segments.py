@@ -93,10 +93,15 @@ def parse_occupancy(value: str | None) -> list[float | None]:
     return out
 
 
-def _clean_cars(cars: list[str], occupancy: list[float | None]) -> tuple[list[str], list[float | None]]:
-    """Keep all-digit car tokens only (junk like WIRE/None is dropped), with occupancy at the same indexes."""
+def _clean_cars(
+    group: str, cars: list[str], occupancy: list[float | None]
+) -> tuple[list[str], list[float | None]]:
+    """Keep all-digit car tokens only (junk like WIRE/None is dropped), with occupancy at the same indexes.
+
+    Bus numbers are normalized (``0952`` -> ``952``) since the feed reports both forms; rail tokens are kept as-is.
+    """
     keep = [i for i, c in enumerate(cars) if c.isdigit()]
-    kept = [cars[i] for i in keep]
+    kept = [str(int(cars[i])) if group == "bus" else cars[i] for i in keep]
     if not occupancy:
         return kept, []
     return kept, [occupancy[i] for i in keep if i < len(occupancy)]
@@ -157,6 +162,18 @@ def _trip_stops(events: list[tuple[datetime, dict]]) -> list[_Stop]:
     return stops
 
 
+_NOT_BUS_PREFIXES = ("CR-", "Boat-", "CapeFlyer")
+
+
+def _belongs(group: str, route_id: str) -> bool:
+    """Rail groups need an exact route match. Bus keeps any route not claimed by rail, Commuter Rail or ferry,
+    so routes missing from bus_constants (e.g. 34E, 708) are not silently dropped."""
+    g = group_for_route(route_id)
+    if group != "bus":
+        return g == group
+    return g in (None, "bus") and not route_id.startswith(_NOT_BUS_PREFIXES)
+
+
 def build_segments(group: str, rows: list[dict]) -> list[dict]:
     trips: dict[tuple[str, str], list[tuple[datetime, dict]]] = defaultdict(list)
     for r in rows:
@@ -181,9 +198,9 @@ def build_segments(group: str, rows: list[dict]) -> list[dict]:
                 direction = int(dep.get("direction_id"))
             except (TypeError, ValueError):
                 continue  # one bad row must not fail the whole day
-            if group_for_route(dep["route_id"]) != group:
+            if not _belongs(group, dep["route_id"]):
                 continue
-            cars, occupancy = _clean_cars(cars_for(dep), parse_occupancy(dep.get("occupancy_percentage")))
+            cars, occupancy = _clean_cars(group, cars_for(dep), parse_occupancy(dep.get("occupancy_percentage")))
             if not cars:
                 continue
             from_station, to_station = station_for_stop(dep["stop_id"]), station_for_stop(b.arrival["stop_id"])

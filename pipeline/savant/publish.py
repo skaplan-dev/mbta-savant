@@ -4,9 +4,15 @@ Percentile = 100 * (qualified cars in the group this car strictly beats) / (n - 
 where n is the number of qualified cars with a value for the metric. Ties never count as beating, so
 tied cars share a percentile. n == 1 gives 100. Unqualified cars, cars missing the metric, unranked
 metrics, and the mattapan group get None.
+
+TTOE and Speed vs Expected are also shown against the group's average car (``ttoe_vs_avg_sec``,
+``speed_vs_avg_pct``): the absolute values sit on one side of zero because a delay distribution is
+skewed late. The average is the mean over qualified, ranked cars. These are display-only; percentiles
+stay on the absolute fields (centering does not change rank).
 """
 
 import json
+import shutil
 import statistics
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,6 +35,8 @@ METRICS: dict[str, Literal["higher", "lower"] | None] = {
     "crowd_load_pct": None,
 }
 UNRANKED_GROUPS = {"mattapan"}
+# centered field -> absolute field it is centered from
+VS_AVG = {"ttoe_vs_avg_sec": "ttoe_sec", "speed_vs_avg_pct": "speed_vs_expected_pct"}
 
 
 def add_percentiles(group: str, cars: list[dict]) -> list[dict]:
@@ -54,6 +62,19 @@ def add_percentiles(group: str, cars: list[dict]) -> list[dict]:
     return out
 
 
+def add_vs_avg(cars: list[dict]) -> dict[str, float | None]:
+    """Set each car's VS_AVG fields in place; return the averages keyed by absolute field."""
+    averages: dict[str, float | None] = {}
+    for centered, metric in VS_AVG.items():
+        vals = [c[metric] for c in cars if c.get("qualified") and c["ranked"] and c.get(metric) is not None]
+        avg = statistics.fmean(vals) if vals else None
+        averages[metric] = avg
+        for c in cars:
+            v = c.get(metric)
+            c[centered] = None if avg is None or v is None else v - avg
+    return averages
+
+
 def _write(path: Path, obj) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(obj, ensure_ascii=False, default=str), encoding="utf-8")
@@ -67,7 +88,7 @@ def _fleet(cars: list[dict]) -> dict:
         v = c["vehicle"]
         f = fleets.setdefault(v.get("fleet_key", "unknown"), {"fleet_label": v["fleet_label"], "cars": 0, "median": {}})
         f["cars"] += 1
-        for m in METRICS:
+        for m in (*METRICS, *VS_AVG):
             if c.get(m) is not None:
                 f["median"].setdefault(m, []).append(c[m])
     for f in fleets.values():
@@ -78,6 +99,7 @@ def _fleet(cars: list[dict]) -> dict:
 def publish(root: Path, out: Path) -> None:
     root, out = Path(root), Path(out)
     data = out / "data"
+    shutil.rmtree(data, ignore_errors=True)  # no stale files from an earlier build
     now = datetime.now(timezone.utc).isoformat()
     wins = stats.windows(root)
     fleets: dict[str, dict] = {g: {} for g in GROUPS}
@@ -96,9 +118,12 @@ def publish(root: Path, out: Path) -> None:
                 )
                 c["vehicle"].setdefault("fleet_key", "unknown")
             cars = add_percentiles(group, cars)
+            averages = add_vs_avg(cars)
             _write(
                 data / w.key / "groups" / f"{group}.json",
                 {"group": group, "window": w.key, "generated_at": now,
+                 "qualify_min_trips": stats.qualify_threshold([c["trips"] for c in cars]),
+                 "averages": averages,
                  "cars": [{k: v for k, v in c.items() if k != "game_log"} for c in cars]},
             )
             for c in cars:

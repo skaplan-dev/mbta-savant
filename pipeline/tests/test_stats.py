@@ -233,3 +233,20 @@ def test_duckdb_spill_directory_under_root(tmp_path):
     write(tmp_path, "orange", {D0: [seg(D0, "t", ["Z"], 100)]})
     stats.car_stats(tmp_path, "orange", window(D0, D0))
     assert (tmp_path / ".duckdb_tmp").is_dir()
+
+
+def test_qualify_threshold_scales_with_median():
+    assert stats.QUALIFY_SHARE == 0.25
+    assert stats.qualify_threshold([1000, 1000, 1000, 120]) == 250
+    assert stats.qualify_threshold([10, 20]) == 50
+    assert stats.qualify_threshold([201, 201]) == 51  # ceil(50.25)
+    assert stats.qualify_threshold([]) == 50
+
+
+def test_qualify_uses_quarter_of_median_trips(tmp_path):
+    segs = [seg(D0, f"{n}-{i}", [n], 100) for n in ("A", "B", "C") for i in range(1000)]
+    segs += [seg(D0, f"D-{i}", ["D"], 100) for i in range(120)]
+    write(tmp_path, "orange", {D0: segs})
+    rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
+    assert rows["D"]["trips"] == 120 and rows["D"]["qualified"] is False
+    assert all(rows[n]["qualified"] for n in "ABC")

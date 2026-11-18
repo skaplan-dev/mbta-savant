@@ -122,3 +122,67 @@ def test_speed_vs_expected_ranked_top_speed_not():
     out = {c["number"]: c["pct"] for c in publish.add_percentiles("orange", cars)}
     assert out["1401"]["speed_vs_expected_pct"] == 100 and out["1400"]["speed_vs_expected_pct"] == 0
     assert out["1401"]["top_speed_mph"] is None
+
+
+def _ranked(cars, group="orange"):
+    return publish.add_percentiles(group, cars)
+
+
+def test_vs_avg_centers_on_ranked_mean_and_keeps_pct():
+    cars = _ranked([car("1400", 5.0), car("1401", 7.0), car("1402", 9.0)])
+    avg = publish.add_vs_avg(cars)
+    assert avg == {"ttoe_sec": 7.0, "speed_vs_expected_pct": None}
+    assert [c["ttoe_vs_avg_sec"] for c in cars] == [-2.0, 0.0, 2.0]
+    assert [c["pct"]["ttoe_sec"] for c in cars] == [100, 50, 0]
+    assert all(c["speed_vs_avg_pct"] is None for c in cars)
+
+
+def test_vs_avg_non_ranked_centered_but_not_in_average():
+    cars = [{**car(n, t), "car_id": f"green:{n}"} for n, t in (("3901", 4.0), ("3902", 6.0), ("3000", 100.0))]
+    cars = _ranked([*cars, {**car("3903", 50.0, qualified=False), "car_id": "green:3903"}], "green")
+    avg = publish.add_vs_avg(cars)
+    assert avg["ttoe_sec"] == 5.0
+    by = {c["number"]: c for c in cars}
+    assert by["3000"]["ranked"] is False and by["3000"]["ttoe_vs_avg_sec"] == 95.0
+    assert by["3903"]["ttoe_vs_avg_sec"] == 45.0  # unqualified: centered, not averaged
+
+
+def test_vs_avg_speed_and_nulls():
+    cars = _ranked([car("1400", 1.0, speed_vs_expected_pct=-6.0), car("1401", None, speed_vs_expected_pct=-8.0)])
+    avg = publish.add_vs_avg(cars)
+    assert avg == {"ttoe_sec": 1.0, "speed_vs_expected_pct": -7.0}
+    assert cars[0]["speed_vs_avg_pct"] == 1.0 and cars[1]["speed_vs_avg_pct"] == -1.0
+    assert cars[1]["ttoe_vs_avg_sec"] is None
+
+
+def test_vs_avg_mattapan_all_null():
+    cars = _ranked([car("3087", 1.0), car("3234", 3.0)], "mattapan")
+    assert publish.add_vs_avg(cars) == {"ttoe_sec": None, "speed_vs_expected_pct": None}
+    assert all(c["ttoe_vs_avg_sec"] is None and c["speed_vs_avg_pct"] is None for c in cars)
+
+
+def test_group_file_has_averages_and_threshold(tmp_path):
+    out = build(tmp_path)
+    g = load(out / "data/last30/groups/orange.json")
+    assert g["qualify_min_trips"] == 50
+    assert g["averages"]["ttoe_sec"] == 0.0  # 1400 at -5, 1401 at +5
+    by = {c["number"]: c for c in g["cars"]}
+    assert by["1400"]["ttoe_vs_avg_sec"] == -5.0 and by["1401"]["ttoe_vs_avg_sec"] == 5.0
+    assert set(g["averages"]) == {"ttoe_sec", "speed_vs_expected_pct"}
+    fl = load(out / "data/fleets/orange.json")["last30"]
+    for f in fl.values():
+        assert "ttoe_vs_avg_sec" in f["median"] and "speed_vs_avg_pct" in f["median"]
+    assert "ttoe_vs_avg_sec" not in publish.METRICS
+
+
+def test_publish_clears_stale_output(tmp_path):
+    out = tmp_path / "out"
+    stale = out / "data/2026/cars/blue/WORK.json"
+    stale.parent.mkdir(parents=True)
+    stale.write_text("{}")
+    keep = out / "index.html"
+    keep.write_text("<html>")
+    out = build(tmp_path)
+    assert not stale.exists()
+    assert keep.exists()
+    assert (out / "data/meta.json").exists()

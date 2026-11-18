@@ -62,6 +62,9 @@ export interface CarStats {
     ranked: boolean;
     ttoe_sec: number | null;
     speed_vs_expected_pct: number | null;
+    // ttoe_sec / speed_vs_expected_pct minus the group's average (qualified, ranked) car; display-only.
+    ttoe_vs_avg_sec: number | null;
+    speed_vs_avg_pct: number | null;
     // Shown as a fun fact; never ranked, so its pct is always null.
     top_speed_mph: number | null;
     on_time_pct: number | null;
@@ -94,6 +97,8 @@ export interface GroupFile {
     group: string;
     window: string;
     generated_at: string;
+    qualify_min_trips: number;
+    averages: { ttoe_sec: number | null; speed_vs_expected_pct: number | null };
     cars: CarStats[];
 }
 
@@ -111,13 +116,34 @@ export const fetchGroup = (window: string, group: string) =>
 export const fetchCar = (window: string, group: string, number: string) =>
     getJson<Car>(`/data/${window}/cars/${group}/${number}.json`);
 
-// Metrics shown without a percentile.
+// Metrics shown without a percentile. Keep in sync with the null-direction entries of METRICS in
+// pipeline/savant/publish.py.
 export const UNRANKED: ReadonlySet<Metric> = new Set<Metric>(['top_speed_mph', 'crowd_load_pct']);
 
 // Signed values ("+4.2%") for metrics that read as better or worse than expected.
 export function fmtMetric(m: Metric, v: number | string[] | null | undefined): string {
-    if (m === 'speed_vs_expected_pct' && typeof v === 'number') return `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+    if (m === 'speed_vs_expected_pct' && typeof v === 'number')
+        return `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
     return fmt(v);
+}
+
+// Metrics displayed against the line's average car; the pct stays the absolute metric's pct.
+export const VS_AVG = {
+    ttoe_sec: { field: 'ttoe_vs_avg_sec', label: 'TTOE vs avg', unit: ' s' },
+    speed_vs_expected_pct: { field: 'speed_vs_avg_pct', label: 'Speed vs avg', unit: '%' },
+} as const satisfies Partial<
+    Record<Metric, { field: keyof CarStats; label: string; unit: string }>
+>;
+
+export type VsAvgMetric = keyof typeof VS_AVG;
+
+export const isVsAvg = (m: Metric): m is VsAvgMetric => m in VS_AVG;
+
+// "−2.1 s vs avg", "+0.4% vs avg"
+export function fmtVsAvg(m: VsAvgMetric, v: number | null | undefined): string {
+    if (v === null || v === undefined) return '-';
+    const sign = v > 0 ? '+' : v < 0 ? '\u2212' : '';
+    return `${sign}${Math.abs(v).toFixed(1)}${VS_AVG[m].unit} vs avg`;
 }
 
 export function fmt(v: number | string[] | null | undefined): string {

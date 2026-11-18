@@ -253,3 +253,46 @@ def test_segment_with_no_numeric_cars_dropped():
     for r in rows:
         r["vehicle_consist"] = "WIRE|None"
     assert segments.build_segments("orange", rows) == []
+
+
+def _bus_rows(route_id, label="1234"):
+    return [
+        {"service_date": "2024-05-04", "route_id": route_id, "trip_id": "t1", "direction_id": "1",
+         "stop_id": "1728", "vehicle_label": label, "vehicle_consist": "", "event_type": "DEP",
+         "event_time": "2024-05-04 23:10:00-04:00", "scheduled_tt": "", "occupancy_percentage": ""},
+        {"service_date": "2024-05-04", "route_id": route_id, "trip_id": "t1", "direction_id": "1",
+         "stop_id": "1729", "vehicle_label": label, "vehicle_consist": "", "event_type": "ARR",
+         "event_time": "2024-05-04 23:13:00-04:00", "scheduled_tt": "", "occupancy_percentage": ""},
+    ]
+
+
+@pytest.mark.parametrize("route", ["34E", "708", "28"])
+def test_bus_keeps_unmapped_routes(route):
+    (s,) = segments.build_segments("bus", _bus_rows(route))
+    assert s["route_id"] == route
+
+
+@pytest.mark.parametrize("route", ["Red", "Mattapan", "Green-B", "CR-Fitchburg", "Boat-F1", "CapeFlyer"])
+def test_bus_drops_rail_cr_and_boat_routes(route):
+    assert segments.build_segments("bus", _bus_rows(route)) == []
+
+
+def test_rail_groups_still_strict():
+    rows = _rows()
+    for r in rows:
+        r["route_id"] = "34E"
+    assert segments.build_segments("orange", rows) == []
+
+
+def test_bus_numbers_normalized():
+    (s,) = segments.build_segments("bus", _bus_rows("28", "0952"))
+    assert s["cars"] == ["952"]
+
+
+def test_rail_numbers_untouched():
+    rows = [r for r in _rows() if r["trip_id"] == TRIP1]
+    for r in rows:
+        r["route_id"] = "Blue"
+        r["vehicle_consist"] = "0700|0701"
+    segs = segments.build_segments("blue", rows)
+    assert segs and all(s["cars"] == ["0700", "0701"] for s in segs)

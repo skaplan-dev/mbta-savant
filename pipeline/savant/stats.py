@@ -13,6 +13,8 @@ Games Played and Iron Horse are counted over the group's *data days* (window day
 has any segment), so a feed outage neither lowers a car's games played nor breaks its streak.
 """
 
+import math
+import statistics
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
@@ -22,6 +24,7 @@ import duckdb
 from savant.segments import segment_glob
 
 QUALIFY_MIN_TRIPS = 50
+QUALIFY_SHARE = 0.25  # of the median trip count over all cars in the group/window
 LAST30_DAYS = 30
 TEAMMATES = 5
 TTOE_CAP_SEC = 300
@@ -121,6 +124,13 @@ def _iron_horse(car_days: set[str], data_days: list[str]) -> int:
     return best
 
 
+def qualify_threshold(trips: list[int]) -> int:
+    """Trips needed to qualify: max(QUALIFY_MIN_TRIPS, ceil(QUALIFY_SHARE * median over all cars))."""
+    if not trips:
+        return QUALIFY_MIN_TRIPS
+    return max(QUALIFY_MIN_TRIPS, math.ceil(QUALIFY_SHARE * statistics.median(trips)))
+
+
 def car_stats(root: Path, group: str, window: Window) -> list[dict]:
     if not any((Path(root) / "segments" / group).glob("*/*.parquet")):
         return []
@@ -148,6 +158,7 @@ def car_stats(root: Path, group: str, window: Window) -> list[dict]:
     finally:
         con.close()
 
+    threshold = qualify_threshold([c["trips"] for c in cars])
     out = []
     for c in cars:
         number, days = c.pop("number"), set(c.pop("days"))
@@ -157,7 +168,7 @@ def car_stats(root: Path, group: str, window: Window) -> list[dict]:
                 "car_id": f"{group}:{number}",
                 "number": number,
                 **c,
-                "qualified": c["trips"] >= QUALIFY_MIN_TRIPS,
+                "qualified": c["trips"] >= threshold,
                 "top_speed_mph": None if is_bus else c["top_speed_mph"],
                 "miles": None if is_bus else c["miles"],
                 "games_played_pct": 100.0 * len(days) / len(data_days),
