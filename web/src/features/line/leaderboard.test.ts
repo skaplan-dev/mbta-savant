@@ -1,30 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import type { CarStats } from '../../api';
-import { firstDir, rankCars, sortCars, unrankedCars } from './leaderboard';
+import { carStats, groupFile } from '../../test/fixtures';
+import { firstDir, rankCars, sortCars, splitCars } from './leaderboard';
 
-function car(number: string, o: Partial<CarStats> & { pct_ttoe?: number | null } = {}): CarStats {
-    const { pct_ttoe, ...rest } = o;
-
-    return {
-        car_id: `red:${number}`,
-        number,
-        trips: 100,
-        qualified: true,
-        ranked: true,
-        ttoe_vs_avg_sec: 0,
-        steadiness_sec: 10,
-        pct: { ttoe_sec: pct_ttoe ?? 50 } as CarStats['pct'],
-        vehicle: { fleet_key: 'k', fleet_label: 'F' },
-        ...rest,
-    } as CarStats;
-}
+const car = (number: string, saved: number, pctTtoe: number, steadiness: number | null) =>
+    carStats(number, {
+        ttoe_vs_avg_sec: saved,
+        steadiness_sec: steadiness,
+        pct: { ttoe_sec: pctTtoe },
+    });
 
 describe('leaderboard', () => {
-    const cars = [
-        car('1', { ttoe_vs_avg_sec: 1, pct_ttoe: 30, steadiness_sec: 5 }),
-        car('2', { ttoe_vs_avg_sec: -3, pct_ttoe: 90, steadiness_sec: 20 }),
-        car('3', { ttoe_vs_avg_sec: -2, pct_ttoe: 80, steadiness_sec: null }),
-    ];
+    const cars = [car('1', 1, 30, 5), car('2', -3, 90, 20), car('3', -2, 80, null)];
 
     it('ranks by Time Saved, best first', () => {
         expect(rankCars(cars).map((c) => c.number)).toEqual(['2', '3', '1']);
@@ -49,36 +35,18 @@ describe('leaderboard', () => {
         expect(firstDir('time-saved', 'red')).toBe('desc');
         expect(firstDir('car', 'red')).toBe('asc');
     });
-    it('lists unranked cars with a reason; mattapan is never ranked', () => {
-        const u = unrankedCars('red', [car('4', { qualified: false, trips: 7 }), car('1')], 870);
-        expect(u).toHaveLength(1);
-        expect(u[0].reason).toContain('870');
-        expect(unrankedCars('mattapan', [car('9')], 1)[0].reason).toContain('Mattapan');
-    });
-});
-
-import { defaultLineSeason } from './useLineData';
-
-describe('defaultLineSeason', () => {
-    const entry = (group: string, ranked: boolean) =>
-        ({ group, qualified: ranked, ranked }) as never;
-
-    const w = ['2026', '2025', 'last30'];
-    it('picks the newest year with a ranked car, else last30', () => {
-        expect(
-            defaultLineSeason('red', w, {
-                '2026': [entry('red', true)],
-                '2025': [entry('red', true)],
-            })
-        ).toBe('2026');
-        expect(
-            defaultLineSeason('red', w, {
-                '2026': [entry('red', false)],
-                '2025': [entry('red', true)],
-            })
-        ).toBe('2025');
-        expect(defaultLineSeason('mattapan', w, { '2026': [entry('mattapan', true)] })).toBe(
-            'last30'
+    it('splits ranked from unranked cars with a reason; mattapan is never ranked', () => {
+        const red = splitCars(
+            'red',
+            groupFile([carStats('4', { qualified: false, trips: 7 }), carStats('1')])
         );
+
+        expect(red.ranked.map((c) => c.number)).toEqual(['1']);
+        expect(red.unranked).toHaveLength(1);
+        expect(red.unranked[0].reason).toContain('870');
+        expect(
+            splitCars('mattapan', groupFile([carStats('9')], { group: 'mattapan' })).unranked[0]
+                .reason
+        ).toContain('Mattapan');
     });
 });

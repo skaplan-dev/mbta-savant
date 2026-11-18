@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
     doorLabel,
-    GROUPS,
-    isGroup,
+    fmtMilesShort,
+    fmtUnit,
     ordinal,
     pacePlus,
     pctColor,
     signed,
     timeSaved,
 } from './format';
+import { GROUPS, isGroup } from './groups';
 
 describe('signed', () => {
     it('never shows a negative zero', () => {
@@ -24,16 +25,28 @@ describe('signed', () => {
 
 describe('car stats', () => {
     it('pacePlus rounds 100 + speed_vs_avg_pct', () => {
-        expect(pacePlus({ speed_vs_avg_pct: 2.5, ttoe_vs_avg_sec: null })).toBe(103);
-        expect(pacePlus({ speed_vs_avg_pct: null, ttoe_vs_avg_sec: null })).toBeNull();
+        expect(pacePlus({ speed_vs_avg_pct: 2.5 })).toBe(103);
+        expect(pacePlus({ speed_vs_avg_pct: null })).toBeNull();
+        expect(pacePlus({})).toBeNull();
     });
     it('timeSaved negates ttoe_vs_avg_sec', () => {
-        expect(timeSaved({ ttoe_vs_avg_sec: -2.9, speed_vs_avg_pct: null })).toBe(2.9);
+        expect(timeSaved({ ttoe_vs_avg_sec: -2.9 })).toBe(2.9);
     });
     it('doorLabel', () => {
         expect(doorLabel(-2)).toBe('2 s quick');
         expect(doorLabel(3)).toBe('3 s slow');
         expect(doorLabel(0)).toBe('typical');
+    });
+});
+
+describe('units', () => {
+    it('formats with a unit, or a dash when missing', () => {
+        expect(fmtUnit(89.91, 1, '%')).toBe('89.9%');
+        expect(fmtUnit(null, 0, ' s')).toBe('–');
+    });
+    it('shortens miles from 1,000 up', () => {
+        expect(fmtMilesShort(820.4)).toBe('820');
+        expect(fmtMilesShort(51578)).toBe('51.6k');
     });
 });
 
