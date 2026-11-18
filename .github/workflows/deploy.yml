@@ -10,11 +10,13 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      AWS_PROFILE: transitmatters
       AWS_DEFAULT_REGION: us-east-1
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      TM_LABS_WILDCARD_CERT_ARN: ${{ secrets.TM_LABS_WILDCARD_CERT_ARN }}
+      # Optional custom domain; leave these repository variables unset to use the *.cloudfront.net address.
+      SITE_HOSTNAME: ${{ vars.SITE_HOSTNAME }}
+      HOSTED_ZONE: ${{ vars.HOSTED_ZONE }}
+      CERTIFICATE_ARN: ${{ vars.CERTIFICATE_ARN }}
 
     steps:
       - name: Checkout repo
@@ -27,13 +29,5 @@ jobs:
           node-version-file: web/.nvmrc
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - name: Generate AWS profile
-        run: |
-          mkdir -p ~/.aws
-          cat >> ~/.aws/credentials << EOF
-          [$AWS_PROFILE]
-          aws_access_key_id = $AWS_ACCESS_KEY_ID
-          aws_secret_access_key = $AWS_SECRET_ACCESS_KEY
-          EOF
       - name: Run deploy shell script
         run: bash deploy.sh

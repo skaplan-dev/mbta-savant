@@ -6,15 +6,10 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 from pathlib import Path
 
-from savant import events
+from savant import lamp
 from savant.groups import GROUPS
 from savant.publish import publish
-from savant.segments import build_segments, day_path, write_day
-
-
-def _make_client():
-    """One shared S3 client, built in the main thread. Tests monkeypatch this."""
-    return events._client(None)
+from savant.segments import day_path, write_day
 
 
 def _groups(arg: str | None) -> list[str]:
@@ -27,18 +22,15 @@ def _groups(arg: str | None) -> list[str]:
     return groups
 
 
-def _write(rows: list[dict], root: Path, group: str, day: date) -> None:
-    segments = build_segments(group, rows)
-    write_day(segments, root, group, day)
-    print(f"{group} {day.isoformat()}: {len(segments)} segments")
+def _ingest(day: date, groups: list[str], root: Path) -> None:
+    for group, segments in lamp.day_segments(day, groups).items():
+        write_day(segments, root, group, day)
+        print(f"{group} {day.isoformat()}: {len(segments)} segments")
 
 
 def cmd_ingest(args) -> int:
     day = date.fromisoformat(args.date)
-    root = Path(args.root)
-    client = _make_client()
-    for group in _groups(args.groups):
-        _write(events.day_events(group, day, client=client), root, group, day)
+    _ingest(day, _groups(args.groups), Path(args.root))
     return 0
 
 
@@ -48,17 +40,17 @@ def cmd_backfill(args) -> int:
         print("error: --end is before --start", file=sys.stderr)
         raise SystemExit(2)
     root = Path(args.root)
-    client = _make_client()
     groups = _groups(args.groups)
     days = [start + timedelta(n) for n in range((end - start).days + 1)]
 
     def one_day(d: date) -> str | None:
         try:
-            for group in groups:
-                if not args.force and day_path(root, group, d).exists():
-                    print(f"{group} {d.isoformat()}: skipped (exists)")
-                    continue
-                _write(events.day_events(group, d, client=client), root, group, d)
+            todo = [g for g in groups if args.force or not day_path(root, g, d).exists()]
+            for g in groups:
+                if g not in todo:
+                    print(f"{g} {d.isoformat()}: skipped (exists)")
+            if todo:
+                _ingest(d, todo, root)
         except Exception as ex:  # keep going; reported at the end
             print(f"error: {d.isoformat()} failed: {ex!r}", file=sys.stderr)
             return d.isoformat()
@@ -87,7 +79,7 @@ def main(argv=None) -> int:
     i.add_argument("--root", default="./work")
     i.set_defaults(func=cmd_ingest)
 
-    b = sub.add_parser("backfill", help="ingest a date range from LAMP daily files")
+    b = sub.add_parser("backfill", help="ingest a date range from the MBTA's public LAMP files")
     b.add_argument("--start", required=True)
     b.add_argument("--end", required=True)
     b.add_argument("--workers", type=int, default=5)

@@ -1,47 +1,51 @@
-#!/bin/bash -x
+#!/bin/bash
+# Deploys the site to whichever AWS account the active profile points at.
+#
+#   AWS_PROFILE=seth ./deploy.sh                      # CloudFront's own *.cloudfront.net address
+#   AWS_PROFILE=seth SITE_HOSTNAME=savant.example.com HOSTED_ZONE=example.com \
+#       CERTIFICATE_ARN=arn:aws:acm:us-east-1:... ./deploy.sh   # custom domain
+set -euo pipefail
 
-set -e
-
-export AWS_PROFILE=${AWS_PROFILE:-transitmatters}
-export AWS_REGION=us-east-1
-export AWS_DEFAULT_REGION=us-east-1
+export AWS_REGION=${AWS_REGION:-us-east-1}
+export AWS_DEFAULT_REGION=$AWS_REGION
 export AWS_PAGER=""
 
-if [[ -z "$TM_LABS_WILDCARD_CERT_ARN" ]]; then
-    echo "Must provide TM_LABS_WILDCARD_CERT_ARN in environment" 1>&2
-    exit 1
+STACK_NAME=${STACK_NAME:-mbta-savant}
+
+if [[ -n "${SITE_HOSTNAME:-}" ]]; then
+    : "${HOSTED_ZONE:?HOSTED_ZONE is required with SITE_HOSTNAME}"
+    : "${CERTIFICATE_ARN:?CERTIFICATE_ARN is required with SITE_HOSTNAME}"
+    DOMAIN_PARAMS="Hostname=$SITE_HOSTNAME HostedZoneName=$HOSTED_ZONE CertificateArn=$CERTIFICATE_ARN"
+else
+    DOMAIN_PARAMS="Hostname= HostedZoneName= CertificateArn="
 fi
 
-STACK_NAME=savant-labs
-
-FRONTEND_HOSTNAME="savant.labs.transitmatters.org"
-FRONTEND_ZONE="labs.transitmatters.org"
-FRONTEND_BUCKET="$FRONTEND_HOSTNAME"
-FRONTEND_CERT_ARN="$TM_LABS_WILDCARD_CERT_ARN"
-
-GIT_VERSION=`git describe --tags --always`
-echo "Deploying version $GIT_VERSION"
+echo "Deploying to account $(aws sts get-caller-identity --query Account --output text) as stack $STACK_NAME"
 
 (cd web && npm ci && npm run build)
 
-echo "Deploying CloudFront infrastructure..."
-aws cloudformation deploy --template-file cloudformation.json --stack-name $STACK_NAME --no-fail-on-empty-changeset \
-    --tags service=mbta-savant env=prod team=tm-labs \
-    --parameter-overrides \
-    TMFrontendHostname=$FRONTEND_HOSTNAME \
-    TMFrontendZone=$FRONTEND_ZONE \
-    TMFrontendCertArn=$FRONTEND_CERT_ARN
+echo "Deploying infrastructure..."
+# shellcheck disable=SC2086
+aws cloudformation deploy --template-file cloudformation.json --stack-name "$STACK_NAME" \
+    --no-fail-on-empty-changeset --tags service=mbta-savant env=prod \
+    --parameter-overrides $DOMAIN_PARAMS
+
+output() {
+    aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+        --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue | [0]" --output text
+}
+BUCKET=$(output S3BucketName)
+DISTRIBUTION_ID=$(output CloudFrontDistributionId)
 
 # data/ and segments/ are owned by the nightly pipeline; never delete them here.
-echo "Syncing built files to S3 bucket: $FRONTEND_BUCKET"
-aws s3 sync web/dist/ s3://$FRONTEND_BUCKET --delete \
+echo "Syncing built files to s3://$BUCKET"
+aws s3 sync web/dist/ "s3://$BUCKET" --delete \
     --exclude "data/*" --exclude "segments/*" \
     --cache-control "public, max-age=31536000, immutable"
-aws s3 cp web/dist/index.html s3://$FRONTEND_BUCKET/index.html \
+aws s3 cp web/dist/index.html "s3://$BUCKET/index.html" \
     --cache-control "no-cache, must-revalidate"
 
-echo "Invalidating CloudFront cache for: $FRONTEND_HOSTNAME"
-CLOUDFRONT_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Aliases.Items!=null] | [?contains(Aliases.Items, '$FRONTEND_HOSTNAME')].Id | [0]" --output text)
-aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_ID --paths "/*"
+echo "Invalidating CloudFront cache"
+aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
 
-echo "Deployment completed successfully!"
+echo "Deployment completed: $(output WebsiteURL)"

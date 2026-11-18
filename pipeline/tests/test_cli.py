@@ -1,57 +1,35 @@
 import json
-import re
-from pathlib import Path
+from datetime import date
 
 import pytest
-from botocore.exceptions import ClientError
+from lamp_data import bus_file, bus_stop, rail_file, rail_trip
 
-from savant import cli, groups
+from savant import cli, groups, lamp
 
-FIXTURE = Path(__file__).parent / "fixtures" / "orange_day.csv"
-KEY = re.compile(r"/(?P<stop>[^/]+)/Year=(?P<y>\d+)/Month=(?P<m>\d+)(?:/Day=(?P<d>\d+))?/events")
-
-
-def _day_text(day: str) -> str:
-    return FIXTURE.read_text().replace("2024-05-01", day)
+DAYS = [date(2026, 5, 1), date(2026, 5, 2), date(2026, 5, 3)]
+ORANGE = ["70036", "70034", "70032"]
 
 
-def _filter(text: str, stop: str) -> str:
-    lines = text.splitlines()
-    keep = [lines[0]] + [l for l in lines[1:] if l.split(",")[4] == stop]
-    return "\n".join(keep) + "\n"
+class Lamp:
+    """Serves rail files for DAYS (and a bus file) from a temp dir; `broken` days fail to parse."""
 
-
-class FakeBody:
-    def __init__(self, data):
-        self.data = data
-
-    def read(self):
-        return self.data
-
-
-class FakeClient:
-    """Serves fixture rows for 2026-05-01..03 from LAMP daily keys; records every key."""
-
-    days = {1: "2026-05-01", 2: "2026-05-02", 3: "2026-05-03"}
-    fail_day = None
-
-    def __init__(self):
-        self.keys = []
-
-    def get_object(self, Bucket, Key):
-        self.keys.append(Key)
-        m = KEY.search(Key)
-        stop = m["stop"]
-        if m["d"] is None or (m["y"], m["m"]) != ("2026", "5") or int(m["d"]) not in self.days:
-            raise ClientError({"Error": {"Code": "NoSuchKey", "Message": ""}}, "GetObject")
-        if int(m["d"]) == self.fail_day:
-            raise ClientError({"Error": {"Code": "InternalError", "Message": ""}}, "GetObject")
-        return {"Body": FakeBody(_filter(_day_text(self.days[int(m["d"])]), stop).encode())}
+    def __init__(self, tmp_path, monkeypatch, broken=()):
+        d = tmp_path / "lamp"
+        d.mkdir()
+        for day in DAYS:
+            path = d / f"{day.isoformat()}.parquet"
+            if day in broken:
+                path.write_bytes(b"not parquet")
+            else:
+                rail_file(path, [r for trip in range(60) for r in rail_trip(day, f"t{trip}", ORANGE)])
+        bus = [bus_stop(day, "b", seq, stop, (8, seq, 0), (8, seq, 10)) for day in DAYS for seq, stop in ((1, "1"), (2, "2"))]
+        monkeypatch.setattr(lamp, "RAIL_URL", str(d / "{day}.parquet"))
+        monkeypatch.setattr(lamp, "BUS_URL", str(bus_file(d / "bus.parquet", bus)))
 
 
 @pytest.fixture
-def fake(monkeypatch):
-    monkeypatch.setattr(cli, "_make_client", lambda: FakeClient())
+def fake(tmp_path, monkeypatch):
+    return Lamp(tmp_path, monkeypatch)
 
 
 def _orange(root):
@@ -97,37 +75,27 @@ def test_backfill_skips_existing_unless_force(fake, tmp_path, capsys):
     assert files[0].read_bytes() != b"sentinel"
 
 
-def test_backfill_uses_lamp_daily_keys_only(monkeypatch, tmp_path, capsys):
-    client = FakeClient()
-    monkeypatch.setattr(cli, "_make_client", lambda: client)
-    args = ["backfill", "--start", "2026-05-01", "--end", "2026-05-03", "--groups", "orange", "--workers", "2", "--root", str(tmp_path)]
-    assert cli.main(args) == 0
-    assert len(_orange(tmp_path)) == 3
-    assert client.keys and all(k.startswith("Events-lamp/") for k in client.keys)
-    assert not any("Events/monthly-" in k for k in client.keys)
-    assert "orange 2026-05-02:" in capsys.readouterr().out
-
-
 def test_backfill_end_before_start_exits_2(fake, tmp_path, capsys):
     with pytest.raises(SystemExit) as ex:
         cli.main(["backfill", "--start", "2026-05-03", "--end", "2026-05-01", "--root", str(tmp_path)])
     assert ex.value.code == 2
 
 
-def test_backfill_failed_day_continues_and_exits_nonzero(monkeypatch, tmp_path, capsys):
-    client = FakeClient()
-    client.fail_day = 2
-    monkeypatch.setattr(cli, "_make_client", lambda: client)
-    args = ["backfill", "--start", "2026-05-01", "--end", "2026-05-03", "--groups", "orange", "--root", str(tmp_path)]
+def test_backfill_failed_day_continues_and_exits_nonzero(tmp_path, monkeypatch, capsys):
+    Lamp(tmp_path, monkeypatch, broken=[DAYS[1]])
+    args = ["backfill", "--start", "2026-05-01", "--end", "2026-05-03", "--groups", "orange", "--root", str(tmp_path / "w")]
     assert cli.main(args) == 1
-    assert len(_orange(tmp_path)) == 2
+    assert len(_orange(tmp_path / "w")) == 2
     captured = capsys.readouterr()
     assert "2026-05-02" in captured.err and "failed" in captured.err.lower()
 
 
-def test_backfill_builds_one_client(monkeypatch, tmp_path):
-    client, calls = FakeClient(), []
-    monkeypatch.setattr(cli, "_make_client", lambda: calls.append(1) or client)
-    args = ["backfill", "--start", "2026-05-01", "--end", "2026-05-03", "--groups", "orange,red", "--workers", "3", "--root", str(tmp_path)]
-    assert cli.main(args) == 0
-    assert len(calls) == 1
+def test_missing_day_writes_nothing(fake, tmp_path, capsys):
+    assert cli.main(["ingest", "--date", "2026-05-09", "--groups", "orange,bus", "--root", str(tmp_path / "w")]) == 0
+    out = capsys.readouterr().out
+    assert "orange 2026-05-09: 0 segments" in out and "bus 2026-05-09: 0 segments" in out
+
+
+def test_bus_ingest(fake, tmp_path):
+    assert cli.main(["ingest", "--date", "2026-05-01", "--groups", "bus", "--root", str(tmp_path / "w")]) == 0
+    assert list((tmp_path / "w" / "segments" / "bus").rglob("*.parquet"))

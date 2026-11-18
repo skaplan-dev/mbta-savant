@@ -95,8 +95,19 @@ def _stop_to_station() -> dict[str, str]:
     return out
 
 
+@cache
+def _name_to_station() -> dict[str, str]:
+    return {st["stop_name"]: st["station"] for line in _stations().values() for st in line["stations"]}
+
+
 def station_for_stop(stop_id: str) -> str | None:
-    return _stop_to_station().get(stop_id)
+    """Platform id -> station; a terminal track id like ``Oak Grove-02`` (public LAMP files) by station name."""
+    found = _stop_to_station().get(stop_id)
+    if found is None:
+        name, sep, track = stop_id.rpartition("-")
+        if sep and track.isdigit():
+            found = _name_to_station().get(name)
+    return found
 
 
 def distance_miles(from_station: str, to_station: str) -> float | None:

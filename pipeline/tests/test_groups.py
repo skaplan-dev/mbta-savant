@@ -43,3 +43,10 @@ def test_distance_symmetric():
     assert a == pytest.approx(0.386, abs=0.001)
     assert distance_miles("place-rbmnl", "place-wondl") == a
     assert distance_miles("place-wondl", "place-nowhere") is None
+
+
+def test_terminal_track_ids_map_to_their_station():
+    # LAMP's public subway files name terminal tracks "<station>-NN" instead of a platform id
+    assert station_for_stop("Oak Grove-02") == station_for_stop("70036") == "place-ogmnl"
+    assert station_for_stop("Alewife-01") == station_for_stop("70061")
+    assert station_for_stop("Nowhere-01") is None

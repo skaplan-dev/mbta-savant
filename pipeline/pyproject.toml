@@ -4,8 +4,6 @@ version = "0.1.0"
 description = "MBTA Savant: Baseball-Savant-style stats for MBTA vehicles"
 requires-python = ">=3.13"
 dependencies = [
-    "boto3",
-    "botocore[crt]",
     "duckdb",
 ]
 
