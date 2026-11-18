@@ -5,6 +5,10 @@ Expected travel time is the median over every segment in the window (all vehicle
 dwell at its ``to_stop``, so expected dwell is the median keyed on (route_id, direction, to_stop,
 hour_bucket, day_type). Each segment is credited to every car in its ``cars`` list.
 
+TTOE-family stats (TTOE, Steadiness, game-log TTOE) use a per-segment delta capped at TTOE_CAP_SEC,
+so one disrupted trip cannot decide a rank. Speed vs Expected is
+``100 * (sum(expected) / sum(min(travel, expected + cap)) - 1)`` over the car's segments.
+
 Games Played and Iron Horse are counted over the group's *data days* (window days on which the group
 has any segment), so a feed outage neither lowers a car's games played nor breaks its streak.
 """
@@ -20,6 +24,8 @@ from savant.segments import segment_glob
 QUALIFY_MIN_TRIPS = 50
 LAST30_DAYS = 30
 TEAMMATES = 5
+TTOE_CAP_SEC = 300
+MEMORY_LIMIT = "4GB"
 
 
 @dataclass(frozen=True)
@@ -51,32 +57,39 @@ def windows(root: Path) -> list[Window]:
     return out
 
 
-# Window segments with expected travel/dwell, then one row per (segment, car).
-_SEG = """
-CREATE TEMP TABLE seg AS
-SELECT *,
-  median(travel_sec) OVER (PARTITION BY route_id, direction, from_stop, to_stop, hour_bucket, day_type)
-    AS exp_travel,
-  median(dwell_sec) OVER (PARTITION BY route_id, direction, to_stop, hour_bucket, day_type) AS exp_dwell
-FROM read_parquet(?)
-WHERE service_date BETWEEN ? AND ?
+# One narrow row per (segment, car) for the window. Expected travel/dwell are medians over segments,
+# computed before the unnest so a multi-car train counts once. Each segment's delta is capped at
+# TTOE_CAP_SEC, so a disrupted trip counts as at most that much slower than expected.
+_CAR_SEG = f"""
+CREATE TEMP TABLE car_seg AS
+SELECT service_date, trip_id, route_id, travel_sec, benchmark_sec, distance_mi, exp_travel,
+  dwell_sec - exp_dwell AS dwell_delta, cars[i] AS number, occupancy_pct[i] AS occ,
+  least(travel_sec - exp_travel, {TTOE_CAP_SEC}) AS delta,
+  least(travel_sec, exp_travel + {TTOE_CAP_SEC}) AS capped_travel
+FROM (
+  SELECT *, unnest(generate_series(1, len(cars))) AS i
+  FROM (
+    SELECT service_date, trip_id, route_id, travel_sec, dwell_sec, benchmark_sec, distance_mi, cars, occupancy_pct,
+      median(travel_sec) OVER (PARTITION BY route_id, direction, from_stop, to_stop, hour_bucket, day_type)
+        AS exp_travel,
+      median(dwell_sec) OVER (PARTITION BY route_id, direction, to_stop, hour_bucket, day_type) AS exp_dwell
+    FROM read_parquet($1) WHERE service_date BETWEEN $2 AND $3
+  )
+)
 """
 
-_CAR_SEG = """
-CREATE TEMP TABLE car_seg AS
-SELECT *, cars[i] AS number, occupancy_pct[i] AS occ, travel_sec - exp_travel AS delta
-FROM (SELECT *, unnest(generate_series(1, len(cars))) AS i FROM seg)
-"""
+_DATA_DAYS = "SELECT DISTINCT service_date FROM read_parquet($1) WHERE service_date BETWEEN $2 AND $3 ORDER BY 1"
 
 _PER_CAR = """
 SELECT number,
   count(DISTINCT (service_date, trip_id)) AS trips,
   avg(delta) AS ttoe_sec,
+  100 * (sum(exp_travel) / nullif(sum(capped_travel), 0) - 1) AS speed_vs_expected_pct,
   quantile_cont(distance_mi / travel_sec * 3600, 0.9) FILTER (WHERE distance_mi IS NOT NULL) AS top_speed_mph,
   avg(CASE WHEN travel_sec <= benchmark_sec THEN 100.0 ELSE 0.0 END) FILTER (WHERE benchmark_sec IS NOT NULL)
     AS on_time_pct,
   quantile_cont(delta, 0.75) - quantile_cont(delta, 0.25) AS steadiness_sec,
-  median(dwell_sec - exp_dwell) AS door_time_sec,
+  median(dwell_delta) AS door_time_sec,
   sum(distance_mi) AS miles,
   avg(occ) AS crowd_load_pct,
   count(DISTINCT route_id) AS routes,
@@ -112,11 +125,13 @@ def car_stats(root: Path, group: str, window: Window) -> list[dict]:
     if not any((Path(root) / "segments" / group).glob("*/*.parquet")):
         return []
     is_bus = group == "bus"
-    con = duckdb.connect()
+    tmp = Path(root) / ".duckdb_tmp"
+    tmp.mkdir(parents=True, exist_ok=True)
+    con = duckdb.connect(config={"memory_limit": MEMORY_LIMIT, "temp_directory": str(tmp)})
     try:
-        con.execute(_SEG, [segment_glob(root, group), window.start.isoformat(), window.end.isoformat()])
-        con.execute(_CAR_SEG)
-        data_days = [r[0] for r in con.execute("SELECT DISTINCT service_date FROM seg ORDER BY 1").fetchall()]
+        args = [segment_glob(root, group), window.start.isoformat(), window.end.isoformat()]
+        data_days = [r[0] for r in con.execute(_DATA_DAYS, args).fetchall()]
+        con.execute(_CAR_SEG, args)
         per_car = con.execute(_PER_CAR)
         cols = [c[0] for c in per_car.description]
         cars = [dict(zip(cols, r)) for r in per_car.fetchall()]

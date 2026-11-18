@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchCar, fmt, METRICS, type Car } from './api';
+import { fetchCar, fmt, fmtMetric, METRICS, UNRANKED, type Car } from './api';
 
 export default function CarPage({ window, carId }: { window: string; carId: string }) {
     const [car, setCar] = useState<Car | null | undefined>(undefined);
@@ -61,8 +61,8 @@ export default function CarPage({ window, carId }: { window: string; carId: stri
                     {METRICS.map((m) => (
                         <tr key={m}>
                             <td>{m}</td>
-                            <td>{fmt(car[m])}</td>
-                            <td>{fmt(car.pct[m])}</td>
+                            <td>{fmtMetric(m, car[m])}</td>
+                            <td>{UNRANKED.has(m) ? '' : fmt(car.pct[m])}</td>
                         </tr>
                     ))}
                 </tbody>

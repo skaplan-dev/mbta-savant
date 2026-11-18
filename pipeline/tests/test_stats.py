@@ -172,3 +172,64 @@ def test_windows(tmp_path):
     assert set(ws) == {"2025", "2026", "last30"}
     assert ws["2025"] == stats.Window("2025", date(2025, 1, 1), date(2025, 12, 31))
     assert ws["last30"] == stats.Window("last30", date(2025, 12, 7), date(2026, 1, 5))
+
+
+def test_ttoe_caps_each_segment_delta_at_300(tmp_path):
+    segs = [seg(D0, f"r{i}", ["R"], 100) for i in range(10)]
+    segs += [seg(D0, f"c{i}", ["C"], 100) for i in range(9)]
+    segs += [seg(D0, "c9", ["C"], 3700)]  # 3,600 s over expected counts as 300
+    write(tmp_path, "orange", {D0: segs})
+    c = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))["C"]
+    assert c["ttoe_sec"] == pytest.approx(30.0)
+    (log,) = c["game_log"]
+    assert log["ttoe_sec"] == pytest.approx(30.0)
+
+
+def test_steadiness_uses_capped_delta(tmp_path):
+    segs = [seg(D0, f"r{i}", ["R"], 100) for i in range(20)]
+    # C deltas 0, 0, 1000, 1000 are capped to 0, 0, 300, 300
+    segs += [seg(D0, f"c{i}", ["C"], t) for i, t in enumerate((100, 100, 1100, 1100))]
+    write(tmp_path, "orange", {D0: segs})
+    c = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))["C"]
+    # quantile_cont over [0, 0, 300, 300]: p75 = 300, p25 = 0
+    assert c["steadiness_sec"] == pytest.approx(300.0)
+
+
+def test_speed_vs_expected(tmp_path):
+    segs = []
+    for stop in ("A", "B", "C"):
+        nxt = chr(ord(stop) + 1)
+        segs += [seg(D0, f"r{stop}{i}", ["R"], 100, from_stop=stop, to_stop=nxt) for i in range(10)]
+        segs += [seg(D0, f"f{stop}", ["F"], 90, from_stop=stop, to_stop=nxt)]
+        segs += [seg(D0, f"s{stop}", ["S"], 110, from_stop=stop, to_stop=nxt)]
+    segs += [seg(D0, "x", ["X"], 1100)]  # 1,000 s over expected travels as 400 s
+    write(tmp_path, "orange", {D0: segs})
+    rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
+    assert rows["F"]["speed_vs_expected_pct"] == pytest.approx(100 * (100 / 90 - 1))  # ~ +11.1
+    assert rows["S"]["speed_vs_expected_pct"] == pytest.approx(100 * (100 / 110 - 1))  # ~ -9.1
+    assert rows["R"]["speed_vs_expected_pct"] == pytest.approx(0)
+    assert rows["X"]["speed_vs_expected_pct"] == pytest.approx(-75)
+
+
+def test_speed_vs_expected_on_bus(tmp_path):
+    segs = [seg(D0, f"r{i}", ["R"], 100, route="1", group="bus", distance=None) for i in range(5)]
+    segs += [seg(D0, "f", ["F"], 80, route="1", group="bus", distance=None)]
+    write(tmp_path, "bus", {D0: segs})
+    rows = by_number(stats.car_stats(tmp_path, "bus", window(D0, D0)))
+    assert rows["F"]["speed_vs_expected_pct"] == pytest.approx(25)
+
+
+def test_multi_car_train_weighted_once(tmp_path):
+    # Expected is the median over trains (100, 200) = 150, not over car rows (100, 200, 200, 200) = 200.
+    segs = [seg(D0, "solo", ["1"], 100), seg(D0, "trio", ["2", "3", "4"], 200)]
+    write(tmp_path, "orange", {D0: segs})
+    rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
+    assert rows["1"]["ttoe_sec"] == pytest.approx(-50)
+    for n in ("2", "3", "4"):
+        assert rows[n]["ttoe_sec"] == pytest.approx(50)
+
+
+def test_duckdb_spill_directory_under_root(tmp_path):
+    write(tmp_path, "orange", {D0: [seg(D0, "t", ["Z"], 100)]})
+    stats.car_stats(tmp_path, "orange", window(D0, D0))
+    assert (tmp_path / ".duckdb_tmp").is_dir()

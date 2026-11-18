@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchGroup, fmt, METRICS, type CarStats, type GroupFile, type Metric } from './api';
+import { fetchGroup, fmtMetric, fmt, METRICS, UNRANKED, type CarStats, type GroupFile, type Metric } from './api';
 
 type SortKey = Metric | 'number';
 
@@ -74,7 +74,8 @@ export default function Leaderboard({ window, group }: { window: string; group: 
                         <td>{c.vehicle.fleet_label}</td>
                         {METRICS.map((m) => (
                             <td key={m}>
-                                {fmt(c[m])} ({fmt(c.pct[m])})
+                                {fmtMetric(m, c[m])}
+                                {UNRANKED.has(m) ? '' : ` (${fmt(c.pct[m])})`}
                             </td>
                         ))}
                     </tr>

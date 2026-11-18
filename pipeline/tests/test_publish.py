@@ -31,9 +31,9 @@ def test_three_cars_lower_is_better():
 
 
 def test_higher_is_better_and_ties_do_not_beat():
-    cars = [car(n, 0, top_speed_mph=v) for n, v in (("1400", 10), ("1401", 20), ("1402", 20))]
+    cars = [car(n, 0, on_time_pct=v) for n, v in (("1400", 10), ("1401", 20), ("1402", 20))]
     # a beats none; b and c each beat only a (strict), so 50
-    assert pcts("orange", cars, "top_speed_mph") == {"1400": 0, "1401": 50, "1402": 50}
+    assert pcts("orange", cars, "on_time_pct") == {"1400": 0, "1401": 50, "1402": 50}
 
 
 def test_none_values_and_unqualified_excluded():
@@ -113,3 +113,12 @@ def test_layout(tmp_path):
     fl = load(out / "data/fleets/orange.json")
     assert "last30" in fl
     publish.publish(tmp_path / "root", out)  # overwrite is fine
+
+
+def test_speed_vs_expected_ranked_top_speed_not():
+    assert publish.METRICS["speed_vs_expected_pct"] == "higher"
+    assert publish.METRICS["top_speed_mph"] is None
+    cars = [car(n, 0, speed_vs_expected_pct=v, top_speed_mph=50.0) for n, v in (("1400", -2.0), ("1401", 4.0))]
+    out = {c["number"]: c["pct"] for c in publish.add_percentiles("orange", cars)}
+    assert out["1401"]["speed_vs_expected_pct"] == 100 and out["1400"]["speed_vs_expected_pct"] == 0
+    assert out["1401"]["top_speed_mph"] is None

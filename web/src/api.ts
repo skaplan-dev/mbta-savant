@@ -1,5 +1,6 @@
 export const METRICS = [
     'ttoe_sec',
+    'speed_vs_expected_pct',
     'top_speed_mph',
     'on_time_pct',
     'steadiness_sec',
@@ -60,6 +61,8 @@ export interface CarStats {
     qualified: boolean;
     ranked: boolean;
     ttoe_sec: number | null;
+    speed_vs_expected_pct: number | null;
+    // Shown as a fun fact; never ranked, so its pct is always null.
     top_speed_mph: number | null;
     on_time_pct: number | null;
     steadiness_sec: number | null;
@@ -107,6 +110,15 @@ export const fetchGroup = (window: string, group: string) =>
     getJson<GroupFile>(`/data/${window}/groups/${group}.json`);
 export const fetchCar = (window: string, group: string, number: string) =>
     getJson<Car>(`/data/${window}/cars/${group}/${number}.json`);
+
+// Metrics shown without a percentile.
+export const UNRANKED: ReadonlySet<Metric> = new Set<Metric>(['top_speed_mph', 'crowd_load_pct']);
+
+// Signed values ("+4.2%") for metrics that read as better or worse than expected.
+export function fmtMetric(m: Metric, v: number | string[] | null | undefined): string {
+    if (m === 'speed_vs_expected_pct' && typeof v === 'number') return `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+    return fmt(v);
+}
 
 export function fmt(v: number | string[] | null | undefined): string {
     if (v === null || v === undefined) return '-';

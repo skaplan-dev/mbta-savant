@@ -17,7 +17,8 @@ from savant.groups import GROUPS
 
 METRICS: dict[str, Literal["higher", "lower"] | None] = {
     "ttoe_sec": "lower",
-    "top_speed_mph": "higher",
+    "speed_vs_expected_pct": "higher",
+    "top_speed_mph": None,
     "on_time_pct": "higher",
     "steadiness_sec": "lower",
     "door_time_sec": "lower",
