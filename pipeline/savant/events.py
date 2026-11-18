@@ -1,16 +1,20 @@
 """Download raw arrival/departure events from the TransitMatters S3 bucket."""
 
 import csv
-import zlib
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, ResponseStreamingError
+from urllib3.exceptions import ProtocolError
 
 from savant.groups import stop_ids
 
 BUCKET = "tm-mbta-performance"
 KEEP = ("ARR", "DEP")
+RETRYABLE = (ProtocolError, ResponseStreamingError, ConnectionError)
+BACKOFF = (1, 2, 4)
+_sleep = time.sleep  # patched in tests
 
 
 def _client(client):
@@ -19,7 +23,7 @@ def _client(client):
     import boto3
     from botocore.client import Config
 
-    return boto3.client("s3", config=Config(max_pool_connections=25))
+    return boto3.client("s3", config=Config(max_pool_connections=25, retries={"max_attempts": 8, "mode": "adaptive"}))
 
 
 def is_bus(stop_id: str) -> bool:
@@ -31,27 +35,27 @@ def _lamp_key(stop_id: str, day: date) -> str:
     return f"Events-lamp/{folder}/{stop_id}/Year={day.year}/Month={day.month}/Day={day.day}/events.csv"
 
 
-def _monthly_key(stop_id: str, year: int, month: int) -> str:
-    folder = "monthly-bus-data" if is_bus(stop_id) else "monthly-data"
-    return f"Events/{folder}/{stop_id}/Year={year}/Month={month}/events.csv.gz"
+def download(client, key: str, encoding: str = "utf8") -> str | None:
+    """Fetch and decode one object; None if the key does not exist.
+
+    The get_object + body read pair is retried on transient stream errors.
+    """
+    for attempt in range(len(BACKOFF) + 1):
+        try:
+            return client.get_object(Bucket=BUCKET, Key=key)["Body"].read().decode(encoding)
+        except ClientError as ex:
+            if ex.response["Error"]["Code"] == "NoSuchKey":
+                return None
+            raise
+        except RETRYABLE:
+            if attempt == len(BACKOFF):
+                raise
+            _sleep(BACKOFF[attempt])
 
 
-def download(client, key: str, compressed: bool, encoding: str = "utf8") -> str | None:
-    """Fetch and decode one object; None if the key does not exist."""
-    try:
-        data = client.get_object(Bucket=BUCKET, Key=key)["Body"].read()
-    except ClientError as ex:
-        if ex.response["Error"]["Code"] == "NoSuchKey":
-            return None
-        raise
-    if compressed:
-        data = zlib.decompress(data, zlib.MAX_WBITS | 32)
-    return data.decode(encoding)
-
-
-def _fetch_all(client, keys: list[str], compressed: bool) -> list[dict]:
+def _fetch_all(client, keys: list[str]) -> list[dict]:
     def one(key):
-        text = download(client, key, compressed)
+        text = download(client, key)
         if text is None:
             return []
         return [r for r in csv.DictReader(text.splitlines()) if r["event_type"] in KEEP]
@@ -62,9 +66,4 @@ def _fetch_all(client, keys: list[str], compressed: bool) -> list[dict]:
 
 def day_events(group: str, day: date, client=None) -> list[dict]:
     client = _client(client)
-    return _fetch_all(client, [_lamp_key(s, day) for s in stop_ids(group)], compressed=False)
-
-
-def month_events(group: str, year: int, month: int, client=None) -> list[dict]:
-    client = _client(client)
-    return _fetch_all(client, [_monthly_key(s, year, month) for s in stop_ids(group)], compressed=True)
+    return _fetch_all(client, [_lamp_key(s, day) for s in stop_ids(group)])

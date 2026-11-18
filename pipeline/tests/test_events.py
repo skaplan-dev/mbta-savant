@@ -1,8 +1,8 @@
-import gzip
 from datetime import date
 
 import pytest
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, ResponseStreamingError
+from urllib3.exceptions import ProtocolError
 
 from savant import events
 
@@ -63,17 +63,70 @@ def test_bus_stop_uses_bus_folder(monkeypatch):
     ]
 
 
-def test_month_events_gzip(monkeypatch):
+class FlakyBody:
+    def __init__(self, owner, data):
+        self.owner, self.data = owner, data
+
+    def read(self):
+        if self.owner.failures > 0:
+            self.owner.failures -= 1
+            raise self.owner.exc
+        return self.data
+
+
+class FlakyClient:
+    def __init__(self, failures, data, exc=None):
+        self.failures, self.data = failures, data
+        self.exc = exc or ProtocolError("connection broken")
+        self.calls = 0
+
+    def get_object(self, Bucket, Key):
+        self.calls += 1
+        return {"Body": FlakyBody(self, self.data)}
+
+
+@pytest.fixture
+def sleeps(monkeypatch):
+    calls = []
+    monkeypatch.setattr(events, "_sleep", calls.append)
+    return calls
+
+
+def test_body_read_retries_then_succeeds(monkeypatch, sleeps):
     monkeypatch.setattr(events, "stop_ids", lambda g: ["70061"])
-    key = "Events/monthly-data/70061/Year=2024/Month=5/events.csv.gz"
-    client = FakeClient({key: gzip.compress(_csv("ARR", "PRA"))})
-    rows = events.month_events("red", 2024, 5, client=client)
-    assert [r["event_type"] for r in rows] == ["ARR"]
+    client = FlakyClient(2, _csv("ARR", "DEP"))
+    rows = events.day_events("red", date(2024, 5, 1), client=client)
+    assert [r["event_type"] for r in rows] == ["ARR", "DEP"]
+    assert client.calls == 3  # get_object re-issued per attempt
+    assert sleeps == [1, 2]
+
+
+def test_body_read_gives_up_after_retries(monkeypatch, sleeps):
+    monkeypatch.setattr(events, "stop_ids", lambda g: ["70061"])
+    client = FlakyClient(4, _csv("ARR"))
+    with pytest.raises(ProtocolError):
+        events.day_events("red", date(2024, 5, 1), client=client)
+    assert client.calls == 4
+    assert sleeps == [1, 2, 4]
+
+
+@pytest.mark.parametrize("exc", [ResponseStreamingError(error="x"), ConnectionError("reset")])
+def test_other_retryable_errors(monkeypatch, sleeps, exc):
+    monkeypatch.setattr(events, "stop_ids", lambda g: ["70061"])
+    client = FlakyClient(1, _csv("ARR"), exc=exc)
+    assert len(events.day_events("red", date(2024, 5, 1), client=client)) == 1
+
+
+def test_client_uses_adaptive_retries(monkeypatch):
+    import boto3
+
+    seen = {}
+    monkeypatch.setattr(boto3, "client", lambda name, config=None: seen.update(config=config))
+    events._client(None)
+    assert seen["config"].retries == {"max_attempts": 8, "mode": "adaptive"}
 
 
 def test_other_errors_propagate(monkeypatch):
     monkeypatch.setattr(events, "stop_ids", lambda g: ["70061"])
     with pytest.raises(ClientError):
         events.day_events("red", date(2024, 5, 1), client=FakeClient(error="AccessDenied"))
-    with pytest.raises(ClientError):
-        events.month_events("red", 2024, 5, client=FakeClient(error="AccessDenied"))

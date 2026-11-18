@@ -2,7 +2,7 @@
 
 import argparse
 import sys
-from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -44,25 +44,31 @@ def cmd_ingest(args) -> int:
 
 def cmd_backfill(args) -> int:
     start, end = date.fromisoformat(args.start), date.fromisoformat(args.end)
+    if end < start:
+        print("error: --end is before --start", file=sys.stderr)
+        raise SystemExit(2)
     root = Path(args.root)
     client = _make_client()
+    groups = _groups(args.groups)
     days = [start + timedelta(n) for n in range((end - start).days + 1)]
-    months = sorted({(d.year, d.month) for d in days})
-    for group in _groups(args.groups):
-        todo = [d for d in days if args.force or not day_path(root, group, d).exists()]
-        for d in days:
-            if d not in todo:
-                print(f"{group} {d.isoformat()}: skipped (exists)")
-        for year, month in months:
-            wanted = {d.isoformat(): d for d in todo if (d.year, d.month) == (year, month)}
-            if not wanted:
-                continue
-            by_day = defaultdict(list)
-            for row in events.month_events(group, year, month, client=client):
-                if row["service_date"] in wanted:
-                    by_day[row["service_date"]].append(row)
-            for key, d in wanted.items():
-                _write(by_day.get(key, []), root, group, d)
+
+    def one_day(d: date) -> str | None:
+        try:
+            for group in groups:
+                if not args.force and day_path(root, group, d).exists():
+                    print(f"{group} {d.isoformat()}: skipped (exists)")
+                    continue
+                _write(events.day_events(group, d, client=client), root, group, d)
+        except Exception as ex:  # keep going; reported at the end
+            print(f"error: {d.isoformat()} failed: {ex!r}", file=sys.stderr)
+            return d.isoformat()
+        return None
+
+    with ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:
+        failed = [f for f in pool.map(one_day, days) if f]
+    if failed:
+        print(f"backfill failed for {len(failed)} day(s): {', '.join(failed)}", file=sys.stderr)
+        return 1
     return 0
 
 
@@ -81,9 +87,10 @@ def main(argv=None) -> int:
     i.add_argument("--root", default="./work")
     i.set_defaults(func=cmd_ingest)
 
-    b = sub.add_parser("backfill", help="ingest a date range from monthly data")
+    b = sub.add_parser("backfill", help="ingest a date range from LAMP daily files")
     b.add_argument("--start", required=True)
     b.add_argument("--end", required=True)
+    b.add_argument("--workers", type=int, default=5)
     b.add_argument("--groups")
     b.add_argument("--root", default="./work")
     b.add_argument("--force", action="store_true")
