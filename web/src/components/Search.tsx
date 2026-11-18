@@ -5,11 +5,14 @@ import { defaultWindow, useIndex, useMeta } from '../queries';
 
 const MAX = 8;
 
-export default function Search() {
+export default function Search({ label = 'Search a car or bus number' }: { label?: string }) {
     const navigate = useNavigate();
     const listId = useId();
-    const { data: meta } = useMeta();
-    const { data: index } = useIndex(defaultWindow(meta));
+    const { data: meta, isPending: metaPending } = useMeta();
+    const win = defaultWindow(meta);
+    const { data: index, isPending: indexPending } = useIndex(win);
+    // Loading until the index resolves; a missing meta or index file means no data, not loading.
+    const loading = metaPending || (!!win && indexPending);
     const [q, setQ] = useState('');
     const [active, setActive] = useState(0);
     const [open, setOpen] = useState(false);
@@ -52,8 +55,11 @@ export default function Search() {
                 role="combobox"
                 aria-expanded={showList}
                 aria-controls={listId}
-                aria-activedescendant={matches[active] ? `${listId}-${active}` : undefined}
-                aria-label="Search a car or bus number"
+                aria-autocomplete="list"
+                aria-activedescendant={
+                    showList && matches[active] ? `${listId}-${active}` : undefined
+                }
+                aria-label={label}
                 placeholder="Search a car or bus number"
                 autoComplete="off"
                 value={q}
@@ -67,7 +73,7 @@ export default function Search() {
                 onKeyDown={(ev) => {
                     if (ev.key === 'ArrowDown') {
                         ev.preventDefault();
-                        setActive((a) => Math.min(a + 1, matches.length - 1));
+                        setActive((a) => Math.max(0, Math.min(a + 1, matches.length - 1)));
                     } else if (ev.key === 'ArrowUp') {
                         ev.preventDefault();
                         setActive((a) => Math.max(a - 1, 0));
@@ -85,7 +91,9 @@ export default function Search() {
                     className="panel absolute top-full right-0 left-0 z-20 mt-1.5 list-none p-1"
                 >
                     {matches.length === 0 && (
-                        <li className="text-ink-3 px-3 py-2 text-lg">No match</li>
+                        <li className="text-ink-3 px-3 py-2 text-lg">
+                            {loading ? 'Loading…' : 'No match'}
+                        </li>
                     )}
                     {matches.map((e, i) => (
                         <li

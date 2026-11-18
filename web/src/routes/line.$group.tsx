@@ -1,7 +1,6 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
-import Leaderboard from '../Leaderboard';
+import LinePage from '../features/line/LinePage';
 import { isGroup } from '../format';
-import { defaultWindow, useMeta } from '../queries';
 import { validateSeasonSearch } from '../search';
 
 export const Route = createFileRoute('/line/$group')({
@@ -9,14 +8,12 @@ export const Route = createFileRoute('/line/$group')({
     beforeLoad: ({ params }) => {
         if (!isGroup(params.group)) throw notFound();
     },
-    component: LinePlaceholder,
+    component: LineRoute,
 });
 
-// Placeholder until F3 replaces it with the real leaderboard.
-function LinePlaceholder() {
+function LineRoute() {
     const { group } = Route.useParams();
     const { season } = Route.useSearch();
-    const { data: meta } = useMeta();
-    const window = season ?? defaultWindow(meta);
-    return window ? <Leaderboard window={window} group={group} /> : null;
+    if (!isGroup(group)) return null;
+    return <LinePage key={group} group={group} season={season} />;
 }

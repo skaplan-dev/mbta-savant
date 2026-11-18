@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router';
+import { Link, useRouterState } from '@tanstack/react-router';
 import { GROUP_IDS, GROUPS } from '../format';
 import Emblem from './Emblem';
 import Search from './Search';
@@ -7,6 +7,8 @@ const navLink =
     'inline-flex items-center gap-2 text-lg text-ink no-underline hover:text-brand sm:text-[21px] [&.active]:text-brand';
 
 export default function Masthead() {
+    // The home page has its own large search.
+    const isHome = useRouterState({ select: (s) => s.location.pathname === '/' });
     return (
         <>
             <header className="border-panel-line flex flex-col items-stretch justify-between gap-6 border-b pt-5 pb-3.5 md:flex-row md:items-center">
@@ -28,7 +30,7 @@ export default function Masthead() {
                         </span>
                     </span>
                 </Link>
-                <Search />
+                {!isHome && <Search />}
             </header>
             <nav
                 aria-label="Main"

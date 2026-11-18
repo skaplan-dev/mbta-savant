@@ -1,16 +1,22 @@
 import { Link } from '@tanstack/react-router';
+import Search from './Search';
 
 export default function NotFound() {
     return (
-        <div className="py-20 text-center">
-            <h1 className="m-0 text-[46px] font-medium tracking-tight">Not found</h1>
-            <p className="text-ink-2 mt-3 text-[21px]">
-                We couldn&rsquo;t find that page. Try a car number in the search box, or head back{' '}
+        <main className="py-16 text-center md:py-20">
+            <h1 className="m-0 text-[38px] font-medium tracking-tight md:text-[46px]">
+                Nothing here
+            </h1>
+            <p className="text-ink-2 mx-auto mt-3 mb-7 max-w-[52ch] text-xl md:text-[21px]">
+                We couldn&rsquo;t find that page or car. Try a car or bus number below, or head back{' '}
                 <Link to="/" className="text-brand">
                     home
                 </Link>
                 .
             </p>
-        </div>
+            <div className="mx-auto max-w-[520px] text-left">
+                <Search label="Search for a car or bus number" />
+            </div>
+        </main>
     );
 }

@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router';
+import HomePage from '../features/home/HomePage';
 
-export const Route = createFileRoute('/')({
-    component: () => <p className="text-ink-2 py-10 text-xl">Home (coming in F3).</p>,
-});
+export const Route = createFileRoute('/')({ component: HomePage });

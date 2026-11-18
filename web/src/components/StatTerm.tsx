@@ -18,10 +18,13 @@ export default function StatTerm({
     id,
     children,
     align = 'right',
+    below = false,
 }: {
     id: StatId;
     children?: ReactNode;
     align?: Align;
+    /** Open under the term (for table headers inside scroll containers). */
+    below?: boolean;
 }) {
     const tipId = useId();
     const [hover, setHover] = useState(false);
@@ -64,7 +67,7 @@ export default function StatTerm({
             <span
                 id={tipId}
                 role="tooltip"
-                className={`bg-ink absolute bottom-[calc(100%+8px)] z-10 w-[260px] max-w-[80vw] rounded-md px-3 py-2.5 text-left text-[15px] leading-[1.35] font-normal whitespace-normal text-white shadow-[0_6px_20px_rgb(0_0_0/0.2)] transition-[opacity,translate] duration-150 ease-out motion-reduce:transition-none ${tipAlign[align]} ${
+                className={`bg-ink absolute ${below ? 'top-[calc(100%+8px)]' : 'bottom-[calc(100%+8px)]'} z-10 w-[260px] max-w-[80vw] rounded-md px-3 py-2.5 text-left text-[15px] leading-[1.35] font-normal whitespace-normal text-white shadow-[0_6px_20px_rgb(0_0_0/0.2)] transition-[opacity,translate] duration-150 ease-out motion-reduce:transition-none ${tipAlign[align]} ${
                     open ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-1 opacity-0'
                 }`}
             >

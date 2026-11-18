@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router';
+import GlossaryPage from '../features/glossary/GlossaryPage';
 
-export const Route = createFileRoute('/glossary')({
-    component: () => <p className="text-ink-2 py-10 text-xl">Glossary (coming in F3).</p>,
-});
+export const Route = createFileRoute('/glossary')({ component: GlossaryPage });
