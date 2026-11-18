@@ -1,6 +1,8 @@
 import { useRouterState } from '@tanstack/react-router';
 import { useEffect, type ReactNode } from 'react';
+import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { GLOSSARY, HOW_RANKINGS, LEDE, type GlossaryEntry, type StatId } from '../../glossary';
+import { GLOSSARY_TITLE } from '../../titles';
 
 const ids = Object.keys(GLOSSARY) as StatId[];
 const inSection = (s: GlossaryEntry['section']) => ids.filter((id) => GLOSSARY[id].section === s);
@@ -50,6 +52,7 @@ const tocA =
     'text-ink hover:text-brand hover:border-brand-2 block border-l-2 border-transparent py-1 pl-3 no-underline';
 
 export default function GlossaryPage() {
+    useDocumentTitle(GLOSSARY_TITLE);
     const hash = useRouterState({ select: (s) => s.location.hash });
     // Scroll to and focus the linked term on a fresh load and on in-app navigation.
     useEffect(() => {

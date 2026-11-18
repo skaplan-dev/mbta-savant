@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import LoadError from '../../components/LoadError';
 import DateBox from '../../components/DateBox';
 import NotFound from '../../components/NotFound';
 import SeasonToggle from '../../components/SeasonToggle';
+import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { GROUPS, seasonLabel, type GroupId } from '../../format';
+import { carTitle } from '../../titles';
 import { useGroup } from '../../queries';
 import BioPanel from './BioPanel';
 import CalendarPanel from './CalendarPanel';
@@ -24,7 +27,12 @@ export default function CarPage({
     const season = data?.season;
     const { data: groupFile } = useGroup(season ?? '', group);
 
+    const found = !!data && !data.failed && !!season && data.available.length > 0;
+    // NotFound sets its own title.
+    useDocumentTitle(found ? carTitle(group, number) : undefined);
+
     if (!data) return <p className="text-ink-2 py-16 text-center text-xl">Loading…</p>;
+    if (data.failed) return <LoadError onRetry={data.retry} />;
     if (!season || !data.available.length) return <NotFound />;
 
     const car = data.cars[season];
@@ -43,6 +51,8 @@ export default function CarPage({
                 <BioPanel
                     group={group}
                     number={number}
+                    season={season}
+                    hasSeasonData={!!car}
                     car={bioCar}
                     cars={data.cars}
                     years={years}
@@ -73,7 +83,16 @@ export default function CarPage({
                     </section>
                 )}
             </main>
-            {car && <CarTabs group={group} car={car} avg={avg} tab={tab} onTab={setTab} />}
+            {car && (
+                <CarTabs
+                    group={group}
+                    season={season}
+                    car={car}
+                    avg={avg}
+                    tab={tab}
+                    onTab={setTab}
+                />
+            )}
         </>
     );
 }

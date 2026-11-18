@@ -9,7 +9,7 @@ const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', '
 
 const toMs = (iso: string) => Date.parse(`${iso}T00:00:00Z`);
 const toIso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-/** Sunday = 0 … Saturday = 6 (US calendars; keeps any 30-day window to five rows). */
+/** Sunday = 0 … Saturday = 6 (US calendars). A 30-day window spans five or six week rows. */
 const weekday = (ms: number) => new Date(ms).getUTCDay();
 
 export interface CalDay {

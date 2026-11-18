@@ -1,13 +1,16 @@
 import { useMemo, useState } from 'react';
+import { useDocumentTitle } from '../../components/useDocumentTitle';
+import { lineTitle } from '../../titles';
 import type { CarStats, FleetSummary } from '../../api';
-import CarPill, { tint } from '../../components/CarPill';
+import CarPill from '../../components/CarPill';
 import DateBox from '../../components/DateBox';
+import LoadError from '../../components/LoadError';
 import NotFound from '../../components/NotFound';
 import SeasonToggle from '../../components/SeasonToggle';
 import StatTerm from '../../components/StatTerm';
-import { GROUPS, pacePlus, pctColor, seasonLabel, signed, type GroupId } from '../../format';
+import { GROUPS, pacePlus, pctColor, seasonLabel, signed, tint, type GroupId } from '../../format';
 import { isRanked } from '../rank';
-import { useFleets } from '../../queries';
+import { useFleets, useGroup } from '../../queries';
 import {
     firstDir,
     rankCars,
@@ -17,11 +20,15 @@ import {
     type Sort,
     type SortKey,
 } from './leaderboard';
-import { useGroup, useLineData } from './useLineData';
+import { useLineData } from './useLineData';
 
 const th =
     'border-panel-line bg-wash border-b px-2 py-2 text-left text-[17px] font-medium leading-tight';
 const td = 'border-panel-line border-b px-2 py-1.5 whitespace-nowrap';
+// Rank and Car stay pinned while the table scrolls sideways on narrow screens. Rank is a fixed 56px
+// so Car's left offset lines up; both need an opaque background so scrolled cells don't show through.
+const stickyRank = 'sticky left-0 z-[1] w-14 min-w-14';
+const stickyCar = 'sticky left-14 z-[1] shadow-[1px_0_0_var(--color-panel-line)]';
 
 export default function LinePage({
     group,
@@ -32,7 +39,7 @@ export default function LinePage({
 }) {
     const line = useLineData(group, requested);
     const season = line?.season ?? '';
-    const { data: file, isPending } = useGroup(season, group);
+    const { data: file, isPending, isError, refetch } = useGroup(season, group);
     const { data: fleets } = useFleets(group);
 
     const ranked = useMemo(
@@ -44,8 +51,12 @@ export default function LinePage({
         [file, group]
     );
 
+    // A missing file renders NotFound, which sets its own title.
+    useDocumentTitle(line && file ? lineTitle(season, group) : undefined);
+
     if (!line || (season && isPending))
         return <p className="text-ink-2 py-16 text-center text-xl">Loading…</p>;
+    if (isError) return <LoadError onRetry={() => void refetch()} />;
     if (!file) return <NotFound />;
 
     const fleetList = Object.values(fleets?.[season] ?? {}).sort((a, b) => b.cars - a.cars);
@@ -124,7 +135,41 @@ function FleetStrip({ fleets }: { fleets: FleetSummary[] }) {
     );
 }
 
-function Table({ group, season, ranked }: { group: GroupId; season: string; ranked: CarStats[] }) {
+// Module scope on purpose: defined inside Table it would be a new component type every render,
+// remounting the button on each sort and dropping keyboard focus.
+function SortBtn({
+    sort,
+    toggle,
+    k,
+    label,
+}: {
+    sort: Sort;
+    toggle: (key: SortKey) => void;
+    k: SortKey;
+    label: string;
+}) {
+    const arrow = sort.key === k ? (sort.dir === 'asc' ? '▲' : '▼') : '↕';
+    return (
+        <button
+            type="button"
+            onClick={() => toggle(k)}
+            aria-label={`Sort by ${label}`}
+            className={`ml-1 cursor-pointer border-0 bg-transparent p-0 text-[13px] ${sort.key === k ? 'text-brand' : 'text-ink-3'}`}
+        >
+            {arrow}
+        </button>
+    );
+}
+
+export function Table({
+    group,
+    season,
+    ranked,
+}: {
+    group: GroupId;
+    season: string;
+    ranked: CarStats[];
+}) {
     const [sort, setSort] = useState<Sort>({ key: 'time-saved', dir: 'desc' });
     const cols = statCols(group);
     const rows = useMemo(() => sortCars(ranked, sort, group), [ranked, sort, group]);
@@ -137,39 +182,35 @@ function Table({ group, season, ranked }: { group: GroupId; season: string; rank
         );
     const aria = (key: SortKey) =>
         sort.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none';
-    const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === 'asc' ? '▲' : '▼') : '↕');
-    const SortBtn = ({ k, label }: { k: SortKey; label: string }) => (
-        <button
-            type="button"
-            onClick={() => toggle(k)}
-            aria-label={`Sort by ${label}`}
-            className={`ml-1 cursor-pointer border-0 bg-transparent p-0 text-[13px] ${sort.key === k ? 'text-brand' : 'text-ink-3'}`}
-        >
-            {arrow(k)}
-        </button>
-    );
-
     return (
         <section className="panel" aria-label="Leaderboard">
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-[17px]">
                     <thead>
                         <tr>
-                            <th scope="col" aria-sort={aria('rank')} className={th}>
+                            <th
+                                scope="col"
+                                aria-sort={aria('rank')}
+                                className={`${th} ${stickyRank}`}
+                            >
                                 Rank
-                                <SortBtn k="rank" label="rank" />
+                                <SortBtn sort={sort} toggle={toggle} k="rank" label="rank" />
                             </th>
-                            <th scope="col" aria-sort={aria('car')} className={th}>
+                            <th
+                                scope="col"
+                                aria-sort={aria('car')}
+                                className={`${th} ${stickyCar}`}
+                            >
                                 {group === 'bus' ? 'Bus' : 'Car'}
-                                <SortBtn k="car" label="car number" />
+                                <SortBtn sort={sort} toggle={toggle} k="car" label="car number" />
                             </th>
                             <th scope="col" aria-sort={aria('fleet')} className={th}>
                                 Fleet
-                                <SortBtn k="fleet" label="fleet" />
+                                <SortBtn sort={sort} toggle={toggle} k="fleet" label="fleet" />
                             </th>
                             <th scope="col" aria-sort={aria('trips')} className={th}>
                                 Trips
-                                <SortBtn k="trips" label="trips" />
+                                <SortBtn sort={sort} toggle={toggle} k="trips" label="trips" />
                             </th>
                             {cols.map((c, i) => (
                                 <th key={c.id} scope="col" aria-sort={aria(c.id)} className={th}>
@@ -184,7 +225,12 @@ function Table({ group, season, ranked }: { group: GroupId; season: string; rank
                                                   : 'center'
                                         }
                                     />
-                                    <SortBtn k={c.id} label={c.id.replace(/-/g, ' ')} />
+                                    <SortBtn
+                                        sort={sort}
+                                        toggle={toggle}
+                                        k={c.id}
+                                        label={c.id.replace(/-/g, ' ')}
+                                    />
                                 </th>
                             ))}
                         </tr>
@@ -192,8 +238,10 @@ function Table({ group, season, ranked }: { group: GroupId; season: string; rank
                     <tbody>
                         {rows.map(({ car, rank }) => (
                             <tr key={car.car_id}>
-                                <td className={`${td} text-ink-2`}>{rank}</td>
-                                <td className={td}>
+                                <td className={`${td} ${stickyRank} text-ink-2 bg-white`}>
+                                    {rank}
+                                </td>
+                                <td className={`${td} ${stickyCar} bg-white`}>
                                     <CarPill group={group} number={car.number} season={season} />
                                 </td>
                                 <td

@@ -1,8 +1,10 @@
 import { Link } from '@tanstack/react-router';
 import type { Car } from '../../api';
+import CarPill from '../../components/CarPill';
 import StatTerm from '../../components/StatTerm';
 import { GROW, useGrowIn } from '../../components/useGrowIn';
 import { fmtNum, GROUPS, signed, timeSaved, type GroupId } from '../../format';
+import { seasonParam } from '../../search';
 import CarArt from './CarArt';
 import { marriedMate, routeCounts } from './shared';
 
@@ -15,6 +17,8 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export default function BioPanel({
     group,
     number,
+    season,
+    hasSeasonData,
     car,
     cars,
     years,
@@ -22,6 +26,10 @@ export default function BioPanel({
 }: {
     group: GroupId;
     number: string;
+    /** The selected season; carried onto the leaderboard and teammate links. */
+    season: string;
+    /** False when the car has no file for `season`; the Game Log and Coupled With tabs are hidden. */
+    hasSeasonData: boolean;
     car: Car;
     /** window → this car's file, for the season table. */
     cars: Record<string, Car | null>;
@@ -103,15 +111,17 @@ export default function BioPanel({
                 <div>
                     <h3 className="mt-1.5 mb-2.5 text-2xl font-medium">{kind} Pages</h3>
                     <ul className="m-0 list-none p-0 text-lg">
-                        <li>
-                            <a
-                                href="#tabs"
-                                onClick={() => onTab('log')}
-                                className="text-ink hover:text-brand block py-0.5 no-underline hover:underline"
-                            >
-                                Game Log
-                            </a>
-                        </li>
+                        {hasSeasonData && (
+                            <li>
+                                <a
+                                    href="#tabs"
+                                    onClick={() => onTab('log')}
+                                    className="text-ink hover:text-brand block py-0.5 no-underline hover:underline"
+                                >
+                                    Game Log
+                                </a>
+                            </li>
+                        )}
                         <li>
                             <Link
                                 to="/glossary"
@@ -120,19 +130,22 @@ export default function BioPanel({
                                 Stat Glossary
                             </Link>
                         </li>
-                        <li>
-                            <a
-                                href="#tabs"
-                                onClick={() => onTab('mates')}
-                                className="text-ink hover:text-brand block py-0.5 no-underline hover:underline"
-                            >
-                                {isBus ? 'Routes Run' : 'Coupled With'}
-                            </a>
-                        </li>
+                        {hasSeasonData && (
+                            <li>
+                                <a
+                                    href="#tabs"
+                                    onClick={() => onTab('mates')}
+                                    className="text-ink hover:text-brand block py-0.5 no-underline hover:underline"
+                                >
+                                    {isBus ? 'Routes Run' : 'Coupled With'}
+                                </a>
+                            </li>
+                        )}
                         <li>
                             <Link
                                 to="/line/$group"
                                 params={{ group }}
+                                search={{ season: seasonParam(season) as string }}
                                 className="text-ink hover:text-brand block py-0.5 no-underline hover:underline"
                             >
                                 Line Leaderboard
@@ -144,7 +157,11 @@ export default function BioPanel({
                     <h3 className="mt-1.5 mb-2.5 text-2xl font-medium">
                         <StatTerm id={isBus ? 'routes-run' : 'coupled-with'} align="left" />
                     </h3>
-                    {isBus ? <RoutesMini car={car} /> : <MatesMini car={car} group={group} />}
+                    {isBus ? (
+                        <RoutesMini car={car} />
+                    ) : (
+                        <MatesMini car={car} group={group} season={season} />
+                    )}
                 </div>
             </div>
         </section>
@@ -230,20 +247,7 @@ export function ShareBar({ frac, color }: { frac: number; color: string }) {
     );
 }
 
-export function CarPill({ group, number }: { group: GroupId; number: string }) {
-    return (
-        <Link
-            to="/car/$group/$number"
-            params={{ group, number }}
-            className="inline-block min-w-[54px] rounded-full px-1.5 py-px text-center text-[15px] text-white no-underline hover:brightness-110"
-            style={{ background: GROUPS[group].color }}
-        >
-            {number}
-        </Link>
-    );
-}
-
-function MatesMini({ car, group }: { car: Car; group: GroupId }) {
+function MatesMini({ car, group, season }: { car: Car; group: GroupId; season: string }) {
     const tm = car.teammates.slice(0, 6);
     if (!tm.length) return <p className="text-ink-3 m-0 text-base">No coupled cars recorded.</p>;
     const max = tm[0][1];
@@ -260,7 +264,7 @@ function MatesMini({ car, group }: { car: Car; group: GroupId }) {
                 {tm.map(([n, k]) => (
                     <tr key={n}>
                         <td className="px-1 py-[3px]">
-                            <CarPill group={group} number={n} />
+                            <CarPill group={group} number={n} season={season} size="sm" />
                         </td>
                         <td className="w-full px-1 py-[3px]">
                             <ShareBar frac={k / max} color={GROUPS[group].color} />

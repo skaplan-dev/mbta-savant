@@ -165,13 +165,22 @@ export default function CalendarPanel({
                     </span>{' '}
                     Service Calendar
                 </h2>
-                <span
-                    role="img"
-                    aria-label={HELP}
-                    title={HELP}
-                    className="border-brand-2 text-brand-2 grid size-[30px] flex-none cursor-help place-items-center rounded-full border-[1.5px] text-[17px]"
-                >
-                    ?
+                <span className="group relative flex-none">
+                    <button
+                        type="button"
+                        aria-label="About the service calendar"
+                        aria-describedby="calHelp"
+                        className="border-brand-2 text-brand-2 hover:bg-wash grid size-[30px] cursor-help place-items-center rounded-full border-[1.5px] bg-transparent p-0 text-[17px]"
+                    >
+                        ?
+                    </button>
+                    <span
+                        id="calHelp"
+                        role="tooltip"
+                        className="bg-ink invisible absolute top-[calc(100%+8px)] right-0 z-10 w-[260px] max-w-[80vw] rounded-md px-3 py-2.5 text-left text-[15px] leading-[1.35] font-normal text-white opacity-0 shadow-[0_6px_20px_rgb(0_0_0/0.2)] transition-opacity duration-150 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100 motion-reduce:transition-none"
+                    >
+                        {HELP}
+                    </span>
                 </span>
             </div>
             <div className="text-ink-2 mt-0.5 mb-2.5 flex flex-wrap items-center justify-center gap-2.5 text-[15px]">

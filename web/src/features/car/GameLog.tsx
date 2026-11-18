@@ -1,7 +1,8 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import type { Car } from '../../api';
 import { fmtNum, GROUPS, pctColor, signed, type GroupId } from '../../format';
-import { CarPill, ShareBar } from './BioPanel';
+import CarPill from '../../components/CarPill';
+import { ShareBar } from './BioPanel';
 import { dayScore } from './calendar';
 import { routeCounts } from './shared';
 
@@ -14,12 +15,14 @@ const td = 'border-b border-[#e3eaec] px-2.5 py-2 text-right first:text-left';
 /** Pill tabs: GAME LOG, plus COUPLED WITH (rail) or ROUTES (bus). */
 export default function CarTabs({
     group,
+    season,
     car,
     avg,
     tab,
     onTab,
 }: {
     group: GroupId;
+    season: string;
     car: Car;
     avg: number | null;
     tab: TabId;
@@ -79,7 +82,7 @@ export default function CarTabs({
                 ) : isBus ? (
                     <RoutesTable car={car} />
                 ) : (
-                    <MatesTable car={car} group={group} />
+                    <MatesTable car={car} group={group} season={season} />
                 )}
             </div>
         </div>
@@ -154,7 +157,7 @@ function GameLog({ car, avg, isBus }: { car: Car; avg: number | null; isBus: boo
     );
 }
 
-function MatesTable({ car, group }: { car: Car; group: GroupId }) {
+function MatesTable({ car, group, season }: { car: Car; group: GroupId; season: string }) {
     if (!car.teammates.length)
         return <p className="text-ink-2 text-center text-lg">No coupled cars recorded.</p>;
     const max = car.teammates[0][1];
@@ -172,7 +175,7 @@ function MatesTable({ car, group }: { car: Car; group: GroupId }) {
                 {car.teammates.map(([n, k]) => (
                     <tr key={n} className="hover:[&>td]:bg-wash">
                         <td className={td}>
-                            <CarPill group={group} number={n} />
+                            <CarPill group={group} number={n} season={season} />
                         </td>
                         <td className={td}>
                             <ShareBar frac={k / max} color={GROUPS[group].color} />

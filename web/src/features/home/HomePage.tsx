@@ -1,22 +1,19 @@
 import { Link } from '@tanstack/react-router';
 import type { IndexEntry } from '../../api';
-import CarPill, { tint } from '../../components/CarPill';
+import CarPill from '../../components/CarPill';
 import DateBox from '../../components/DateBox';
 import Search from '../../components/Search';
-import { GROUP_IDS, GROUPS, pctColor, seasonLabel, signed, type GroupId } from '../../format';
-import { defaultWindow, useIndex, useMeta } from '../../queries';
+import { useDocumentTitle } from '../../components/useDocumentTitle';
+import { GROUP_IDS, GROUPS, pctColor, seasonLabel, signed, tint, type GroupId } from '../../format';
+import { useAllIndexes } from '../../queries';
+import { HOME_TITLE } from '../../titles';
+import { seasonParam } from '../../search';
+import { defaultLineSeason } from '../line/useLineData';
 import { groupCars, topLeaders } from './leaders';
 
 export default function HomePage() {
-    const { data: meta } = useMeta();
-    const win = defaultWindow(meta);
-    const { data: index, isPending } = useIndex(win);
-    // Lines with no ranked cars in the newest year (early in a season) fall back to last 30 days.
-    const needFallback =
-        !!index && GROUP_IDS.some((g) => g !== 'mattapan' && topLeaders(index, g, 1).length === 0);
-    const { data: recent, isPending: recentPending } = useIndex(
-        needFallback ? 'last30' : undefined
-    );
+    useDocumentTitle(HOME_TITLE);
+    const { meta, windows, indexes, loading } = useAllIndexes();
 
     return (
         <main>
@@ -41,33 +38,23 @@ export default function HomePage() {
                     className="border-brand-2 m-0 mb-4 border-b pb-2 text-[30px] font-bold"
                 >
                     Line Leaders
-                    <span className="text-ink-3 ml-3 text-xl font-light">
-                        top 5 by Time Saved
-                        {win ? ` · ${seasonLabel(win)}` : ''}
-                    </span>
+                    <span className="text-ink-3 ml-3 text-xl font-light">top 5 by Time Saved</span>
                 </h2>
-                {isPending && win ? (
+                {loading ? (
                     <p className="text-ink-2 text-xl">Loading…</p>
                 ) : (
                     <div className="grid grid-cols-1 gap-4 min-[761px]:grid-cols-2 min-[1180px]:grid-cols-3">
                         {GROUP_IDS.map((g) => {
-                            const fromYear = index ? topLeaders(index, g) : [];
-                            const useRecent = fromYear.length === 0 && recent;
-                            const rows = useRecent ? topLeaders(recent, g) : fromYear;
-                            const all = groupCars(index ?? [], g);
+                            // The same per-line rule as the leaderboard page, so each card matches its link.
+                            const season = defaultLineSeason(g, windows, indexes);
+                            const index = indexes[season] ?? [];
                             return (
                                 <LeaderCard
                                     key={g}
                                     group={g}
-                                    rows={rows}
-                                    season={useRecent && rows.length ? 'last30' : undefined}
-                                    cars={all.length ? all : groupCars(recent ?? [], g)}
-                                    loading={
-                                        fromYear.length === 0 &&
-                                        needFallback &&
-                                        recentPending &&
-                                        g !== 'mattapan'
-                                    }
+                                    rows={topLeaders(index, g)}
+                                    cars={groupCars(index, g)}
+                                    season={season}
                                 />
                             );
                         })}
@@ -83,14 +70,13 @@ function LeaderCard({
     rows,
     cars,
     season,
-    loading,
 }: {
-    loading?: boolean;
     group: GroupId;
     rows: IndexEntry[];
     cars: IndexEntry[];
-    season: string | undefined;
+    season: string;
 }) {
+    const search = { season: seasonParam(season) as string };
     const g = GROUPS[group];
     return (
         <section className="panel flex flex-col" aria-label={`${g.name} leaders`}>
@@ -101,12 +87,12 @@ function LeaderCard({
                 <Link
                     to="/line/$group"
                     params={{ group }}
-                    search={season ? { season } : {}}
+                    search={search}
                     className="text-inherit no-underline hover:underline"
                 >
                     {g.name}
                 </Link>
-                {season && <span className="text-base font-light">last 30 days</span>}
+                <span className="text-base font-light">{seasonLabel(season)}</span>
             </h3>
             <div className="flex-1 px-4 py-2">
                 {rows.length > 0 ? (
@@ -118,7 +104,10 @@ function LeaderCard({
                             >
                                 <span className="text-ink-3 w-4 text-lg">{i + 1}</span>
                                 <CarPill group={group} number={e.number} season={season} />
-                                <span className="text-ink-2 min-w-0 flex-1 truncate text-base">
+                                <span
+                                    className="text-ink-2 min-w-0 flex-1 truncate text-base"
+                                    title={e.fleet_label}
+                                >
                                     {e.fleet_label}
                                 </span>
                                 <span
@@ -134,8 +123,6 @@ function LeaderCard({
                             </li>
                         ))}
                     </ol>
-                ) : loading ? (
-                    <p className="text-ink-3 m-0 py-2 text-lg">Loading…</p>
                 ) : (
                     <div className="py-2">
                         <p className="m-0 mb-2 text-xl font-medium">Not ranked</p>
@@ -146,7 +133,12 @@ function LeaderCard({
                         </p>
                         <div className="flex flex-wrap gap-2">
                             {cars.map((e) => (
-                                <CarPill key={e.car_id} group={group} number={e.number} />
+                                <CarPill
+                                    key={e.car_id}
+                                    group={group}
+                                    number={e.number}
+                                    season={season}
+                                />
                             ))}
                         </div>
                     </div>
@@ -155,7 +147,7 @@ function LeaderCard({
             <Link
                 to="/line/$group"
                 params={{ group }}
-                search={season ? { season } : {}}
+                search={search}
                 className="text-brand border-panel-line border-t px-4 py-2.5 text-lg"
             >
                 {rows.length ? 'Full leaderboard' : 'See the cars'} &rarr;

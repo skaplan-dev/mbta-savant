@@ -1,26 +1,29 @@
 import { useNavigate } from '@tanstack/react-router';
-import { useId, useMemo, useState } from 'react';
+import { useId, useState } from 'react';
 import { GROUP_IDS, GROUPS, isGroup } from '../format';
-import { defaultWindow, useIndex, useMeta } from '../queries';
+import { defaultWindow, useAllIndexes } from '../queries';
+import { mergeIndexes, seasonParam } from '../search';
 
 const MAX = 8;
 
 export default function Search({ label = 'Search a car or bus number' }: { label?: string }) {
     const navigate = useNavigate();
     const listId = useId();
-    const { data: meta, isPending: metaPending } = useMeta();
+    // Indexes load on first focus or keystroke, not on mount; every window is searched so cars
+    // without data in the newest year are still found.
+    const [wanted, setWanted] = useState(false);
+    const { meta, windows, indexes, loading: loadingIndexes } = useAllIndexes(wanted);
     const win = defaultWindow(meta);
-    const { data: index, isPending: indexPending } = useIndex(win);
-    // Loading until the index resolves; a missing meta or index file means no data, not loading.
-    const loading = metaPending || (!!win && indexPending);
+    const loading = wanted && loadingIndexes;
     const [q, setQ] = useState('');
     const [active, setActive] = useState(0);
     const [open, setOpen] = useState(false);
 
-    const matches = useMemo(() => {
+    // A few thousand entries at most; recomputed per render rather than memoized on the rebuilt `indexes`.
+    const matches = (() => {
         const term = q.trim();
-        if (!term || !index) return [];
-        return index
+        if (!term) return [];
+        return mergeIndexes(windows, indexes)
             .filter((e) => e.number.startsWith(term) && isGroup(e.group))
             .sort(
                 (a, b) =>
@@ -29,14 +32,19 @@ export default function Search({ label = 'Search a car or bus number' }: { label
                     GROUP_IDS.indexOf(a.group as never) - GROUP_IDS.indexOf(b.group as never)
             )
             .slice(0, MAX);
-    }, [q, index]);
+    })();
 
     const go = (i: number) => {
         const e = matches[i];
         if (!e) return;
         setOpen(false);
         setQ('');
-        void navigate({ to: '/car/$group/$number', params: { group: e.group, number: e.number } });
+        void navigate({
+            to: '/car/$group/$number',
+            params: { group: e.group, number: e.number },
+            // Cars with no data in the default window link to the season that has it.
+            search: e.window === win ? {} : { season: seasonParam(e.window) as string },
+        });
     };
 
     const showList = open && q.trim() !== '';
@@ -54,7 +62,7 @@ export default function Search({ label = 'Search a car or bus number' }: { label
                 type="search"
                 role="combobox"
                 aria-expanded={showList}
-                aria-controls={listId}
+                aria-controls={showList ? listId : undefined}
                 aria-autocomplete="list"
                 aria-activedescendant={
                     showList && matches[active] ? `${listId}-${active}` : undefined
@@ -64,11 +72,15 @@ export default function Search({ label = 'Search a car or bus number' }: { label
                 autoComplete="off"
                 value={q}
                 onChange={(ev) => {
+                    setWanted(true);
                     setQ(ev.target.value);
                     setActive(0);
                     setOpen(true);
                 }}
-                onFocus={() => setOpen(true)}
+                onFocus={() => {
+                    setWanted(true);
+                    setOpen(true);
+                }}
                 onBlur={() => setOpen(false)}
                 onKeyDown={(ev) => {
                     if (ev.key === 'ArrowDown') {

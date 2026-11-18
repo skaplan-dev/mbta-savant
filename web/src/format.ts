@@ -66,3 +66,6 @@ export function ordinal(n: number): string {
 }
 
 export const seasonLabel = (k: string): string => (k === 'last30' ? 'Last 30 Days' : k);
+
+/** Value-cell tint from a percentile color; the same blue-gray-red scale, lightened. */
+export const tint = (color: string) => `color-mix(in srgb, ${color} 35%, white)`;
