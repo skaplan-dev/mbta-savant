@@ -520,6 +520,45 @@ Source: `docs/sanity-check-2026-11.md`. **User decisions (made after the real-da
 {"files": ["docs/sanity-check-2026-11.md"], "verifyCommand": "grep -q 'Re-run after fixes' docs/sanity-check-2026-11.md", "acceptanceCriteria": ["LAMP backfill runtime/size", "bus present from 2025-07-30, multi-car consists", "no mattapan leak, no non-roster pct", "negative TTOE exists; speed-vs-expected fleet medians", "build peak RSS < 7GB", "dashboard comparison within 5%"], "modelTier": "frontier"}
 ```
 
+---
+
+### Task 16: Show stats against the line average, plus re-run cleanups
+
+**Goal:** TTOE and Speed vs Expected are shown against the line's average car. The qualifying bar scales with the window. Bus routes are no longer dropped, output has no stale files, and bus numbers are written one way. These come from the 2026-11-18 user decisions and the findings in the re-run section of `docs/sanity-check-2026-11.md`.
+
+**User decisions:**
+- "Vs. line average": center TTOE and Speed vs Expected on the group's average car.
+- "Keep both": keep both stats, centered the same way.
+
+**Files:**
+- Modify: `pipeline/savant/publish.py`, `pipeline/savant/stats.py` (qualification), `pipeline/savant/segments.py` (bus route rule, bus numbers), `web/src/api.ts`, `web/src/Leaderboard.tsx`, `web/src/CarPage.tsx`
+- Test: `pipeline/tests/test_publish.py`, `pipeline/tests/test_stats.py`, `pipeline/tests/test_segments.py`
+
+**Interfaces:**
+- **Centered fields.** In `publish`, for each (group, window), set `avg_ttoe = mean(ttoe_sec)` and `avg_speed = mean(speed_vs_expected_pct)` over qualified, ranked cars. Every car then gets `ttoe_vs_avg_sec = ttoe_sec − avg_ttoe` and `speed_vs_avg_pct = speed_vs_expected_pct − avg_speed`. The value is null when there are no qualified ranked cars or the car's value is null. Group files carry `"averages": {"ttoe_sec": …, "speed_vs_expected_pct": …}`.
+- **Percentiles.** They stay computed on the absolute fields, which gives the same ranks. The centered fields are display-only and are not added to METRICS.
+- **Fleet aggregates.** They also report medians of the two centered fields.
+- **Qualification.** In `stats.car_stats`, the threshold is `max(QUALIFY_MIN_TRIPS, ceil(0.25 × median trips over all cars in the group/window))`, with `QUALIFY_MIN_TRIPS = 50`, and it is exposed as `QUALIFY_SHARE = 0.25`. Group files carry `"qualify_min_trips": <int>`.
+- **Bus route rule.** For group `bus`, `build_segments` keeps a segment unless `group_for_route(route_id)` maps to a different non-bus group (red, orange, blue, green, mattapan), or the route is `CR-*` or `Boat-*`. This is why `34E` and `708` were being dropped. Rail groups keep the strict equality rule.
+- **Bus numbers.** For group `bus` only, each car token is normalized with `str(int(token))`, so `0952` becomes `952`. Rail tokens stay exactly as reported.
+- **Clearing output.** `publish(root, out)` removes `out/data` with `shutil.rmtree` before writing, and only that directory.
+- **Web.** The leaderboard and car page show `ttoe_vs_avg_sec` (signed, "s vs avg") and `speed_vs_avg_pct` (signed, "% vs avg") as the displayed values, with their pct. The car page also shows the absolute values in small text.
+
+**Acceptance Criteria:**
+- [ ] With 3 qualified ranked cars at TTOE 5, 7 and 9 s, `ttoe_vs_avg_sec` is −2, 0 and +2, the pct is unchanged at 100, 50 and 0, and `averages.ttoe_sec == 7`
+- [ ] A non-ranked car still gets `ttoe_vs_avg_sec` relative to the ranked average, but is not included in that average
+- [ ] With trip counts [1000, 1000, 1000, 120]: threshold = max(50, 250) = 250, so the 120-trip car is unqualified
+- [ ] A bus segment with route_id `34E` is kept for group bus. A `Red` route_id is still dropped for group bus.
+- [ ] Bus consist `0952` gives `cars == ["952"]`. Blue consist `0700|0701` stays `["0700","0701"]`.
+- [ ] A stale file `out/data/2026/cars/blue/WORK.json` from an earlier publish is gone after `publish`
+- [ ] `cd web && npx tsc --noEmit && npm run build` exits 0
+
+**Verify:** `cd pipeline && uv run pytest -q && cd ../web && npx tsc --noEmit && npm run build`
+
+```json:metadata
+{"files": ["pipeline/savant/publish.py", "pipeline/savant/stats.py", "pipeline/savant/segments.py", "pipeline/tests/test_publish.py", "pipeline/tests/test_stats.py", "pipeline/tests/test_segments.py", "web/src/api.ts", "web/src/Leaderboard.tsx", "web/src/CarPage.tsx"], "verifyCommand": "cd pipeline && uv run pytest -q && cd ../web && npx tsc --noEmit && npm run build", "acceptanceCriteria": ["centered ttoe/speed vs ranked avg; pct unchanged", "non-ranked centered but excluded from avg", "qualify = max(50, 25% median trips)", "bus keeps 34E, drops Red", "bus numbers normalized, rail untouched", "publish clears out/data", "web builds"], "modelTier": "frontier"}
+```
+
 ## After this plan
 
 Mockups for Home, Leaderboard, Car page and Fleet vs Fleet go to the user for approval. A second plan then builds the real frontend: the line map, Savant-style percentile bars, and path routing with an SPA fallback.

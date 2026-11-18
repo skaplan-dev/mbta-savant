@@ -125,6 +125,10 @@ tunable); unqualified cars show stats but no percentile bars and don't appear on
 
 Percentile = share of qualified cars in the group the car beats, 0–100.
 
+**Display vs line average (user decision 2026-11-18):** TTOE and Speed vs Expected are shown relative to the average qualified, ranked car in the same group and window (e.g. "−2.1 s vs avg", "+1.4% vs avg"), like Savant's "vs league average". The absolute values are kept in the data. Percentiles are unchanged by this shift. Reason: the absolute capped mean is positive for every rail car (a train can be at most seconds early but up to 5 min late), which read as "every car is slow".
+
+**Qualified (revised 2026-11-18, controller call):** at least max(50, 25% of the group's median trip count in that window) trips, so cars with barely 50 trips don't anchor the extremes.
+
 ## Windows and updates
 
 - Season = calendar year; past seasons stay browsable. Plus a rolling **last 30 days**.
