@@ -1,21 +1,13 @@
-import { createFileRoute, notFound } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import LinePage from '../features/line/LinePage';
-import { isGroup } from '../format';
-import { validateSeasonSearch } from '../search';
+import { parseGroup } from '../groups';
+import { validateSeasonSearch } from '../seasons';
 
 export const Route = createFileRoute('/line/$group')({
-    validateSearch: validateSeasonSearch,
-    beforeLoad: ({ params }) => {
-        if (!isGroup(params.group)) throw notFound();
+    params: {
+        parse: ({ group }) => ({ group: parseGroup(group) }),
+        stringify: ({ group }) => ({ group }),
     },
-    component: LineRoute,
+    validateSearch: validateSeasonSearch,
+    component: LinePage,
 });
-
-function LineRoute() {
-    const { group } = Route.useParams();
-    const { season } = Route.useSearch();
-
-    if (!isGroup(group)) return null;
-
-    return <LinePage key={group} group={group} season={season} />;
-}

@@ -1,21 +1,24 @@
-import { createFileRoute, notFound } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import CarPage from '../features/car/CarPage';
-import { isGroup } from '../format';
-import { validateSeasonSearch } from '../search';
+import { parseGroup } from '../groups';
+import { validateSeasonSearch, type SeasonSearch } from '../seasons';
+
+interface CarSearch extends SeasonSearch {
+    /** The lower tab; Game Log when absent. */
+    tab?: 'mates';
+}
+
+function validateCarSearch({ season, tab }: CarSearch): CarSearch {
+    const search = validateSeasonSearch({ season });
+
+    return tab === 'mates' ? { ...search, tab } : search;
+}
 
 export const Route = createFileRoute('/car/$group/$number')({
-    validateSearch: validateSeasonSearch,
-    beforeLoad: ({ params }) => {
-        if (!isGroup(params.group)) throw notFound();
+    params: {
+        parse: ({ group, number }) => ({ group: parseGroup(group), number }),
+        stringify: ({ group, number }) => ({ group, number }),
     },
-    component: CarRoute,
+    validateSearch: validateCarSearch,
+    component: CarPage,
 });
-
-function CarRoute() {
-    const { group, number } = Route.useParams();
-    const { season } = Route.useSearch();
-
-    if (!isGroup(group)) return null;
-
-    return <CarPage key={`${group}/${number}`} group={group} number={number} season={season} />;
-}

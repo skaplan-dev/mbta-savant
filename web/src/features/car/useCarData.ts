@@ -1,64 +1,63 @@
 import { useQueries } from '@tanstack/react-query';
-import { fetchCar, type Car, type Meta } from '../../api';
-import { useMeta } from '../../queries';
-import { orderWindows, resolveSeason } from './season';
+import type { Car, Meta } from '../../api';
+import type { GroupId } from '../../groups';
+import { carQuery, useWindows } from '../../queries';
+import { failure, type Resource } from '../../resource';
+import { isYearKey, resolveSeason } from '../../seasons';
+
+export interface CarFile {
+    window: string;
+    car: Car;
+}
 
 export interface CarData {
     meta: Meta;
-    /** window → this car's file (null when missing). */
-    cars: Record<string, Car | null>;
-    /** Windows where the car has a file, toggle order. */
-    available: string[];
-    season: string | undefined;
-    /** A request failed (network or parse error); distinct from a car that has no file. */
-    failed: boolean;
-    retry: () => void;
+    /** The windows this car has a file for, toggle order (newest year first, last30 last). */
+    files: CarFile[];
+    season: string;
+    /** The file for `season`; absent when a requested season has no data for this car. */
+    car: Car | undefined;
+    /** Bio and season table come from the newest file, even when the selected season is empty. */
+    bio: Car;
 }
 
-/** Loads meta and every window's file for one car; undefined while loading. */
+/**
+ * Loads meta and every window's file for one car; all are needed for the season toggle and table.
+ * The default season is the newest year where the car was ranked, else its newest file.
+ */
 export function useCarData(
-    group: string,
+    group: GroupId,
     number: string,
     requested: string | undefined
-): CarData | undefined {
-    const metaResult = useMeta();
-    const { data: meta, isPending: metaPending } = metaResult;
-    const keys = meta ? orderWindows(meta.windows.map((w) => w.key)) : [];
+): Resource<CarData> {
+    const { meta, windows } = useWindows();
+    const results = useQueries({ queries: windows.map((w) => carQuery(w, group, number)) });
 
-    const results = useQueries({
-        queries: keys.map((w) => ({
-            queryKey: ['car', w, group, number],
-            queryFn: () => fetchCar(w, group, number),
-            staleTime: 60 * 60 * 1000,
-        })),
+    if (meta.isPending || results.some((r) => r.isPending)) return { status: 'loading' };
+
+    const failed = failure(meta, ...results);
+
+    if (failed) return failed;
+
+    const files = windows.flatMap((window, i) => {
+        const car = results[i]?.data;
+
+        return car ? [{ window, car }] : [];
     });
 
-    if (metaPending || results.some((r) => r.isPending)) return undefined;
-    const failed = results.some((r) => r.isError) || metaResult.isError;
+    const [newest] = files;
 
-    const retry = () => {
-        if (metaResult.isError) void metaResult.refetch();
-        results.forEach((r) => r.isError && void r.refetch());
-    };
+    if (!meta.data || !newest) return { status: 'missing' };
 
-    if (!meta)
-        return {
-            meta: { generated_at: '', windows: [], latest_service_date: null },
-            cars: {},
-            available: [],
-            season: undefined,
-            failed,
-            retry,
-        };
-    const cars: Record<string, Car | null> = {};
-    keys.forEach((k, i) => (cars[k] = results[i].data ?? null));
+    const season =
+        resolveSeason(requested, windows, (w) =>
+            files.some((f) => f.window === w && isYearKey(w) && f.car.qualified && f.car.ranked)
+        ) ?? newest.window;
+
+    const car = files.find((f) => f.window === season)?.car;
 
     return {
-        meta,
-        cars,
-        available: keys.filter((k) => cars[k]),
-        season: resolveSeason(requested, keys, cars),
-        failed,
-        retry,
+        status: 'ready',
+        data: { meta: meta.data, files, season, car, bio: car ?? newest.car },
     };
 }

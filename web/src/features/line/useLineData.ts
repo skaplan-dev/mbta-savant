@@ -1,53 +1,39 @@
-import type { IndexEntry, Meta } from '../../api';
-import { useAllIndexes, useMeta } from '../../queries';
-import { orderWindows } from '../car/season';
+import { useQuery } from '@tanstack/react-query';
+import type { GroupFile, Meta } from '../../api';
+import type { GroupId } from '../../groups';
+import { groupQuery, useAllIndexes, useWindows } from '../../queries';
+import { lineSeason } from '../../rank';
+import { failure, type Resource } from '../../resource';
 
 export interface LineData {
     meta: Meta;
     /** Windows for the season toggle, newest first. */
     windows: string[];
     season: string;
+    file: GroupFile;
 }
 
-/**
- * The default season for a line: the newest year with a ranked qualified car in the group, else
- * last30, else the newest window. `indexes` maps window → that window's index (null if missing).
- */
-export function defaultLineSeason(
-    group: string,
-    windows: readonly string[],
-    indexes: Readonly<Record<string, readonly IndexEntry[] | null | undefined>>
-): string {
-    const years = windows.filter((w) => w !== 'last30');
+/** The line's season (requested, else its default) and that season's group file. */
+export function useLineData(group: GroupId, requested: string | undefined): Resource<LineData> {
+    const { meta, windows } = useWindows();
+    // Every window's index is only needed to pick a default season.
+    const needDefault = !(requested && windows.includes(requested));
+    const all = useAllIndexes(needDefault);
 
-    const hit = years.find(
-        (w) =>
-            group !== 'mattapan' &&
-            indexes[w]?.some((e) => e.group === group && e.qualified && e.ranked)
-    );
+    const season =
+        meta.data && !(needDefault && all.loading)
+            ? lineSeason(group, requested, windows, all.indexes)
+            : undefined;
 
-    return hit ?? (windows.includes('last30') ? 'last30' : (windows[0] ?? 'last30'));
-}
+    const file = useQuery(groupQuery(season, group));
 
-/** Resolves the season (requested, else the default); undefined while meta or indexes load. */
-export function useLineData(group: string, requested: string | undefined): LineData | undefined {
-    const { data: meta, isPending: metaPending } = useMeta();
-    const keys = meta ? orderWindows(meta.windows.map((w) => w.key)) : [];
-    const needDefault = !(requested && keys.includes(requested));
-    const { windows, indexes, loading } = useAllIndexes(needDefault);
+    if (meta.isPending || (meta.data && (!season || file.isPending))) return { status: 'loading' };
 
-    if (metaPending) return undefined;
+    const failed = failure(meta, file);
 
-    if (!meta)
-        return {
-            meta: { generated_at: '', windows: [], latest_service_date: null },
-            windows,
-            season: 'last30',
-        };
+    if (failed) return failed;
 
-    if (!needDefault) return { meta, windows, season: requested! };
+    if (!meta.data || !season || !file.data) return { status: 'missing' };
 
-    if (loading) return undefined;
-
-    return { meta, windows, season: defaultLineSeason(group, windows, indexes) };
+    return { status: 'ready', data: { meta: meta.data, windows, season, file: file.data } };
 }
