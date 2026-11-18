@@ -124,13 +124,17 @@ def publish(root: Path, out: Path) -> None:
                 c["vehicle"].setdefault("fleet_key", "unknown")
             cars = add_percentiles(group, cars)
             averages = add_vs_avg(cars)
+            summary = {"group": group, "window": w.key, "generated_at": now,
+                       "qualify_min_trips": stats.qualify_threshold([c["trips"] for c in cars]),
+                       "ranked_cars": sum(1 for c in cars if c["qualified"] and c["ranked"]),
+                       "averages": averages}
             _write(
                 data / w.key / "groups" / f"{group}.json",
-                {"group": group, "window": w.key, "generated_at": now,
-                 "qualify_min_trips": stats.qualify_threshold([c["trips"] for c in cars]),
-                 "averages": averages,
+                {**{k: v for k, v in summary.items() if k != "ranked_cars"},
                  "cars": [{k: v for k, v in c.items() if k != "game_log"} for c in cars]},
             )
+            # A few hundred bytes, for pages that need the line average but not every car (the car page).
+            _write(data / w.key / "groups" / f"{group}.summary.json", summary)
             for c in cars:
                 _write(data / w.key / "cars" / group / f"{c['number']}.json", c)
                 index_by_window[w.key].append(

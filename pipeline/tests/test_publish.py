@@ -183,6 +183,18 @@ def test_group_file_has_averages_and_threshold(tmp_path):
     assert "ttoe_vs_avg_sec" not in publish.METRICS
 
 
+def test_group_summary_is_the_small_version_of_the_group_file(tmp_path):
+    # The car page needs only the line average and how many cars are ranked, not every car in the line.
+    out = build(tmp_path)
+    g = load(out / "data/last30/groups/orange.json")
+    sm = load(out / "data/last30/groups/orange.summary.json")
+    assert set(sm) == {"group", "window", "generated_at", "qualify_min_trips", "ranked_cars", "averages"}
+    assert sm["group"] == "orange" and sm["window"] == "last30"
+    assert sm["averages"] == g["averages"] and sm["qualify_min_trips"] == g["qualify_min_trips"]
+    assert sm["ranked_cars"] == sum(1 for c in g["cars"] if c["qualified"] and c["ranked"]) == 2
+    assert (out / "data/last30/groups/orange.summary.json").stat().st_size < 1000
+
+
 def test_publish_clears_stale_output(tmp_path):
     out = tmp_path / "out"
     stale = out / "data/2026/cars/blue/WORK.json"
