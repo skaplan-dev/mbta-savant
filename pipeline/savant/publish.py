@@ -5,9 +5,9 @@ where n is the number of qualified cars with a value for the metric. Ties never 
 tied cars share a percentile. n == 1 gives 100. Unqualified cars, cars missing the metric, unranked
 metrics, and the mattapan group get None.
 
-TTOE and Speed vs Expected are also shown against the group's average car (``ttoe_vs_avg_sec``,
-``speed_vs_avg_pct``): the absolute values sit on one side of zero because a delay distribution is
-skewed late. The average is the mean over qualified, ranked cars. These are display-only; percentiles
+TTOE, Speed vs Expected and Door Time are also shown against the group's average car
+(``ttoe_vs_avg_sec``, ``speed_vs_avg_pct``, ``door_vs_avg_sec``): the absolute values sit on one side of
+zero because delay and dwell distributions are skewed late. The average is the mean over qualified, ranked cars. These are display-only; percentiles
 stay on the absolute fields (centering does not change rank).
 """
 
@@ -36,7 +36,11 @@ METRICS: dict[str, Literal["higher", "lower"] | None] = {
 }
 UNRANKED_GROUPS = {"mattapan"}
 # centered field -> absolute field it is centered from
-VS_AVG = {"ttoe_vs_avg_sec": "ttoe_sec", "speed_vs_avg_pct": "speed_vs_expected_pct"}
+VS_AVG = {
+    "ttoe_vs_avg_sec": "ttoe_sec",
+    "speed_vs_avg_pct": "speed_vs_expected_pct",
+    "door_vs_avg_sec": "door_time_sec",
+}
 
 
 def add_percentiles(group: str, cars: list[dict]) -> list[dict]:

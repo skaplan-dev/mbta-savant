@@ -143,8 +143,8 @@ def test_rail_speed_miles_crowd_door_teammates(tmp_path):
     assert rows["2"]["crowd_load_pct"] == pytest.approx(10.0)
     assert rows["4"]["crowd_load_pct"] is None
     # A->B dwells 30, 20 -> expected 25; X->Y dwells 40, 20 -> expected 30
-    # car 1 deltas: +5, +10, -5 -> median 5
-    assert one["door_time_sec"] == pytest.approx(5)
+    # car 1 deltas: +5, +10, -5 -> mean 10/3
+    assert one["door_time_sec"] == pytest.approx(10 / 3)
     assert one["teammates"] == [["2", 2], ["3", 1]]
     assert one["routes"] is None
     (log,) = one["game_log"]
@@ -185,14 +185,45 @@ def test_ttoe_caps_each_segment_delta_at_300(tmp_path):
     assert log["ttoe_sec"] == pytest.approx(30.0)
 
 
-def test_steadiness_uses_capped_delta(tmp_path):
-    segs = [seg(D0, f"r{i}", ["R"], 100) for i in range(20)]
-    # C deltas 0, 0, 1000, 1000 are capped to 0, 0, 300, 300
-    segs += [seg(D0, f"c{i}", ["C"], t) for i, t in enumerate((100, 100, 1100, 1100))]
+def _reference(n=20):
+    """Car R runs every stretch in 100 s, so expected travel is 100 s."""
+    return [seg(D0, f"r{i}", ["R"], 100) for i in range(n)]
+
+
+def test_steadiness_clips_each_delta_at_60(tmp_path):
+    # C deltas 0, 0, +1000, +1000 clip to 0, 0, 60, 60: median 30, mean distance from it 30
+    segs = _reference() + [seg(D0, f"c{i}", ["C"], t) for i, t in enumerate((100, 100, 1100, 1100))]
     write(tmp_path, "orange", {D0: segs})
     c = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))["C"]
-    # quantile_cont over [0, 0, 300, 300]: p75 = 300, p25 = 0
-    assert c["steadiness_sec"] == pytest.approx(300.0)
+    assert c["steadiness_sec"] == pytest.approx(30.0)
+
+
+def test_steadiness_ignores_a_steady_offset(tmp_path):
+    # Always 10 s slow is slow, not inconsistent
+    segs = _reference() + [seg(D0, f"c{i}", ["C"], 110) for i in range(4)]
+    write(tmp_path, "orange", {D0: segs})
+    c = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))["C"]
+    assert c["steadiness_sec"] == pytest.approx(0.0)
+
+
+def test_steadiness_resolves_below_one_second(tmp_path):
+    # Whole-second deltas; an IQR or median would tie these two cars, the mean deviation doesn't
+    segs = _reference()
+    segs += [seg(D0, f"a{i}", ["A"], t) for i, t in enumerate((100, 101, 101, 101))]  # median 1 -> 0.25
+    segs += [seg(D0, f"b{i}", ["B"], t) for i, t in enumerate((100, 100, 101, 101))]  # median 0.5 -> 0.5
+    write(tmp_path, "orange", {D0: segs})
+    rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
+    assert rows["A"]["steadiness_sec"] == pytest.approx(0.25)
+    assert rows["B"]["steadiness_sec"] == pytest.approx(0.5)
+
+
+def test_door_time_clips_each_dwell_delta_at_30(tmp_path):
+    # Typical dwell is 20 s; C's 120 s terminal hold counts as +30
+    segs = [seg(D0, f"r{i}", ["R"], 100, dwell=20.0) for i in range(20)]
+    segs += [seg(D0, f"c{i}", ["C"], 100, dwell=d) for i, d in enumerate((20.0, 120.0))]
+    write(tmp_path, "orange", {D0: segs})
+    c = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))["C"]
+    assert c["door_time_sec"] == pytest.approx(15.0)
 
 
 def test_speed_vs_expected(tmp_path):

@@ -5,8 +5,13 @@ Expected travel time is the median over every segment in the window (all vehicle
 dwell at its ``to_stop``, so expected dwell is the median keyed on (route_id, direction, to_stop,
 hour_bucket, day_type). Each segment is credited to every car in its ``cars`` list.
 
-TTOE-family stats (TTOE, Steadiness, game-log TTOE) use a per-segment delta capped at TTOE_CAP_SEC,
-so one disrupted trip cannot decide a rank. Speed vs Expected is
+TTOE-family stats (TTOE, game-log TTOE) use a per-segment delta capped at TTOE_CAP_SEC, so one
+disrupted trip cannot decide a rank.
+
+Event times are whole seconds, so medians and quartiles of per-segment values land on the same integer
+for nearly every car on a line. Steadiness and Door Time are therefore means, which resolve below a
+second: Steadiness is the mean distance of each delta (clipped to +/-STEADY_CLIP_SEC) from the car's own
+median, and Door Time is the mean dwell delta clipped to +/-DOOR_CLIP_SEC. Speed vs Expected is
 ``100 * (sum(expected) / sum(min(travel, expected + cap)) - 1)`` over the car's segments.
 
 Games Played and Iron Horse are counted over the group's *data days* (window days on which the group
@@ -28,6 +33,8 @@ QUALIFY_SHARE = 0.25  # of the median trip count over all cars in the group/wind
 LAST30_DAYS = 30
 TEAMMATES = 5
 TTOE_CAP_SEC = 300
+STEADY_CLIP_SEC = 60
+DOOR_CLIP_SEC = 30
 MEMORY_LIMIT = "4GB"
 
 
@@ -86,7 +93,11 @@ FROM (
 
 _DATA_DAYS = "SELECT DISTINCT service_date FROM read_parquet($1) WHERE service_date BETWEEN $2 AND $3 ORDER BY 1"
 
-_PER_CAR = """
+_PER_CAR = f"""
+WITH clipped AS (
+  SELECT *, greatest(least(delta, {STEADY_CLIP_SEC}), -{STEADY_CLIP_SEC}) AS steady_delta FROM car_seg
+),
+own AS (SELECT number, median(steady_delta) AS steady_median FROM clipped GROUP BY number)
 SELECT number,
   count(DISTINCT (service_date, trip_id)) AS trips,
   avg(delta) AS ttoe_sec,
@@ -94,13 +105,13 @@ SELECT number,
   quantile_cont(distance_mi / travel_sec * 3600, 0.9) FILTER (WHERE distance_mi IS NOT NULL) AS top_speed_mph,
   avg(CASE WHEN travel_sec <= benchmark_sec THEN 100.0 ELSE 0.0 END) FILTER (WHERE benchmark_sec IS NOT NULL)
     AS on_time_pct,
-  quantile_cont(delta, 0.75) - quantile_cont(delta, 0.25) AS steadiness_sec,
-  median(dwell_delta) AS door_time_sec,
+  avg(abs(steady_delta - steady_median)) AS steadiness_sec,
+  avg(greatest(least(dwell_delta, {DOOR_CLIP_SEC}), -{DOOR_CLIP_SEC})) AS door_time_sec,
   sum(distance_mi) AS miles,
   avg(occ) AS crowd_load_pct,
   count(DISTINCT route_id) AS routes,
   list(DISTINCT service_date) AS days
-FROM car_seg GROUP BY number ORDER BY number
+FROM clipped JOIN own USING (number) GROUP BY number ORDER BY number
 """
 
 _GAME_LOG = """

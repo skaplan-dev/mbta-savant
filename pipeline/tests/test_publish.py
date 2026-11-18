@@ -69,7 +69,7 @@ def seg(day, trip, cars, travel, group, route):
     return {
         "service_date": day.isoformat(), "group": group, "route_id": route, "direction": 0,
         "trip_id": trip, "from_stop": "A", "to_stop": "B", "dep_time": f"{day.isoformat()}T12:00:00-05:00",
-        "hour_bucket": "midday", "day_type": "weekday", "travel_sec": float(travel), "dwell_sec": None,
+        "hour_bucket": "midday", "day_type": "weekday", "travel_sec": float(travel), "dwell_sec": 20.0,
         "benchmark_sec": None, "distance_mi": 1.0, "cars": cars, "occupancy_pct": [],
     }
 
@@ -131,7 +131,7 @@ def _ranked(cars, group="orange"):
 def test_vs_avg_centers_on_ranked_mean_and_keeps_pct():
     cars = _ranked([car("1400", 5.0), car("1401", 7.0), car("1402", 9.0)])
     avg = publish.add_vs_avg(cars)
-    assert avg == {"ttoe_sec": 7.0, "speed_vs_expected_pct": None}
+    assert avg == {"ttoe_sec": 7.0, "speed_vs_expected_pct": None, "door_time_sec": None}
     assert [c["ttoe_vs_avg_sec"] for c in cars] == [-2.0, 0.0, 2.0]
     assert [c["pct"]["ttoe_sec"] for c in cars] == [100, 50, 0]
     assert all(c["speed_vs_avg_pct"] is None for c in cars)
@@ -150,14 +150,21 @@ def test_vs_avg_non_ranked_centered_but_not_in_average():
 def test_vs_avg_speed_and_nulls():
     cars = _ranked([car("1400", 1.0, speed_vs_expected_pct=-6.0), car("1401", None, speed_vs_expected_pct=-8.0)])
     avg = publish.add_vs_avg(cars)
-    assert avg == {"ttoe_sec": 1.0, "speed_vs_expected_pct": -7.0}
+    assert avg == {"ttoe_sec": 1.0, "speed_vs_expected_pct": -7.0, "door_time_sec": None}
     assert cars[0]["speed_vs_avg_pct"] == 1.0 and cars[1]["speed_vs_avg_pct"] == -1.0
     assert cars[1]["ttoe_vs_avg_sec"] is None
 
 
+def test_vs_avg_door_time():
+    cars = _ranked([car("1400", 1.0, door_time_sec=2.0), car("1401", 1.0, door_time_sec=4.0)])
+    avg = publish.add_vs_avg(cars)
+    assert avg["door_time_sec"] == 3.0
+    assert [c["door_vs_avg_sec"] for c in cars] == [-1.0, 1.0]
+
+
 def test_vs_avg_mattapan_all_null():
     cars = _ranked([car("3087", 1.0), car("3234", 3.0)], "mattapan")
-    assert publish.add_vs_avg(cars) == {"ttoe_sec": None, "speed_vs_expected_pct": None}
+    assert publish.add_vs_avg(cars) == {"ttoe_sec": None, "speed_vs_expected_pct": None, "door_time_sec": None}
     assert all(c["ttoe_vs_avg_sec"] is None and c["speed_vs_avg_pct"] is None for c in cars)
 
 
@@ -168,10 +175,11 @@ def test_group_file_has_averages_and_threshold(tmp_path):
     assert g["averages"]["ttoe_sec"] == 0.0  # 1400 at -5, 1401 at +5
     by = {c["number"]: c for c in g["cars"]}
     assert by["1400"]["ttoe_vs_avg_sec"] == -5.0 and by["1401"]["ttoe_vs_avg_sec"] == 5.0
-    assert set(g["averages"]) == {"ttoe_sec", "speed_vs_expected_pct"}
+    assert set(g["averages"]) == {"ttoe_sec", "speed_vs_expected_pct", "door_time_sec"}
     fl = load(out / "data/fleets/orange.json")["last30"]
     for f in fl.values():
         assert "ttoe_vs_avg_sec" in f["median"] and "speed_vs_avg_pct" in f["median"]
+        assert "door_vs_avg_sec" in f["median"]
     assert "ttoe_vs_avg_sec" not in publish.METRICS
 
 
