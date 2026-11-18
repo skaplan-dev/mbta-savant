@@ -21,6 +21,13 @@
     --color-line-mattapan: #7a8b8f;
     --color-line-bus: #ffc72c;
 
+    /* The mockups use the browser's normal line height everywhere. */
+    --text-sm--line-height: normal;
+    --text-base--line-height: normal;
+    --text-lg--line-height: normal;
+    --text-xl--line-height: normal;
+    --text-2xl--line-height: normal;
+
     --radius-panel: 8px;
     --shadow-panel: 0 1px 2px rgb(29 36 39 / 0.04), 0 6px 18px -8px rgb(29 36 39 / 0.1);
 }
@@ -32,6 +39,7 @@
     body {
         margin: 0;
         overflow-x: hidden;
+        line-height: normal;
         background: #fff;
         color: var(--color-ink);
         font-family: var(--font-sans);
