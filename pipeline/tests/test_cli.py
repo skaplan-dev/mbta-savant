@@ -123,3 +123,11 @@ def test_backfill_failed_day_continues_and_exits_nonzero(monkeypatch, tmp_path, 
     assert len(_orange(tmp_path)) == 2
     captured = capsys.readouterr()
     assert "2026-05-02" in captured.err and "failed" in captured.err.lower()
+
+
+def test_backfill_builds_one_client(monkeypatch, tmp_path):
+    client, calls = FakeClient(), []
+    monkeypatch.setattr(cli, "_make_client", lambda: calls.append(1) or client)
+    args = ["backfill", "--start", "2026-05-01", "--end", "2026-05-03", "--groups", "orange,red", "--workers", "3", "--root", str(tmp_path)]
+    assert cli.main(args) == 0
+    assert len(calls) == 1

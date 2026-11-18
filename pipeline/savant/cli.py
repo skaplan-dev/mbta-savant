@@ -13,8 +13,8 @@ from savant.segments import build_segments, day_path, write_day
 
 
 def _make_client():
-    """S3 client factory; None lets events create its own. Tests monkeypatch this."""
-    return None
+    """One shared S3 client, built in the main thread. Tests monkeypatch this."""
+    return events._client(None)
 
 
 def _groups(arg: str | None) -> list[str]:
