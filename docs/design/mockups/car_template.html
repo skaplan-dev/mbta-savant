@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Car page · MBTA Savant (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #1d2427;
+  --ink-2: #4d5a5f;
+  --ink-3: #7a878c;
+  --brand: #2c6e7c;
+  --brand-2: #5d929d;
+  --rule: #6f9ca6;
+  --panel-line: #cbdadd;
+  --radius: 8px;
+  --track: #dde7ea;
+  --wash: #f2f6f7;
+  --bg: #ffffff;
+  --line: #da291c;           /* set per group by JS */
+  --poor: rgb(50, 96, 180);
+  --great: rgb(214, 41, 41);
+  font-family: "Roboto Condensed", "Arial Narrow", sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: var(--bg);
+}
+* { box-sizing: border-box; }
+html { scrollbar-color: var(--brand-2) var(--wash); }
+body { margin: 0; background: var(--bg); overflow-x: hidden; }
+::selection { background: color-mix(in srgb, var(--brand) 22%, white); color: var(--ink); }
+a { color: var(--brand); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, input:focus-visible {
+  outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 2px;
+}
+.wrap { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+
+/* ---------- masthead ---------- */
+.mast { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 20px 0 14px; border-bottom: 1px solid var(--panel-line); }
+.brand { display: flex; align-items: center; gap: 14px; text-decoration: none; color: inherit; }
+.brand svg { width: 76px; height: 76px; flex: none; }
+.wordmark { line-height: 0.9; }
+.wordmark .big { font-size: 56px; font-weight: 400; color: var(--brand); letter-spacing: -0.01em; }
+.wordmark .big b { font-weight: 700; color: var(--ink); letter-spacing: 0; margin-right: 8px; }
+.wordmark .sub { display: block; margin-top: 6px; font-size: 19px; color: var(--ink-2); font-weight: 300; }
+.wordmark .sub strong { font-weight: 500; color: var(--ink); }
+.search { flex: 0 1 520px; }
+.search input {
+  width: 100%; height: 56px; padding: 0 18px; font: inherit; font-size: 20px; color: var(--ink);
+  border: 1px solid var(--panel-line); border-radius: var(--radius); background: #fff;
+}
+.search input::placeholder { color: var(--ink-3); }
+
+.nav { display: flex; align-items: center; gap: 30px; padding: 16px 0 14px; flex-wrap: wrap; }
+.nav a { color: var(--ink); text-decoration: none; font-size: 21px; display: inline-flex; align-items: center; gap: 8px; }
+.nav a:hover { color: var(--brand); }
+.nav .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.nav .badge { font-size: 12px; background: var(--great); color: #fff; padding: 1px 5px; margin-left: -4px; transform: translateY(-9px); }
+
+/* ---------- strip ---------- */
+.strip { display: flex; justify-content: space-between; align-items: stretch; gap: 16px; margin: 8px 0 34px; }
+.datebox { display: flex; border: 1px solid var(--panel-line); border-radius: var(--radius); overflow: hidden; }
+.datebox .d { font-size: 34px; padding: 14px 18px; border-right: 1px solid var(--panel-line); display: flex; align-items: center; }
+.datebox .t { font-size: 21px; padding: 0 26px; display: flex; align-items: center; color: var(--ink); }
+.seasons { display: flex; border: 1px solid var(--panel-line); border-radius: var(--radius); overflow: hidden; }
+.seasons button {
+  font: inherit; font-size: 20px; padding: 0 22px; background: #fff; color: var(--ink); border: 0; cursor: pointer;
+  border-right: 1px solid var(--panel-line);
+}
+.seasons button:last-child { border-right: 0; }
+.seasons button[aria-pressed="true"] { background: var(--brand); color: #fff; }
+.seasons button:hover:not([aria-pressed="true"]) { background: var(--wash); }
+
+/* ---------- panels ---------- */
+.grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: stretch; }
+.panel { border: 1px solid var(--panel-line); border-radius: var(--radius); background: #fff; min-width: 0; overflow: hidden; box-shadow: 0 1px 2px rgb(29 36 39 / 0.04), 0 6px 18px -8px rgb(29 36 39 / 0.10); }
+.panel-h { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 18px 10px; }
+.panel-h h2 { margin: 0; font-size: 27px; font-weight: 500; text-align: center; }
+.dotted { border-bottom: 3px dotted var(--brand-2); padding-bottom: 2px; }
+.help { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--brand-2); color: var(--brand-2); display: grid; place-items: center; font-size: 17px; flex: none; }
+
+/* bio */
+.hero-wrap { position: relative; }
+.hero { position: relative; height: 196px; background: linear-gradient(#eef3f5, #eef3f5 72%, #d9e3e6 72%, #d9e3e6 74%, #e4ebed 74%); overflow: hidden; }
+.hero svg.car { position: absolute; left: 50%; bottom: 26%; transform: translateX(-50%); width: 112%; height: auto; }
+.headshot {
+  position: absolute; left: 50%; bottom: -48px; transform: translateX(-50%); width: 96px; height: 96px; border-radius: 50%;
+  background: var(--line); color: #fff; display: grid; place-items: center; font-size: 30px; font-weight: 700;
+  border: 4px solid #fff; box-shadow: 0 3px 10px rgb(0 0 0 / 0.18); letter-spacing: 0.01em;
+}
+.bio { text-align: center; padding: 58px 18px 6px; }
+.bio h1 { margin: 0 0 6px; font-size: 40px; font-weight: 500; letter-spacing: -0.01em; }
+.bio .team { font-size: 24px; margin-bottom: 8px; display: flex; justify-content: center; align-items: center; gap: 10px; }
+.bio .team .sw { width: 16px; height: 16px; border-radius: 50%; background: var(--line); }
+.bio p { margin: 3px 0; font-size: 18px; color: var(--ink); }
+.bio p span.sep { color: var(--ink-3); margin: 0 6px; }
+
+.tscroll { overflow-x: auto; margin: 18px 14px 8px; }
+table.std { width: 100%; margin: 0; border-collapse: collapse; font-size: 15px; }
+table.std th { font-weight: 700; text-align: right; padding: 8px 4px; border-bottom: 1px solid var(--ink-2); white-space: nowrap; }
+table.std td { text-align: right; padding: 7px 4px; white-space: nowrap; }
+table.std th:first-child, table.std td:first-child { text-align: left; }
+table.std tr.total td { background: var(--wash); font-weight: 700; border-top: 1px solid var(--panel-line); }
+
+.lower { display: grid; grid-template-columns: 0.9fr 1.4fr; gap: 14px; padding: 12px 18px 20px; }
+.lower h3 { margin: 6px 0 10px; font-size: 24px; font-weight: 500; }
+.apps a { display: block; color: var(--ink); text-decoration: none; font-size: 18px; padding: 2px 0; }
+.apps a:hover { color: var(--brand); text-decoration: underline; }
+.mates { width: 100%; border-collapse: collapse; font-size: 17px; }
+.mates th { font-weight: 700; font-size: 16px; text-align: left; padding: 0 4px 6px; }
+.mates td { padding: 3px 4px; }
+.pill { display: inline-block; min-width: 54px; border-radius: 999px !important; text-align: center; color: #fff; background: var(--line); border-radius: 3px; font-size: 15px; padding: 1px 6px; }
+.share { height: 14px; border-radius: 0 7px 7px 0; background: color-mix(in srgb, var(--line) 70%, white); }
+
+/* percentile rankings */
+.pr { padding: 0 22px 18px; }
+.sect { display: flex; align-items: flex-end; gap: 10px; margin-top: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--rule); }
+.sect svg { width: 40px; height: 40px; }
+.sect h3 { margin: 0; font-size: 25px; font-weight: 700; }
+.scale { display: grid; grid-template-columns: 36% minmax(0,1fr) 74px; font-size: 17px; margin: 12px 0 2px; }
+.scale .lbl { grid-column: 2; display: flex; justify-content: space-between; padding: 0 6px; }
+.scale .lbl span { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.scale .lbl span::after { content: ""; border: 6px solid transparent; border-bottom-color: currentColor; border-top: 0; }
+.scale .poor { color: var(--poor); } .scale .avg { color: #9aa5a9; } .scale .great { color: var(--great); }
+.row { display: grid; grid-template-columns: 36% minmax(0,1fr) 74px; align-items: center; min-height: 40px; }
+.row + .row .name, .row + .row .val { border-top: 1px dashed #d6e1e4; }
+.row .name, .row .val { height: 100%; display: flex; align-items: center; }
+.row .name { justify-content: flex-end; padding-right: 10px; font-size: 18px; text-align: right; white-space: nowrap; }
+.row .val { justify-content: flex-end; font-size: 17px; white-space: nowrap; }
+.bar { position: relative; height: 26px; margin: 0 4px; }
+.bar::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 8px; margin-top: -4px; border-radius: 4px; background: var(--track); }
+.bar .mid { position: absolute; left: 50%; top: 3px; bottom: 3px; width: 1px; background: rgb(29 36 39 / 0.18); z-index: 2; }
+.bar .fill { position: absolute; left: 0; top: 50%; height: 18px; margin-top: -9px; border-radius: 9px; transition: width 900ms cubic-bezier(0.16, 1, 0.3, 1); }
+.bar .bub {
+  position: absolute; top: 50%; width: 32px; height: 32px; margin-left: -16px; transform: translateY(-50%);
+  border-radius: 50%; border: 2.5px solid #fff; display: grid; place-items: center; z-index: 3;
+  font-size: 15px; font-weight: 700; color: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  transition: left 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.row.na .bar { opacity: 0.45; }
+.facts { margin-top: 18px; display: flex; gap: 22px; justify-content: center; font-size: 17px; color: var(--ink-2); flex-wrap: wrap; }
+.facts b { color: var(--ink); font-weight: 500; }
+.note { font-size: 15px; color: var(--ink-3); text-align: center; margin: 10px 0 0; }
+
+.term { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: help; text-decoration: underline dotted var(--brand-2) 1.5px; text-underline-offset: 4px; position: relative; text-align: right; }
+.term:hover, .term:focus-visible { color: var(--brand); }
+.tip { position: absolute; right: 0; bottom: calc(100% + 8px); width: 260px; padding: 10px 12px; background: var(--ink); color: #fff; font-size: 15px; line-height: 1.35; text-align: left; border-radius: 6px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.2); opacity: 0; transform: translateY(4px); pointer-events: none; transition: opacity 160ms ease-out, transform 160ms ease-out; z-index: 10; }
+.tip a { color: #9fd3de; }
+.term:hover .tip, .term:focus-visible .tip { opacity: 1; transform: none; pointer-events: auto; }
+.gloss-link { display: block; text-align: center; margin: 12px 0 0; font-size: 16px; }
+/* calendar */
+.cal-wrap { padding: 4px 16px 6px; }
+svg.cal { display: block; }
+.legend { display: flex; justify-content: center; align-items: center; gap: 10px; font-size: 15px; color: var(--ink-2); margin: 2px 0 10px; }
+.legend .ramp { width: 160px; height: 10px; background: linear-gradient(90deg, var(--poor), #c8c8c8, var(--great)); }
+svg.cal text { font-family: inherit; fill: var(--ink-2); }
+.months { width: calc(100% - 28px); margin: 8px 14px 18px; border-collapse: collapse; font-size: 15px; }
+.months th { font-weight: 500; font-size: 15px; padding: 4px 2px; color: var(--ink); }
+.months td { text-align: center; padding: 5px 2px; }
+.months td.k { text-align: left; color: var(--brand); font-size: 16px; white-space: nowrap; padding-right: 6px; }
+.months .chip { display: block; height: 10px; border-radius: 3px; margin: 0 2px 2px; }
+
+/* tabs + log */
+.tabs { display: flex; justify-content: center; margin: 34px 0 20px; }
+.tabs { gap: 6px; }
+.tabs button { font: inherit; font-size: 18px; letter-spacing: 0.04em; padding: 12px 34px; background: #fff; border: 1px solid var(--panel-line); border-radius: 999px; cursor: pointer; color: var(--ink); }
+.tabs button[aria-selected="true"] { background: var(--brand-2); color: #fff; border-color: var(--brand-2); }
+.log { width: 100%; border-collapse: collapse; font-size: 18px; margin-bottom: 30px; }
+.log th { text-align: right; font-weight: 700; padding: 10px 10px; border-bottom: 1px solid var(--ink-2); }
+.log td { text-align: right; padding: 8px 10px; border-bottom: 1px solid #e3eaec; }
+.log th:first-child, .log td:first-child { text-align: left; }
+.log tbody tr:hover td { background: var(--wash); }
+.delta { display: inline-block; min-width: 72px; padding: 2px 8px; border-radius: 3px; color: #fff; font-weight: 500; text-align: center; }
+
+footer { border-top: 1px solid var(--panel-line); padding: 18px 0 40px; color: var(--ink-2); font-size: 16px; display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+
+@media (max-width: 1180px) {
+  .grid { grid-template-columns: 1fr 1fr; }
+  .panel.cal { grid-column: 1 / -1; }
+}
+@media (max-width: 760px) {
+  .wrap { padding: 0 16px; }
+  .mast { flex-direction: column; align-items: stretch; }
+  .search { flex: none; }
+  .wordmark .sub { font-size: 16px; }
+  .datebox { flex-wrap: wrap; } .datebox .t { padding: 10px 14px; font-size: 18px; }
+  .seasons button { flex: 1; padding: 10px 8px; }
+  .wordmark .big { font-size: 44px; }
+  .brand svg { width: 60px; height: 60px; }
+  .nav { gap: 16px; } .nav a { font-size: 18px; }
+  .strip { flex-direction: column; }
+  .datebox .d { font-size: 26px; }
+  .grid { grid-template-columns: 1fr; }
+  .lower { grid-template-columns: 1fr; }
+  .tabs button { padding: 12px 14px; font-size: 15px; }
+  .log { font-size: 16px; }
+  .log .hide-sm { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .bar .fill, .bar .bub { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="mast">
+    <a class="brand" href="#" aria-label="MBTA Savant home">
+      <!-- emblem: a wheel seen side-on, rail below; rim stitched like a seam -->
+      <svg viewBox="0 0 80 80" aria-hidden="true">
+        <circle cx="40" cy="40" r="35" fill="none" stroke="var(--brand)" stroke-width="5"/>
+        <circle cx="40" cy="40" r="25" fill="none" stroke="var(--brand-2)" stroke-width="2" stroke-dasharray="3 4"/>
+        <circle cx="40" cy="40" r="7" fill="var(--brand)"/>
+        <g stroke="var(--brand)" stroke-width="3" stroke-linecap="round">
+          <line x1="40" y1="33" x2="40" y2="18"/><line x1="40" y1="47" x2="40" y2="62"/>
+          <line x1="33" y1="40" x2="18" y2="40"/><line x1="47" y1="40" x2="62" y2="40"/>
+        </g>
+        <path d="M14 28 q4 -5 9 -8" stroke="var(--great)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M66 52 q-4 5 -9 8" stroke="var(--great)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </svg>
+      <span class="wordmark">
+        <span class="big"><b>MBTA</b>savant</span>
+        <span class="sub">every car, every trip · <strong>a TransitMatters Labs project</strong></span>
+      </span>
+    </a>
+    <form class="search" role="search" onsubmit="return false">
+      <label class="sr" for="q" style="position:absolute;left:-9999px">Search a car or bus number</label>
+      <input id="q" type="search" placeholder="Search a car or bus number" autocomplete="off">
+    </form>
+  </header>
+
+  <nav class="nav" aria-label="Main">
+    <a href="#">Leaderboards</a>
+    <a href="#"><span class="dot" style="background:#da291c"></span>Red</a>
+    <a href="#"><span class="dot" style="background:#ed8b00"></span>Orange</a>
+    <a href="#"><span class="dot" style="background:#003da5"></span>Blue</a>
+    <a href="#"><span class="dot" style="background:#00843d"></span>Green</a>
+    <a href="#"><span class="dot" style="background:#7a8b8f"></span>Mattapan</a>
+    <a href="#"><span class="dot" style="background:#ffc72c"></span>Bus</a>
+    <a href="#">Fleet vs Fleet</a>
+    <a href="#">Compare Cars</a>
+    <a href="#">About</a>
+  </nav>
+
+  <div class="strip">
+    <div class="datebox"><div class="d" id="date"></div><div class="t" id="dateText"></div></div>
+    <div class="seasons" role="group" aria-label="Season" id="seasons"></div>
+  </div>
+
+  <main class="grid" id="main">
+    <section class="panel" aria-labelledby="carName">
+      <div class="hero-wrap" id="heroWrap"><div class="hero" id="hero"></div></div>
+      <div class="bio" id="bio"></div>
+      <div id="seasonTable"></div>
+      <div class="lower">
+        <div class="apps">
+          <h3>Car Pages</h3>
+          <a href="#">Game Log</a><a href="glossary.html">Stat Glossary</a><a href="#">Coupled With</a><a href="#">Compare Cars</a><a href="#">Fleet vs Fleet</a><a href="#">Line Leaderboard</a>
+        </div>
+        <div>
+          <h3><span class="dotted" id="mateTitle">Coupled With</span></h3>
+          <table class="mates" id="mates"></table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="prTitle">
+      <div class="panel-h"><h2 id="prTitle"></h2></div>
+      <div class="pr" id="pr"></div>
+    </section>
+
+    <section class="panel cal" aria-labelledby="calTitle">
+      <div class="panel-h"><h2 id="calTitle"></h2><span class="help" title="Each square is a service day, colored by Time Saved that day: red = faster than the line's average car, blue = slower.">?</span></div>
+      <div class="legend"><span>SLOWER</span><span class="ramp"></span><span>FASTER</span><span style="margin-left:10px;display:inline-flex;align-items:center;gap:6px"><i style="width:12px;height:12px;background:var(--track);display:inline-block"></i>didn't run</span></div>
+      <div class="cal-wrap" id="cal"></div>
+      <table class="months" id="months"></table>
+    </section>
+  </main>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="false">SAVANT</button>
+    <button role="tab" aria-selected="false">STANDARD</button>
+    <button role="tab" aria-selected="true">GAME LOG</button>
+    <button role="tab" aria-selected="false">COUPLED WITH</button>
+  </div>
+  <table class="log" id="log"></table>
+
+  <footer>
+    <span>A TransitMatters Labs fan site, not an official MBTA assessment. Built nightly from MBTA arrival and departure data.</span>
+    <span>Vehicle data: The MBTA Vehicle Inventory Page (unofficial)</span>
+  </footer>
+</div>
+
+<script>
+const DATA = __DATA__;
+const GLOSS = {
+  'time-saved': 'Seconds this car saves per stop-to-stop hop compared with the average car on its line, on the same stretches at the same times of day. Bigger is better.',
+  'pace-plus': 'Speed on a 100 scale: 100 is the line\u2019s average car; 105 means 5% quicker on the same stretches.',
+  'on-schedule': 'Share of stop-to-stop hops completed at or under the MBTA\u2019s scheduled time.',
+  'consistency': 'How much this car\u2019s hop times vary. A smaller spread means more predictable trips.',
+  'door-time': 'Time stopped at stations compared with a typical stop at the same station and hour.',
+  'days-in-service': 'Share of service days this car carried riders.',
+  'iron-horse': 'Longest run of consecutive service days in service.',
+  'miles': 'Distance carried in passenger service this season.',
+  'cruise-speed': 'A fast-but-typical speed between stations (90th percentile). Mostly reflects the track, so it isn\u2019t ranked.',
+  'crowding': 'Average share of capacity, from on-board passenger counters. Only newer cars report it.',
+};
+const LINE = { red: ['Red Line', '#da291c'], orange: ['Orange Line', '#ed8b00'], blue: ['Blue Line', '#003da5'], green: ['Green Line', '#00843d'], mattapan: ['Mattapan Line', '#7a8b8f'], bus: ['Bus', '#ffc72c'] };
+const [lineName, lineColor] = LINE[DATA.group];
+document.documentElement.style.setProperty('--line', lineColor);
+const $ = (id) => document.getElementById(id);
+const fmt = (v, d = 1) => (v == null ? '–' : Number(v).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d }));
+const signed = (v, d = 1, unit = '') => (v == null ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + fmt(Math.abs(v), d) + unit);
+
+// percentile → Savant-style blue · gray · red
+function pctColor(p) {
+  const blue = [50, 96, 180], gray = [200, 200, 200], red = [214, 41, 41];
+  const t = Math.max(0, Math.min(100, p)) / 100;
+  const [a, b, u] = t < 0.5 ? [blue, gray, t / 0.5] : [gray, red, (t - 0.5) / 0.5];
+  return `rgb(${a.map((x, i) => Math.round(x + (b[i] - x) * u)).join(',')})`;
+}
+
+let season = DATA.seasons['2026'] ? '2026' : Object.keys(DATA.seasons)[0];
+const order = ['2026', '2025', 'last30'].filter((k) => DATA.seasons[k]);
+const label = (k) => (k === 'last30' ? 'Last 30 Days' : k);
+
+function vsAvg(s) {
+  const c = s.car, a = s.avg || {};
+  return {
+    ttoe: c.ttoe_sec != null && a.ttoe_sec != null ? c.ttoe_sec - a.ttoe_sec : null,
+    speed: c.speed_vs_expected_pct != null && a.speed_vs_expected_pct != null ? c.speed_vs_expected_pct - a.speed_vs_expected_pct : null,
+  };
+}
+
+function renderStatic() {
+  const latest = DATA.meta.latest_service_date;
+  const d = new Date(latest + 'T12:00:00');
+  $('date').textContent = `${d.getMonth() + 1}/${d.getDate()}`;
+  $('dateText').textContent = 'Stats through last night’s service · updated nightly';
+
+  const any = DATA.seasons[season].car, v = any.vehicle || {};
+  const pair = (any.teammates || [])[0];
+  const married = pair && any.trips && pair[1] / any.trips > 0.95 ? pair[0] : null;
+  $('hero').innerHTML = carSvg(DATA.number, married);
+  $('heroWrap').insertAdjacentHTML('beforeend', `<div class="headshot">${DATA.number}</div>`);
+  $('bio').innerHTML = `
+    <h1 id="carName">Car ${DATA.number}</h1>
+    <div class="team"><span class="sw"></span>${lineName} <span style="color:var(--ink-3)">|</span> ${v.builder || 'Unknown builder'} ${v.model || ''}</div>
+    <p>${married ? `Married pair: ${DATA.number}/${married}<span class="sep">|</span>` : ''}${v.length_ft ? v.length_ft + ' ft' : ''}<span class="sep">|</span>${v.propulsion ? v.propulsion[0].toUpperCase() + v.propulsion.slice(1) : ''}</p>
+    <p>Built: ${v.years || '–'}<span class="sep">|</span>${v.fleet_label || 'Unknown fleet'}</p>`;
+
+  // season table
+  const rows = order.filter((k) => k !== 'last30').map((k) => {
+    const s = DATA.seasons[k], c = s.car, va = vsAvg(s);
+    return { k, trips: c.trips, days: c.game_log.length, miles: c.miles, ttoe: va.ttoe, ot: c.on_time_pct, ih: c.iron_horse_days };
+  });
+  const tot = rows.reduce((t, r) => ({ trips: t.trips + r.trips, days: t.days + r.days, miles: t.miles + (r.miles || 0), ih: Math.max(t.ih, r.ih || 0) }), { trips: 0, days: 0, miles: 0, ih: 0 });
+  $('seasonTable').innerHTML = `<div class="tscroll"><table class="std"><thead><tr><th>Season</th><th>Trips</th><th>Miles</th><th>Saved/stop</th><th>On-Sched</th><th>Iron Horse</th></tr></thead><tbody>
+    ${rows.map((r) => `<tr><td>${r.k}</td><td>${r.trips.toLocaleString()}</td><td>${fmt(r.miles, 0)}</td><td>${r.ttoe == null ? '–' : signed(-r.ttoe, 1, ' s')}</td><td>${fmt(r.ot, 1)}%</td><td>${r.ih}</td></tr>`).join('')}
+    <tr class="total"><td>${rows.length} Seasons</td><td>${tot.trips.toLocaleString()}</td><td>${fmt(tot.miles, 0)}</td><td></td><td></td><td>${tot.ih}</td></tr></tbody></table></div>`;
+}
+
+function renderSeason() {
+  const s = DATA.seasons[season], c = s.car, p = c.pct || {}, va = vsAvg(s);
+  $('seasons').innerHTML = order.map((k) => `<button aria-pressed="${k === season}" data-k="${k}">${label(k)}</button>`).join('');
+  $('seasons').querySelectorAll('button').forEach((b) => (b.onclick = () => { season = b.dataset.k; renderSeason(); }));
+
+  $('prTitle').innerHTML = `<span class="dotted">${label(season)}</span> ${lineName} Percentile Rankings`;
+  const row = (name, pct, val) => `<div class="row${pct == null ? ' na' : ''}"><div class="name">${name}</div>
+      <div class="bar" role="img" aria-label="${name.replace(/<[^>]+>.*$/s, '')}: ${pct == null ? 'not ranked' : pct + 'th percentile'}">
+        <span class="mid"></span>
+        ${pct == null ? '' : `<span class="fill" style="width:${pct}%;background:color-mix(in srgb, ${pctColor(pct)} 45%, white)"></span><span class="bub" style="left:${Math.max(4, Math.min(96, pct))}%;background:${pctColor(pct)}">${pct}</span>`}
+      </div><div class="val">${val}</div></div>`;
+  const icon = (d) => `<svg viewBox="0 0 40 40" aria-hidden="true">${d}</svg>`;
+  const watch = icon('<circle cx="20" cy="23" r="13" fill="none" stroke="#1d2427" stroke-width="3.5"/><path d="M20 23 L20 14" stroke="#1d2427" stroke-width="3.5" stroke-linecap="round"/><rect x="16" y="4" width="8" height="5" fill="#1d2427"/><path d="M31 11 l3-3" stroke="#1d2427" stroke-width="3.5" stroke-linecap="round"/>');
+  const cal = icon('<rect x="5" y="8" width="30" height="27" rx="2" fill="none" stroke="#1d2427" stroke-width="3.5"/><path d="M5 16 H35" stroke="#1d2427" stroke-width="3.5"/><path d="M12 4 V11 M28 4 V11" stroke="#1d2427" stroke-width="3.5" stroke-linecap="round"/><path d="M12 24 l5 5 l10 -10" stroke="var(--great)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>');
+  const scale = `<div class="scale"><div class="lbl"><span class="poor">POOR</span><span class="avg">AVERAGE</span><span class="great">GREAT</span></div></div>`;
+  const ranked = c.qualified && c.ranked;
+  const G = (id, name) => `<span class="term" tabindex="0">${name}<span class="tip" role="tooltip">${GLOSS[id]} <a href="glossary.html#${id}">More</a></span></span>`;
+  const saved = va.ttoe == null ? null : -va.ttoe;
+  const paceplus = va.speed == null ? null : Math.round(100 + va.speed);
+  const door = c.door_time_sec == null ? '–' : c.door_time_sec === 0 ? 'typical' : `${Math.abs(c.door_time_sec)} s ${c.door_time_sec < 0 ? 'quick' : 'slow'}`;
+  $('pr').innerHTML = `
+    <div class="sect">${watch}<h3>Performance</h3></div>${scale}
+    ${row(G('time-saved', 'Time Saved'), p.ttoe_sec, saved == null ? '–' : signed(saved, 1, ' s'))}
+    ${row(G('pace-plus', 'Pace+'), p.speed_vs_expected_pct, paceplus ?? '–')}
+    ${row(G('on-schedule', 'On-Schedule %'), p.on_time_pct, fmt(c.on_time_pct, 1))}
+    ${row(G('consistency', 'Consistency'), p.steadiness_sec, fmt(c.steadiness_sec, 0) + ' s')}
+    ${row(G('door-time', 'Door Time'), p.door_time_sec, door)}
+    <div class="sect" style="margin-top:22px">${cal}<h3>Workload</h3></div>${scale}
+    ${row(G('days-in-service', 'Days in Service'), p.games_played_pct, fmt(c.games_played_pct, 0) + '%')}
+    ${row(G('iron-horse', 'Iron Horse Streak'), p.iron_horse_days, c.iron_horse_days + ' d')}
+    ${row(G('miles', 'Miles Logged'), p.miles, c.miles == null ? '–' : (c.miles / 1000).toFixed(1) + 'k')}
+    <div class="facts"><span>${G('cruise-speed', 'Cruise Speed')} <b>${fmt(c.top_speed_mph, 1)} mph</b></span>${c.crowd_load_pct != null ? `<span>${G('crowding', 'Avg Crowding')} <b>${fmt(c.crowd_load_pct, 1)}%</b></span>` : ''}<span>Trips <b>${c.trips.toLocaleString()}</b></span></div>
+    <p class="note">${ranked ? `Ranked against ${s.avg.ranked} qualified ${lineName} cars.` : 'Not enough trips this season to be ranked.'}</p>
+    <a class="gloss-link" href="glossary.html">How these stats work →</a>`;
+
+  // teammates
+  const tm = (c.teammates || []).slice(0, 6);
+  const max = tm.length ? tm[0][1] : 1;
+  $('mates').innerHTML = `<thead><tr><th>Car</th><th>Trips together</th><th style="text-align:right">Share</th></tr></thead><tbody>
+    ${tm.map(([n, k]) => `<tr><td><span class="pill">${n}</span></td><td><div class="share" style="width:${Math.max(6, (k / max) * 100)}%"></div></td><td style="text-align:right">${Math.round((k / c.trips) * 100)}%</td></tr>`).join('')}</tbody>`;
+
+  renderCalendar(s);
+  renderLog(s);
+}
+
+function dayScore(day, avg) { // faster than avg → high (red)
+  if (day.ttoe_sec == null || avg == null) return 50;
+  return 50 - (day.ttoe_sec - avg) * 6;
+}
+
+function renderCalendar(s) {
+  const c = s.car, avg = s.avg && s.avg.ttoe_sec;
+  const days = new Map(c.game_log.map((g) => [g.date, g]));
+  const first = c.game_log.length ? c.game_log[0].date : null;
+  let start, end;
+  if (season === 'last30') { const w = DATA.meta.windows.find((w) => w.key === 'last30'); start = new Date(w.start + 'T12:00:00'); end = new Date(w.end + 'T12:00:00'); }
+  else { start = new Date(`${season}-01-01T12:00:00`); end = new Date(Math.min(new Date(`${season}-12-31T12:00:00`), new Date(DATA.meta.latest_service_date + 'T12:00:00'))); }
+  $('calTitle').innerHTML = `<span class="dotted">${label(season)}</span> Service Calendar`;
+  const fillFor = (key) => { const g = days.get(key); return [g, g ? pctColor(dayScore(g, avg)) : 'var(--track)']; };
+  const tip = (key, g) => `<title>${key}${g ? ` · ${g.trips} trips · ${signed(avg - g.ttoe_sec, 1, ' s')} saved per stop` : ' · did not run'}</title>`;
+  if (season === 'last30') {
+    const cell = 40, gap = 5, s0 = new Date(start); s0.setDate(s0.getDate() - ((s0.getDay() + 6) % 7));
+    const weeks = Math.ceil((end - s0) / 864e5 / 7) + 1, W = 7 * (cell + gap), H = 20 + weeks * (cell + gap);
+    let out = `<svg class="cal" width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Last 30 days">`;
+    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach((t, i) => (out += `<text x="${i * (cell + gap) + cell / 2}" y="13" font-size="12" text-anchor="middle">${t}</text>`));
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const wk = Math.floor((d - s0) / 864e5 / 7), dow = (d.getDay() + 6) % 7, key = d.toISOString().slice(0, 10), [g, f] = fillFor(key);
+      const x = dow * (cell + gap), y = 20 + wk * (cell + gap);
+      out += `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="3" fill="${f}">${tip(key, g)}</rect><text x="${x + 5}" y="${y + 15}" font-size="12" style="fill:${g ? '#fff' : 'var(--ink-3)'}">${d.getDate()}</text>`;
+    }
+    $('cal').innerHTML = out + '</svg>';
+  } else {
+    // small multiples: one mini month per cell, Savant-scatter energy in a calendar
+    const months = [];
+    for (let m = 0; m < 12; m++) { const first = new Date(start.getFullYear(), m, 1, 12); if (first <= end) months.push(first); }
+    const cell = 13, gap = 2, mw = 7 * (cell + gap), mh = 18 + 6 * (cell + gap), cols = 4, padX = 14, padY = 10;
+    const rows = Math.ceil(months.length / cols), W = cols * mw + (cols - 1) * padX, H = rows * mh + (rows - 1) * padY;
+    let out = `<svg class="cal" width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="${season} service calendar">`;
+    months.forEach((first, i) => {
+      const ox = (i % cols) * (mw + padX), oy = Math.floor(i / cols) * (mh + padY);
+      out += `<text x="${ox}" y="${oy + 11}" font-size="12" font-weight="500" style="fill:var(--ink)">${first.toLocaleString('en', { month: 'short' }).toUpperCase()}</text>`;
+      const lead = (first.getDay() + 6) % 7;
+      for (let d = new Date(first); d.getMonth() === first.getMonth() && d <= end; d.setDate(d.getDate() + 1)) {
+        const idx = lead + d.getDate() - 1, key = d.toISOString().slice(0, 10), [g, f] = fillFor(key);
+        out += `<rect x="${ox + (idx % 7) * (cell + gap)}" y="${oy + 18 + Math.floor(idx / 7) * (cell + gap)}" width="${cell}" height="${cell}" rx="2" fill="${f}">${tip(key, g)}</rect>`;
+      }
+    });
+    $('cal').innerHTML = out + '</svg>';
+  }
+
+  // month summary
+  const months = {};
+  c.game_log.forEach((g) => { const m = g.date.slice(0, 7); (months[m] ||= []).push(g); });
+  const keys = Object.keys(months).sort().slice(-11);
+  const avgOf = (arr) => arr.reduce((t, g) => t + (g.ttoe_sec || 0), 0) / arr.length;
+  $('months').innerHTML = `<thead><tr><th></th>${keys.map((k) => `<th>${new Date(k + '-15').toLocaleString('en', { month: 'short' })}</th>`).join('')}</tr></thead><tbody>
+    <tr><td class="k"></td>${keys.map((k) => `<td><span class="chip" style="background:${pctColor(50 - (avgOf(months[k]) - avg) * 6)}"></span></td>`).join('')}</tr>
+    <tr><td class="k">DAYS</td>${keys.map((k) => `<td>${months[k].length}</td>`).join('')}</tr>
+    <tr><td class="k">TRIPS/DAY</td>${keys.map((k) => `<td>${Math.round(months[k].reduce((t, g) => t + g.trips, 0) / months[k].length)}</td>`).join('')}</tr>
+    <tr><td class="k" style="font-style:italic">SAVED/STOP</td>${keys.map((k) => `<td>${signed(avg - avgOf(months[k]), 1)}</td>`).join('')}</tr></tbody>`;
+}
+
+function renderLog(s) {
+  const c = s.car, avg = s.avg && s.avg.ttoe_sec;
+  const rows = [...c.game_log].reverse().slice(0, 12);
+  $('log').innerHTML = `<thead><tr><th>Date</th><th>Trips</th><th class="hide-sm">Miles</th><th>Time Saved / stop</th><th class="hide-sm">Lines</th></tr></thead><tbody>
+    ${rows.map((g) => { const d = g.ttoe_sec - avg; return `<tr><td>${new Date(g.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</td><td>${g.trips}</td><td class="hide-sm">${fmt(g.miles, 0)}</td><td><span class="delta" style="background:${pctColor(dayScore(g, avg))}">${signed(-d, 1, ' s')}</span></td><td class="hide-sm">${(g.routes || []).join(', ')}</td></tr>`; }).join('')}</tbody>`;
+}
+
+function carSvg(num, mate) {
+  // side elevation of a heavy-rail married pair, drawn in the line color
+  const body = (x, n) => `
+    <g transform="translate(${x},0)">
+      <rect x="0" y="20" width="300" height="88" rx="10" fill="#f4f6f7" stroke="#8a979b" stroke-width="2"/>
+      <rect x="0" y="86" width="300" height="12" fill="${lineColor}"/>
+      <rect x="0" y="28" width="300" height="5" fill="${lineColor}" opacity="0.85"/>
+      ${[40, 130, 220].map((dx) => `<rect x="${dx}" y="40" width="34" height="58" rx="2" fill="#cfd8db" stroke="#8a979b" stroke-width="1.5"/><line x1="${dx + 17}" y1="40" x2="${dx + 17}" y2="98" stroke="#8a979b" stroke-width="1.5"/>`).join('')}
+      ${[84, 174, 264].map((dx) => `<rect x="${dx - 6}" y="42" width="${dx === 264 ? 30 : 40}" height="26" rx="3" fill="#33454c"/>`).join('')}
+      <rect x="6" y="42" width="24" height="26" rx="3" fill="#33454c"/>
+      <text x="150" y="80" text-anchor="middle" font-size="15" font-weight="700" fill="#1d2427" font-family="Roboto Condensed, sans-serif">${n}</text>
+      ${[40, 80, 220, 260].map((cx) => `<circle cx="${cx}" cy="116" r="11" fill="#3b464a"/><circle cx="${cx}" cy="116" r="4" fill="#9aa5a9"/>`).join('')}
+    </g>`;
+  return `<svg class="car" viewBox="-10 0 640 130" aria-hidden="true">${body(0, num)}${mate ? body(310, mate) : ''}</svg>`;
+}
+
+renderStatic();
+renderSeason();
+</script>
+</body>
+</html>
