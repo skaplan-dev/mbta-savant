@@ -110,8 +110,9 @@ tunable); unqualified cars show stats but no percentile bars and don't appear on
 
 | Metric | Definition | Percentile direction |
 |---|---|---|
-| **Trip Time Over Expected** (headline) | Mean over segments of (actual − expected) seconds, where expected = median segment time for that (route, direction, from-stop, to-stop, hour-of-day bucket, weekday/Sat/Sun) across all vehicles in the window. Used for every group, so one code path. | lower is better |
-| **Top Speed** | 90th-percentile segment speed (mph), rail only, where distance is known | higher |
+| **Trip Time Over Expected** (headline) | Mean over segments of min(actual − expected, 300) seconds — delays beyond 5 min count as 5 min (user decision 2026-11-17, after real data showed a few disrupted trips decided ranks), where expected = median segment time for that (route, direction, from-stop, to-stop, hour-of-day bucket, weekday/Sat/Sun) across all vehicles in the window. Used for every group, so one code path. | lower is better |
+| **Speed vs Expected** | 100 × (Σ expected / Σ capped actual − 1) over the car's segments: % faster (+) or slower (−) than typical on the same segments/hours. Rail and bus. Replaces Top Speed as a ranked stat (user decision 2026-11-17: Top Speed measured the track, not the car) | higher |
+| **Top Speed** | 90th-percentile segment speed (mph), rail only — shown as a fun fact, not ranked | — |
 | **On-Time %** | Share of **segments** at or under the MBTA benchmark (`benchmark_travel_time_sec`, which is per stop pair — see v5 `s3_historical.travel_times`). Segments with no benchmark are left out of the denominator. Per segment rather than whole trip, so no first-to-last pairing is needed. (My call.) | higher |
 | **Steadiness** | Interquartile range of per-segment (actual − expected) | lower |
 | **Door Time** | Median dwell minus expected dwell (same bucketing as above) | lower |
@@ -138,6 +139,8 @@ Percentile = share of qualified cars in the group the car beats, 0–100.
   slightly as the season fills in. That's fine for a fun site. (My call.)
 - A one-off
   backfill script builds segment files for past days (at least back to Jan 1 of the earliest season shown).
+- **Backfill reads LAMP daily files, not the monthly archives** (real-data finding 2026-11-17: archives carry only the lead car on rail and no vehicle on bus). Rail LAMP goes back to 2019; bus LAMP starts 2025-07-30, so the 2025 bus season covers Aug–Dec.
+- Only cars in the roster are ranked; labels outside it (junk numbers, work equipment) are excluded. A segment counts for a group only if its route belongs to that group.
 - Builder decides how far back to backfill based on data availability (LAMP coverage, consist
   field coverage).
 

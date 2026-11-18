@@ -384,6 +384,142 @@
 
 ---
 
+---
+
+## Amendment (2026-11-17): real-data fixes, Tasks 11–15
+
+Source: `docs/sanity-check-2026-11.md`. **User decisions (made after the real-data check):** "Cap big delays": TTOE counts any delay over 5 minutes as 5 minutes. "Speed vs expected" replaces Top Speed as the ranked stat, and Top Speed stays as an unranked fun fact. Controller rulings (sanity-check findings with one obvious fix): backfill from LAMP, filter segments by route group, rank only roster cars, S3 retries, build memory, nightly segment cache.
+
+### Task 11: Backfill from LAMP, S3 retries, local credentials
+
+**Goal:** `savant backfill` builds history from LAMP daily files, which carry the full consist and occupancy, instead of the monthly archives. S3 reads survive transient errors.
+
+**Files:**
+- Modify: `pipeline/savant/cli.py` (backfill), `pipeline/savant/events.py` (retries), `pipeline/pyproject.toml` (`botocore[crt]`)
+- Test: `pipeline/tests/test_cli.py`, `pipeline/tests/test_events.py`
+
+**Interfaces:**
+- `savant backfill --start --end [--groups] [--workers N=5] [--force] --root`: runs `day_events` → `build_segments` → `write_day` for every day in range. Days run in parallel across N worker threads. Existing day files are skipped unless `--force`. `--end` before `--start` exits 2 with a message.
+- `month_events` stays in events.py but nothing calls it any more. Delete it, along with its tests (YAGNI).
+- Retries: the boto3 client uses `Config(retries={"max_attempts": 8, "mode": "adaptive"})`. Reading a body retries up to 3 times on `urllib3.exceptions.ProtocolError`, `botocore.exceptions.ResponseStreamingError` or `ConnectionError`, with backoff of 1 s, 2 s, then 4 s, and re-raises after the last attempt.
+- Add `botocore[crt]` to the dependencies, so local `aws login` credentials work.
+
+**Acceptance Criteria:**
+- [ ] A backfill over 3 fixture days writes 3 day files through `day_events`. The test's fake client records that no `Events/monthly-*` key was requested.
+- [ ] `--end` before `--start` exits with code 2
+- [ ] A read whose body raises ProtocolError twice and then succeeds returns rows. One that raises 4 times propagates the error.
+
+**Verify:** `cd pipeline && uv run pytest -q` → all pass
+
+```json:metadata
+{"files": ["pipeline/savant/cli.py", "pipeline/savant/events.py", "pipeline/pyproject.toml", "pipeline/tests/test_cli.py", "pipeline/tests/test_events.py"], "verifyCommand": "cd pipeline && uv run pytest -q", "acceptanceCriteria": ["backfill uses LAMP day files only", "end<start exits 2", "body read retries 3x then raises"], "modelTier": "standard"}
+```
+
+---
+
+### Task 12: Group filtering and roster-only ranking
+
+**Goal:** A segment counts only for the group its route belongs to. Only cars that are in the roster get percentiles.
+
+**Files:**
+- Modify: `pipeline/savant/segments.py` (`build_segments` drops segments where `group_for_route(route_id) != group`), `pipeline/savant/publish.py`
+- Test: `pipeline/tests/test_segments.py`, `pipeline/tests/test_publish.py`
+
+**Interfaces:**
+- `build_segments`: a Red route_id segment handed to group `mattapan` is dropped. Car tokens that are not all digits (e.g. `WIRE`, `None`, an empty string) are removed from `cars`, along with the matching `occupancy_pct` entry. If no cars are left, the segment is dropped.
+- `publish.add_percentiles`: a car with `roster.lookup(group, number) is None` gets every pct set to None and is left out of n. Its stats and car page are still published, and its index/leaderboard rows carry `"ranked": false`. Roster cars carry `"ranked": true` (also false for every mattapan car).
+
+**Acceptance Criteria:**
+- [ ] A segment with route_id `Red` passed to `build_segments("mattapan", …)` is dropped (`test_route_outside_group_dropped`)
+- [ ] The consist `3901|WIRE` gives `cars == ["3901"]`, with occupancy aligned
+- [ ] Two qualified green cars, `3901` (in the roster) and `3000` (not in it): `3901` gets pct 100 with n=1, and `3000` gets all-None pct and `ranked == false`
+
+**Verify:** `cd pipeline && uv run pytest -q` → all pass
+
+```json:metadata
+{"files": ["pipeline/savant/segments.py", "pipeline/savant/publish.py", "pipeline/tests/test_segments.py", "pipeline/tests/test_publish.py"], "verifyCommand": "cd pipeline && uv run pytest -q", "acceptanceCriteria": ["off-group route dropped", "non-numeric car tokens removed", "non-roster cars unranked and excluded from n"], "modelTier": "standard"}
+```
+
+---
+
+### Task 13: Capped TTOE, Speed vs Expected, build memory
+
+**Goal:** The headline stat ignores disruption-scale outliers. Speed vs Expected becomes a ranked stat. The build fits a 7 GB runner.
+
+**Files:**
+- Modify: `pipeline/savant/stats.py`, `pipeline/savant/publish.py` (METRICS), `web/src/api.ts`, `web/src/Leaderboard.tsx`, `web/src/CarPage.tsx`
+- Test: `pipeline/tests/test_stats.py`, `pipeline/tests/test_publish.py`
+
+**Interfaces:**
+- `TTOE_CAP_SEC = 300`. Per segment `delta = least(travel_sec − expected, 300)`. This delta feeds `ttoe_sec`, `steadiness_sec` and the game-log TTOE. There is no lower cap.
+- `speed_vs_expected_pct = 100 × (Σ expected / Σ least(travel_sec, expected + 300) − 1)` over the car's segments. It covers rail and bus and is null if the car has no segments. Add it to the stats dict and to `METRICS` as `"higher"`.
+- `top_speed_mph` keeps its definition, but its METRICS entry becomes `None` (shown, not ranked).
+- Memory: `seg` projects only the columns it uses (no `SELECT *`). The connection sets `memory_limit='4GB'` and a `temp_directory` under `root/.duckdb_tmp`.
+- Add the deferred regression test: a 1-car and a 3-car train on the same segment, where expected is the plain median of the two travel times.
+- The web types and tables gain `speed_vs_expected_pct`, with its pct. Top Speed is shown without a pct.
+
+**Acceptance Criteria:**
+- [ ] A car with one segment 3,600 s over expected and nine at expected has `ttoe_sec == 30.0` (that is, (300 + 0×9)/10)
+- [ ] A car 10% faster than expected on every segment has `speed_vs_expected_pct ≈ 11.1`, and one 10% slower ≈ −9.1
+- [ ] `METRICS["top_speed_mph"] is None` and `METRICS["speed_vs_expected_pct"] == "higher"`
+- [ ] `test_multi_car_train_weighted_once` passes
+- [ ] `npx tsc --noEmit && npm run build` in web/ exits 0
+
+**Verify:** `cd pipeline && uv run pytest -q && cd ../web && npx tsc --noEmit && npm run build`
+
+```json:metadata
+{"files": ["pipeline/savant/stats.py", "pipeline/savant/publish.py", "pipeline/tests/test_stats.py", "pipeline/tests/test_publish.py", "web/src/api.ts", "web/src/Leaderboard.tsx", "web/src/CarPage.tsx"], "verifyCommand": "cd pipeline && uv run pytest -q && cd ../web && npx tsc --noEmit && npm run build", "acceptanceCriteria": ["ttoe capped at 300s per segment", "speed_vs_expected_pct ranked higher", "top speed unranked", "multi-car weighting regression test", "web builds"], "modelTier": "frontier"}
+```
+
+---
+
+### Task 14: Nightly segment cache and corrected cost estimate
+
+**Goal:** The nightly job stops downloading every segment from S3 each night.
+
+**Files:**
+- Modify: `.github/workflows/nightly.yml`, `cloudformation.json` (cost text)
+
+**Interfaces:**
+- Use `actions/cache` for `work/segments`, with key `segments-${{ github.run_id }}` and restore-keys `segments-` (always restore the newest and save a new one).
+- On a cache miss, fall back to `aws s3 sync s3://$BUCKET/segments ./work/segments`. On a hit, skip the full pull.
+- After ingest, push only the new day's files with `aws s3 cp` for each `work/segments/*/YYYY/<date>.parquet`. S3 stays the durable copy.
+- Cost text: S3 egress about $0.0/night with a cache hit, or about $0.07 for a full pull on a miss (740 MB). LAMP reads are about 65 MB/night (about $0.20/month). Total well under $1/month. Update both the Description and Metadata, and the nightly.yml header.
+
+**Acceptance Criteria:**
+- [ ] nightly.yml has the actions/cache step, a pull step conditional on `cache-hit != 'true'`, and a per-day push (no full sync of segments up)
+- [ ] YAML parses and the cloudformation.json JSON is valid
+- [ ] `grep -c 'cache-hit' .github/workflows/nightly.yml` ≥ 1
+
+**Verify:** `python3 -c "import yaml,sys;yaml.safe_load(open('.github/workflows/nightly.yml'))" && python3 -m json.tool cloudformation.json >/dev/null`
+
+```json:metadata
+{"files": [".github/workflows/nightly.yml", "cloudformation.json"], "verifyCommand": "python3 -c \"import yaml;yaml.safe_load(open('.github/workflows/nightly.yml'))\" && python3 -m json.tool cloudformation.json >/dev/null", "acceptanceCriteria": ["actions/cache with miss fallback", "per-day segment push", "cost text updated"], "modelTier": "standard"}
+```
+
+---
+
+### Task 15: Re-run on real data with LAMP
+
+**Goal:** Rebuild the full history from LAMP and confirm the fixes on real data.
+
+**Files:**
+- Modify: `docs/sanity-check-2026-11.md` (add a "Re-run after fixes" section)
+
+**Acceptance Criteria:**
+- [ ] A fresh `work/` root is built with `savant backfill --start 2025-01-01 --end <yesterday> --workers 5`. The doc records the runtime and size.
+- [ ] Bus is present from 2025-07-30. Red/Orange cars average more than 1 car per segment (B1 and B2 fixed).
+- [ ] No Red car numbers appear in mattapan, and no non-roster car has a percentile
+- [ ] At least one qualified Red or Orange car has a negative TTOE. The Red fleet medians for Speed vs Expected are listed, along with whether CRRC leads.
+- [ ] The build's peak RSS (`/usr/bin/time -l`) is recorded and is under 7 GB
+- [ ] The 3-car dashboard comparison still matches within ±5%
+
+**Verify:** the doc section exists with every item filled in from real output
+
+```json:metadata
+{"files": ["docs/sanity-check-2026-11.md"], "verifyCommand": "grep -q 'Re-run after fixes' docs/sanity-check-2026-11.md", "acceptanceCriteria": ["LAMP backfill runtime/size", "bus present from 2025-07-30, multi-car consists", "no mattapan leak, no non-roster pct", "negative TTOE exists; speed-vs-expected fleet medians", "build peak RSS < 7GB", "dashboard comparison within 5%"], "modelTier": "frontier"}
+```
+
 ## After this plan
 
 Mockups for Home, Leaderboard, Car page and Fleet vs Fleet go to the user for approval. A second plan then builds the real frontend: the line map, Savant-style percentile bars, and path routing with an SPA fallback.
