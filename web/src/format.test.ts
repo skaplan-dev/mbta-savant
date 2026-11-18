@@ -33,9 +33,9 @@ describe('car stats', () => {
         expect(timeSaved({ ttoe_vs_avg_sec: -2.9 })).toBe(2.9);
     });
     it('doorLabel', () => {
-        expect(doorLabel(-2)).toBe('2 s quick');
-        expect(doorLabel(3)).toBe('3 s slow');
-        expect(doorLabel(0)).toBe('typical');
+        expect(doorLabel(-2)).toBe('2.0 s quick');
+        expect(doorLabel(0.84)).toBe('0.8 s slow');
+        expect(doorLabel(0.04)).toBe('typical');
     });
 });
 

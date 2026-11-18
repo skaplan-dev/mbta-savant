@@ -61,9 +61,11 @@ export const pacePlus = ({ speed_vs_avg_pct: v }: VsAverage): number | null =>
 export function doorLabel(sec: number | null | undefined): string {
     if (sec == null) return '–';
 
-    if (sec === 0) return 'typical';
+    const tenths = Math.round(sec * 10) / 10;
 
-    return `${Math.abs(sec)} s ${sec < 0 ? 'quick' : 'slow'}`;
+    if (tenths === 0) return 'typical';
+
+    return `${Math.abs(tenths).toFixed(1)} s ${tenths < 0 ? 'quick' : 'slow'}`;
 }
 
 /** 1 → "1st", 22 → "22nd", 11 → "11th". */

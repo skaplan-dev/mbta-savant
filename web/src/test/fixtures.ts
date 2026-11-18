@@ -43,6 +43,7 @@ export const carStats = (
     speed_vs_expected_pct: 0,
     ttoe_vs_avg_sec: 0,
     speed_vs_avg_pct: 0,
+    door_vs_avg_sec: 0,
     top_speed_mph: null,
     on_time_pct: 90,
     steadiness_sec: 10,

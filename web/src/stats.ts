@@ -61,15 +61,16 @@ export const STATS: readonly Stat[] = [
         pct: 'steadiness_sec',
         section: 'performance',
         value: (c) => c.steadiness_sec,
-        text: (c) => fmtUnit(c.steadiness_sec, 0, ' s'),
+        text: (c) => fmtUnit(c.steadiness_sec, 1, ' s'),
         lowerBetter: true,
     },
     {
         id: 'door-time',
         pct: 'door_time_sec',
         section: 'performance',
-        value: (c) => c.door_time_sec,
-        text: (c) => doorLabel(c.door_time_sec),
+        // Against the line's average car, like Time Saved; ranking uses the absolute value.
+        value: (c) => c.door_vs_avg_sec ?? null,
+        text: (c) => doorLabel(c.door_vs_avg_sec),
         lowerBetter: true,
     },
     {

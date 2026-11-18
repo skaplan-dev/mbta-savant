@@ -73,9 +73,11 @@ export interface CarStats {
     ranked: boolean;
     ttoe_sec: number | null;
     speed_vs_expected_pct: number | null;
-    // ttoe_sec / speed_vs_expected_pct minus the group's average (qualified, ranked) car; display-only.
+    // ttoe_sec / speed_vs_expected_pct / door_time_sec minus the group's average (qualified, ranked) car; display-only.
     ttoe_vs_avg_sec: number | null;
     speed_vs_avg_pct: number | null;
+    // Optional until every published data file has it (the site can deploy before the nightly rebuild).
+    door_vs_avg_sec?: number | null;
     // Shown as a fun fact; never ranked, so its pct is always null.
     top_speed_mph: number | null;
     on_time_pct: number | null;
@@ -116,7 +118,9 @@ export interface GroupFile {
 export interface FleetSummary {
     fleet_label: string;
     cars: number;
-    median: Partial<Record<Metric | 'ttoe_vs_avg_sec' | 'speed_vs_avg_pct', number | null>>;
+    median: Partial<
+        Record<Metric | 'ttoe_vs_avg_sec' | 'speed_vs_avg_pct' | 'door_vs_avg_sec', number | null>
+    >;
 }
 
 // window -> fleet key -> summary
@@ -184,6 +188,7 @@ const carStatsFields = {
     speed_vs_expected_pct: num,
     ttoe_vs_avg_sec: num,
     speed_vs_avg_pct: num,
+    door_vs_avg_sec: optional(num),
     top_speed_mph: num,
     on_time_pct: num,
     steadiness_sec: num,

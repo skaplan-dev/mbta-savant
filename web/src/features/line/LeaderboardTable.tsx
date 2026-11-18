@@ -8,14 +8,20 @@ import { boardStats } from '../../stats';
 import { firstDir, sortCars, type Sort, type SortKey } from './leaderboard';
 
 const th =
-    'border-panel-line bg-wash border-b px-2 py-2 text-left text-[17px] font-medium leading-tight';
+    'border-panel-line bg-wash border-b px-2 py-2 text-left align-bottom text-[17px] font-medium leading-tight whitespace-nowrap aria-[sort=ascending]:text-brand aria-[sort=descending]:text-brand';
 
 const td = 'border-panel-line border-b px-2 py-1.5 whitespace-nowrap';
 
-// Rank and Car stay pinned while the table scrolls sideways on narrow screens. Rank is a fixed 56px
+// Rank and Car stay pinned while the table scrolls sideways on narrow screens. Rank is a fixed 72px
 // so Car's left offset lines up; both need an opaque background so scrolled cells don't show through.
-const stickyRank = 'sticky left-0 z-[1] w-14 min-w-14';
-const stickyCar = 'sticky left-14 z-[1] shadow-[1px_0_0_var(--color-panel-line)]';
+const stickyRank = 'sticky left-0 z-[1] w-[72px] min-w-[72px]';
+const stickyCar = 'sticky left-[72px] z-[1] shadow-[1px_0_0_var(--color-panel-line)]';
+
+// Up and down chevrons; the one matching the sort direction is drawn in the brand color.
+const CHEVRONS = [
+    ['M1.5 5.5 5 2l3.5 3.5', 'asc'],
+    ['M1.5 8.5 5 12l3.5-3.5', 'desc'],
+] as const;
 
 // Module scope on purpose: defined inside the table it would be a new component type every render,
 // remounting the button on each sort and dropping keyboard focus.
@@ -30,16 +36,38 @@ function SortBtn({
     k: SortKey;
     label: string;
 }) {
-    const arrow = sort.key === k ? (sort.dir === 'asc' ? '▲' : '▼') : '↕';
+    const dir = sort.key === k ? sort.dir : null;
 
     return (
         <button
             type="button"
             onClick={() => toggle(k)}
             aria-label={`Sort by ${label}`}
-            className={`ml-1 cursor-pointer border-0 bg-transparent p-0 text-[13px] ${sort.key === k ? 'text-brand' : 'text-ink-3'}`}
+            className="hover:bg-panel-line/60 ml-0.5 inline-grid size-5 cursor-pointer place-items-center rounded border-0 bg-transparent p-0 align-[-3px]"
         >
-            {arrow}
+            <svg
+                viewBox="0 0 10 14"
+                aria-hidden="true"
+                fill="none"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-3.5 w-2.5"
+            >
+                {CHEVRONS.map(([d, chevronDir]) => (
+                    <path
+                        key={chevronDir}
+                        d={d}
+                        className={
+                            dir === chevronDir
+                                ? 'stroke-brand'
+                                : dir
+                                  ? 'stroke-ink-3/25'
+                                  : 'stroke-ink-3/60'
+                        }
+                    />
+                ))}
+            </svg>
         </button>
     );
 }

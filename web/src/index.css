@@ -17,7 +17,7 @@
     --color-table-rule: #e3eaec;
     /* The middle of the percentile scale; also a day with no Time Saved. */
     --color-average: #9aa5a9;
-    /* The tooltip's link, readable on ink. */
+    /* The popover's link, readable on ink. */
     --color-tip-link: #9fd3de;
     /* The scale gradient's midpoint. */
     --color-scale-mid: #c8c8c8;

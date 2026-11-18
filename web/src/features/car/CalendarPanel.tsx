@@ -1,6 +1,6 @@
 import type { Car, WindowInfo } from '../../api';
 import PanelHeader from '../../components/PanelHeader';
-import Tooltip from '../../components/Tooltip';
+import InfoPopover from '../../components/InfoPopover';
 import { pctColor } from '../../format';
 import { LAST30 } from '../../seasons';
 import { dayScore, monthSummaries, savedShort } from './calendar';
@@ -10,7 +10,7 @@ const HELP =
     'Each square is a service day, colored by Time Saved that day: red = faster than the line’s average car, blue = slower.';
 
 const HELP_BUTTON =
-    'border-brand-2 text-brand-2 hover:bg-wash grid size-[30px] cursor-help place-items-center rounded-full border-[1.5px] bg-transparent p-0 text-[17px]';
+    'border-brand-2 text-brand-2 hover:bg-wash grid size-[30px] cursor-pointer place-items-center rounded-full border-[1.5px] bg-transparent p-0 text-[17px]';
 
 // Nine months fit the panel without scrolling at every width.
 const SUMMARY_MONTHS = 9;
@@ -38,14 +38,14 @@ export default function CalendarPanel({
     return (
         <section className="panel min-[761px]:max-[1179px]:col-span-2" aria-labelledby="calTitle">
             <PanelHeader id="calTitle" season={season} title="Service Calendar">
-                <Tooltip
+                <InfoPopover
                     trigger="?"
                     triggerClass={HELP_BUTTON}
                     triggerLabel="About the service calendar"
                     className="flex-none"
                 >
                     {HELP}
-                </Tooltip>
+                </InfoPopover>
             </PanelHeader>
             <div className="text-ink-2 mt-0.5 mb-2.5 flex flex-wrap items-center justify-center gap-2.5 text-[15px]">
                 <span>SLOWER</span>

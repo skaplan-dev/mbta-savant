@@ -1,5 +1,6 @@
+import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react';
 import { getRouteApi } from '@tanstack/react-router';
-import { useRef, useState, type KeyboardEvent } from 'react';
+import { useState } from 'react';
 import type { Car } from '../../api';
 import { fmtInt, fmtSaved, pctColor } from '../../format';
 import { GROUPS, type GroupId } from '../../groups';
@@ -35,67 +36,42 @@ export default function CarTabs({
         ['mates', GROUPS[group].partner.tab],
     ];
 
-    const refs = useRef<(HTMLButtonElement | null)[]>([]);
-
-    const select = (t: TabId) =>
+    const select = (i: number) =>
         void navigate({
-            search: (prev) => ({ ...prev, tab: t === 'mates' ? t : undefined }),
+            search: (prev) => ({ ...prev, tab: tabs[i][0] === 'mates' ? 'mates' : undefined }),
             replace: true,
             resetScroll: false,
         });
 
-    const onKey = (e: KeyboardEvent, i: number) => {
-        const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
-
-        if (!d) return;
-        const j = (i + d + tabs.length) % tabs.length;
-        select(tabs[j][0]);
-        refs.current[j]?.focus();
-    };
-
     return (
-        <div id="tabs" className="scroll-mt-4">
-            <div
-                role="tablist"
+        <TabGroup
+            id="tabs"
+            className="scroll-mt-4"
+            selectedIndex={tabs.findIndex(([id]) => id === tab)}
+            onChange={select}
+        >
+            <TabList
                 aria-label="Car details"
                 className="mt-[34px] mb-5 flex justify-center gap-1.5"
             >
-                {tabs.map(([id, label], i) => (
-                    <button
+                {tabs.map(([id, label]) => (
+                    <Tab
                         key={id}
-                        ref={(el) => {
-                            refs.current[i] = el;
-                        }}
-                        role="tab"
-                        id={`tab-${id}`}
-                        aria-selected={tab === id}
-                        aria-controls={`panel-${id}`}
-                        tabIndex={tab === id ? 0 : -1}
-                        onClick={() => select(id)}
-                        onKeyDown={(e) => onKey(e, i)}
-                        className={`cursor-pointer rounded-full border px-3.5 py-3 text-[15px] tracking-[0.04em] sm:px-[34px] sm:text-lg ${
-                            tab === id
-                                ? 'bg-brand-2 border-brand-2 text-white'
-                                : 'border-panel-line text-ink hover:bg-wash bg-white'
-                        }`}
+                        className="border-panel-line text-ink not-data-selected:hover:bg-wash data-selected:bg-brand-2 data-selected:border-brand-2 cursor-pointer rounded-full border bg-white px-3.5 py-3 text-[15px] tracking-[0.04em] data-selected:text-white sm:px-[34px] sm:text-lg"
                     >
                         {label}
-                    </button>
+                    </Tab>
                 ))}
-            </div>
-            <div
-                role="tabpanel"
-                id={`panel-${tab}`}
-                aria-labelledby={`tab-${tab}`}
-                className="overflow-x-auto"
-            >
-                {tab === 'log' ? (
+            </TabList>
+            <TabPanels>
+                <TabPanel className="overflow-x-auto">
                     <GameLog car={car} avg={avg} group={group} />
-                ) : (
+                </TabPanel>
+                <TabPanel className="overflow-x-auto">
                     <PartnerTable car={car} group={group} season={season} />
-                )}
-            </div>
-        </div>
+                </TabPanel>
+            </TabPanels>
+        </TabGroup>
     );
 }
 

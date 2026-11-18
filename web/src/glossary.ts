@@ -1,5 +1,5 @@
-// Single source for stat definitions: used by the tooltips and the Glossary page.
-// Copy is verbatim from docs/design/mockups (car_template.html, glossary.html).
+// Single source for stat definitions: used by the stat popovers and the Glossary page.
+// Copy started from docs/design/mockups and has since been corrected to match the pipeline.
 
 export type StatId =
     | 'time-saved'
@@ -18,7 +18,7 @@ export type StatId =
 export interface GlossaryEntry {
     name: string;
     section: 'performance' | 'workload' | 'fun';
-    /** Tooltip copy. */
+    /** Popover copy. */
     short: string;
     /** Glossary lead sentence. */
     lead: string;
@@ -33,11 +33,11 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
     'time-saved': {
         name: 'Time Saved',
         section: 'performance',
-        short: 'Seconds this car saves per stop-to-stop hop compared with the average car on its line, on the same stretches at the same times of day. Bigger is better.',
-        lead: 'Seconds this car saves on each stop-to-stop hop compared with the average car on its line.',
+        short: 'Seconds this car saves per stop compared with the average car on its line, on the same stretches at the same times of day. Bigger is better.',
+        lead: 'Seconds this car saves per stop compared with the average car on its line.',
         better: 'higher',
         betterLabel: 'HIGHER IS BETTER',
-        calc: 'For every hop, we compare the car’s time with the typical time for that stretch, direction, hour and day type, then average across the season. The result is shown relative to the line’s average car, so about half of all cars are positive.',
+        calc: 'Between every pair of stops, we compare the car’s time with the typical time for that stretch, direction, hour and day type, then average across the season. The result is shown relative to the line’s average car (the mean of all ranked cars), so roughly half of all cars are positive.',
         example: '+2.9 s means this car is about 3 seconds quicker per stop than the average car',
     },
     'pace-plus': {
@@ -53,48 +53,49 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
     'on-schedule': {
         name: 'On-Schedule %',
         section: 'performance',
-        short: 'Share of stop-to-stop hops completed at or under the MBTA’s scheduled time.',
-        lead: 'Share of stop-to-stop hops the car completed at or under the MBTA’s scheduled time.',
+        short: 'How often this car gets from one stop to the next at or under the MBTA’s scheduled time.',
+        lead: 'How often this car gets from one stop to the next at or under the MBTA’s scheduled time.',
         better: 'higher',
         betterLabel: 'HIGHER IS BETTER',
-        calc: 'Uses the T’s own scheduled travel time for each hop. Schedules are published in whole minutes, so most short hops count as on schedule. The spread between cars is small but real.',
+        calc: 'Uses the T’s own scheduled travel time between each pair of stops. Schedules are published in whole minutes, so most short stretches count as on schedule. The spread between cars is small but real.',
     },
     consistency: {
         name: 'Consistency',
         section: 'performance',
-        short: 'How much this car’s hop times vary. A smaller spread means more predictable trips.',
-        lead: 'How much this car’s hop times vary from trip to trip.',
+        short: 'How many seconds off its usual pace this car typically runs between stops. Smaller means more predictable trips.',
+        lead: 'How many seconds off its usual pace this car typically runs between stops.',
         better: 'lower',
         betterLabel: 'SMALLER SPREAD IS BETTER',
-        calc: 'The spread of the middle half of the car’s hop times, after adjusting each hop for its stretch and time of day. A 6 s spread means most hops land within a few seconds of what you’d expect.',
+        calc: 'Each time between stops is first compared with the typical time for that stretch, direction, time of day and day type. We then average how far each of those differences sits from the car’s own usual difference, counting anything past a minute as a minute. A car that is always a little slow scores well here; only variation counts.',
     },
     'door-time': {
         name: 'Door Time',
         section: 'performance',
-        short: 'Time stopped at stations compared with a typical stop at the same station and hour.',
-        lead: 'Time stopped at stations compared with a typical stop at the same station and hour.',
+        short: 'Time stopped at stations compared with the line’s average car, at the same stations and times of day.',
+        lead: 'Time stopped at stations compared with the line’s average car, at the same stations and times of day.',
         better: 'lower',
         betterLabel: 'QUICKER IS BETTER',
-        calc: 'The car’s median dwell minus the typical dwell. Door time depends on crowds and operators as much as on the car, so take it as a fun stat, not a verdict.',
-        example: '“2 s quick” means it usually leaves 2 seconds sooner than a typical stop',
+        calc: 'For each stop, the car’s dwell minus the typical dwell there for the same direction, time of day and day type, counting anything past 30 seconds as 30. We average those, then show the result relative to the line’s average car. Door time depends on crowds and operators as much as on the car, so take it as a fun stat, not a verdict.',
+        example:
+            '“0.8 s quick” means it leaves each station about 0.8 seconds sooner than the average car',
     },
     'days-in-service': {
         name: 'Days in Service',
         section: 'workload',
-        short: 'Share of service days this car carried riders.',
-        lead: 'Share of service days this car carried riders.',
+        short: 'Share of service days this car ran on the line.',
+        lead: 'Share of service days this car ran on the line.',
         better: 'higher',
         betterLabel: 'HIGHER IS BETTER',
-        calc: 'Only days when the line ran and reported data count, so a system outage doesn’t hurt anyone. A low number usually means time in the shop, or a car held as a spare.',
+        calc: 'A day counts if the car recorded any trip. Only days when the line ran and reported data count, so a system outage doesn’t hurt anyone. A low number usually means time in the shop, or a car held as a spare.',
     },
     'iron-horse': {
         name: 'Iron Horse Streak',
         section: 'workload',
-        short: 'Longest run of consecutive service days in service.',
+        short: 'Longest run of consecutive service days this car ran.',
         lead: 'Longest run of consecutive service days in service this season.',
         better: 'higher',
         betterLabel: 'HIGHER IS BETTER',
-        calc: 'Named for the baseball nickname for players who never miss a game.',
+        calc: 'Days when the whole line reported no data are skipped, so an outage doesn’t break a streak. Named for the baseball nickname for players who never miss a game.',
     },
     miles: {
         name: 'Miles Logged',
@@ -103,13 +104,13 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
         lead: 'Distance carried in passenger service this season.',
         better: 'higher',
         betterLabel: 'HIGHER IS BETTER',
-        calc: 'Station-to-station distances added up over every hop. Rail only for now, because bus stop-to-stop distances aren’t in the data yet.',
+        calc: 'Station-to-station distances added up over every stretch the car ran. Rail only for now, because bus stop-to-stop distances aren’t in the data yet.',
     },
     'cruise-speed': {
         name: 'Cruise Speed',
         section: 'fun',
         short: 'A fast-but-typical speed between stations (90th percentile). Mostly reflects the track, so it isn’t ranked.',
-        lead: 'A fast-but-typical speed between stations: the 90th percentile of the car’s hop speeds.',
+        lead: 'A fast-but-typical speed between stations: the 90th percentile of the car’s speeds between stations.',
         better: 'none',
         betterLabel: 'NOT RANKED',
         calc: 'This mostly reflects the line’s longest, fastest stretches, which every car on the line runs, so it says more about the track than the car.',
@@ -134,12 +135,12 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
     },
     'routes-run': {
         name: 'Routes Run',
-        section: 'fun',
+        section: 'workload',
         short: 'How many different routes a bus ran this season. The utility players of the fleet.',
         lead: 'How many different routes a bus ran this season. The utility players of the fleet.',
-        better: 'none',
-        betterLabel: 'BUS ONLY',
-        calc: '',
+        better: 'higher',
+        betterLabel: 'HIGHER IS BETTER',
+        calc: 'Every distinct route the bus ran this season. Bus only.',
     },
 };
 
