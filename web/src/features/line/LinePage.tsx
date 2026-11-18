@@ -6,10 +6,10 @@ import NotFound from '../../components/NotFound';
 import SeasonToggle from '../../components/SeasonToggle';
 import StatTerm from '../../components/StatTerm';
 import { GROUPS, pacePlus, pctColor, seasonLabel, signed, type GroupId } from '../../format';
+import { isRanked } from '../rank';
 import { useFleets } from '../../queries';
 import {
     firstDir,
-    isRankedCar,
     rankCars,
     sortCars,
     statCols,
@@ -36,7 +36,7 @@ export default function LinePage({
     const { data: fleets } = useFleets(group);
 
     const ranked = useMemo(
-        () => rankCars((file?.cars ?? []).filter((c) => isRankedCar(group, c))),
+        () => rankCars((file?.cars ?? []).filter((c) => isRanked(group, c))),
         [file, group]
     );
     const unranked = useMemo(

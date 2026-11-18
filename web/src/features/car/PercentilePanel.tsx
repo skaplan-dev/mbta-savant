@@ -14,7 +14,7 @@ import {
 } from '../../format';
 import type { StatId } from '../../glossary';
 import { GLOSSARY } from '../../glossary';
-import { isRanked, unrankedReason } from './shared';
+import { isRanked, unrankedReason } from '../rank';
 
 interface Row {
     id: StatId;

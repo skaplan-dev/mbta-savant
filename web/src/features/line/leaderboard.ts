@@ -1,6 +1,7 @@
 import type { CarStats, Metric } from '../../api';
 import { doorLabel, fmtNum, pacePlus, signed, timeSaved, type GroupId } from '../../format';
 import type { StatId } from '../../glossary';
+import { isRanked, unrankedReason } from '../rank';
 
 export type SortKey = 'rank' | 'car' | 'fleet' | 'trips' | StatId;
 export type SortDir = 'asc' | 'desc';
@@ -91,9 +92,6 @@ export const statCols = (group: GroupId): StatCol[] => [
     group === 'bus' ? ROUTES : MILES,
 ];
 
-export const isRankedCar = (group: string, c: Pick<CarStats, 'qualified' | 'ranked'>) =>
-    group !== 'mattapan' && c.qualified && c.ranked;
-
 const byNumber = (a: CarStats, b: CarStats) =>
     a.number.localeCompare(b.number, undefined, { numeric: true });
 
@@ -155,15 +153,10 @@ export function unrankedCars(
     qualifyMin: number | undefined
 ): { car: CarStats; reason: string }[] {
     return cars
-        .filter((c) => c.trips > 0 && !isRankedCar(group, c))
+        .filter((c) => c.trips > 0 && !isRanked(group, c))
         .sort((a, b) => b.trips - a.trips || byNumber(a, b))
         .map((car) => ({
             car,
-            reason:
-                group === 'mattapan'
-                    ? 'Mattapan cars aren’t ranked'
-                    : !car.ranked
-                      ? 'Not in the vehicle roster'
-                      : `Too few trips${qualifyMin ? ` (needs ${qualifyMin.toLocaleString('en-US')})` : ''}`,
+            reason: unrankedReason(group, car, qualifyMin) ?? '',
         }));
 }

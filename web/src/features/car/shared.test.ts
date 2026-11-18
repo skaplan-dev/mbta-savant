@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { marriedMate, routeCounts, unrankedReason } from './shared';
+import { marriedMate, routeCounts } from './shared';
 
 describe('car helpers', () => {
     it('finds a married pair at 95% shared trips', () => {
@@ -16,16 +16,5 @@ describe('car helpers', () => {
             { route: '39', days: 2 },
             { route: '28', days: 1 },
         ]);
-    });
-    it('explains unranked cars', () => {
-        const ok = { ranked: true, qualified: true };
-        expect(unrankedReason('red', ok, 870)).toBeNull();
-        expect(unrankedReason('mattapan', ok, 10)).toBe('Mattapan cars aren’t ranked.');
-        expect(unrankedReason('green', { ranked: false, qualified: false }, 10)).toBe(
-            'Not in the vehicle roster, so not ranked.'
-        );
-        expect(unrankedReason('red', { ranked: true, qualified: false }, 870)).toBe(
-            'Not enough trips this season to be ranked (needs 870).'
-        );
     });
 });

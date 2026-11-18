@@ -14,7 +14,9 @@ export default function HomePage() {
     // Lines with no ranked cars in the newest year (early in a season) fall back to last 30 days.
     const needFallback =
         !!index && GROUP_IDS.some((g) => g !== 'mattapan' && topLeaders(index, g, 1).length === 0);
-    const { data: recent } = useIndex(needFallback ? 'last30' : undefined);
+    const { data: recent, isPending: recentPending } = useIndex(
+        needFallback ? 'last30' : undefined
+    );
 
     return (
         <main>
@@ -60,6 +62,12 @@ export default function HomePage() {
                                     rows={rows}
                                     season={useRecent && rows.length ? 'last30' : undefined}
                                     cars={all.length ? all : groupCars(recent ?? [], g)}
+                                    loading={
+                                        fromYear.length === 0 &&
+                                        needFallback &&
+                                        recentPending &&
+                                        g !== 'mattapan'
+                                    }
                                 />
                             );
                         })}
@@ -75,7 +83,9 @@ function LeaderCard({
     rows,
     cars,
     season,
+    loading,
 }: {
+    loading?: boolean;
     group: GroupId;
     rows: IndexEntry[];
     cars: IndexEntry[];
@@ -124,6 +134,8 @@ function LeaderCard({
                             </li>
                         ))}
                     </ol>
+                ) : loading ? (
+                    <p className="text-ink-3 m-0 py-2 text-lg">Loading…</p>
                 ) : (
                     <div className="py-2">
                         <p className="m-0 mb-2 text-xl font-medium">Not ranked</p>

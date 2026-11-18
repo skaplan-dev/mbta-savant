@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useRouterState } from '@tanstack/react-router';
+import { useEffect, type ReactNode } from 'react';
 import { GLOSSARY, HOW_RANKINGS, LEDE, type GlossaryEntry, type StatId } from '../../glossary';
 
 const ids = Object.keys(GLOSSARY) as StatId[];
@@ -49,6 +50,15 @@ const tocA =
     'text-ink hover:text-brand hover:border-brand-2 block border-l-2 border-transparent py-1 pl-3 no-underline';
 
 export default function GlossaryPage() {
+    const hash = useRouterState({ select: (s) => s.location.hash });
+    // Scroll to and focus the linked term on a fresh load and on in-app navigation.
+    useEffect(() => {
+        if (!hash) return;
+        const el = document.getElementById(hash);
+        if (!el) return;
+        el.scrollIntoView({ block: 'start' });
+        el.focus({ preventScroll: true });
+    }, [hash]);
     return (
         <div className="mt-7 mb-[60px] grid grid-cols-1 gap-12 min-[901px]:grid-cols-[240px_minmax(0,1fr)]">
             <aside
@@ -98,7 +108,7 @@ export default function GlossaryPage() {
                         <H2 icon={s.icon}>{s.title}</H2>
                         <dl className="m-0">
                             {inSection(s.key).map((id) => (
-                                <Term key={id} id={id} e={GLOSSARY[id]} />
+                                <Term key={id} id={id} e={GLOSSARY[id]} active={hash === id} />
                             ))}
                         </dl>
                     </section>
@@ -145,12 +155,13 @@ function ScaleDemo() {
     );
 }
 
-function Term({ id, e }: { id: StatId; e: GlossaryEntry }) {
+function Term({ id, e, active }: { id: StatId; e: GlossaryEntry; active: boolean }) {
     const arrow = e.better === 'higher' ? '▲ ' : e.better === 'lower' ? '▼ ' : '';
     return (
         <div
             id={id}
-            className="target:from-brand/10 grid scroll-mt-5 grid-cols-1 gap-1.5 border-b border-dashed border-[#d6e1e4] py-[22px] target:bg-gradient-to-r target:to-transparent min-[901px]:grid-cols-[220px_minmax(0,1fr)] min-[901px]:gap-7"
+            tabIndex={-1}
+            className={`grid scroll-mt-5 grid-cols-1 gap-1.5 border-b border-dashed border-[#d6e1e4] py-[22px] outline-none ${active ? 'from-brand/10 bg-gradient-to-r to-transparent' : ''} min-[901px]:grid-cols-[220px_minmax(0,1fr)] min-[901px]:gap-7`}
         >
             <dt className="text-[25px] font-medium">
                 {e.name}
