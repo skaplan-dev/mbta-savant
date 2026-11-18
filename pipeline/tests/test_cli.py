@@ -45,7 +45,7 @@ class FakeClient:
         if m["d"] is None or (m["y"], m["m"]) != ("2026", "5") or int(m["d"]) not in self.days:
             raise ClientError({"Error": {"Code": "NoSuchKey", "Message": ""}}, "GetObject")
         if int(m["d"]) == self.fail_day:
-            raise ClientError({"Error": {"Code": "AccessDenied", "Message": ""}}, "GetObject")
+            raise ClientError({"Error": {"Code": "InternalError", "Message": ""}}, "GetObject")
         return {"Body": FakeBody(_filter(_day_text(self.days[int(m["d"])]), stop).encode())}
 
 

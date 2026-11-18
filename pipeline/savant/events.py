@@ -13,6 +13,7 @@ from savant.groups import stop_ids
 BUCKET = "tm-mbta-performance"
 KEEP = ("ARR", "DEP")
 RETRYABLE = (ProtocolError, ResponseStreamingError, ConnectionError)
+MISSING_CODES = ("NoSuchKey", "AccessDenied", "403")
 BACKOFF = (1, 2, 4)
 _sleep = time.sleep  # patched in tests
 
@@ -36,7 +37,7 @@ def _lamp_key(stop_id: str, day: date) -> str:
 
 
 def download(client, key: str, encoding: str = "utf8") -> str | None:
-    """Fetch and decode one object; None if the key does not exist.
+    """Fetch and decode one object; None if the key does not exist (or is hidden by a 403).
 
     The get_object + body read pair is retried on transient stream errors.
     """
@@ -44,7 +45,10 @@ def download(client, key: str, encoding: str = "utf8") -> str | None:
         try:
             return client.get_object(Bucket=BUCKET, Key=key)["Body"].read().decode(encoding)
         except ClientError as ex:
-            if ex.response["Error"]["Code"] == "NoSuchKey":
+            err = ex.response.get("Error", {})
+            status = ex.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+            # without s3:ListBucket, S3 answers 403/AccessDenied for a missing key
+            if err.get("Code") in MISSING_CODES or status == 403:
                 return None
             raise
         except RETRYABLE:

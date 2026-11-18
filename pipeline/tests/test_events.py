@@ -129,4 +129,28 @@ def test_client_uses_adaptive_retries(monkeypatch):
 def test_other_errors_propagate(monkeypatch):
     monkeypatch.setattr(events, "stop_ids", lambda g: ["70061"])
     with pytest.raises(ClientError):
-        events.day_events("red", date(2024, 5, 1), client=FakeClient(error="AccessDenied"))
+        events.day_events("red", date(2024, 5, 1), client=FakeClient(error="InternalError"))
+
+
+class CountingErrClient:
+    def __init__(self, code):
+        self.code, self.calls = code, 0
+
+    def get_object(self, Bucket, Key):
+        self.calls += 1
+        raise _err(self.code)
+
+
+@pytest.mark.parametrize("code", ["NoSuchKey", "AccessDenied", "403"])
+def test_missing_key_skipped_without_retry(code, sleeps):
+    # without s3:ListBucket, S3 answers 403/AccessDenied for a missing key
+    client = CountingErrClient(code)
+    assert events.download(client, "k") is None
+    assert client.calls == 1 and sleeps == []
+
+
+def test_other_client_errors_still_raise(sleeps):
+    client = CountingErrClient("InternalError")
+    with pytest.raises(ClientError):
+        events.download(client, "k")
+    assert client.calls == 1 and sleeps == []

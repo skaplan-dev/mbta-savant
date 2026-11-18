@@ -106,7 +106,7 @@ def test_layout(tmp_path):
     assert all("game_log" not in c for c in g["cars"])
     idx = load(out / "data/last30/index.json")
     assert {r["car_id"] for r in idx} == {"orange:1400", "orange:1401", "bus:1400", "bus:1401"}
-    assert set(idx[0]) == {"car_id", "group", "number", "fleet_label", "qualified", "ranked", "ttoe_sec", "pct_ttoe"}
+    assert set(idx[0]) == {"car_id", "group", "number", "fleet_label", "qualified", "ranked", "ttoe_sec", "ttoe_vs_avg_sec", "pct_ttoe"}
     meta = load(out / "data/meta.json")
     assert meta["latest_service_date"] == "2026-03-02"
     assert [w["key"] for w in meta["windows"]] == ["last30", "2026"]
@@ -186,3 +186,4 @@ def test_publish_clears_stale_output(tmp_path):
     assert not stale.exists()
     assert keep.exists()
     assert (out / "data/meta.json").exists()
+

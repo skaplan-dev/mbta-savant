@@ -99,7 +99,8 @@ def _fleet(cars: list[dict]) -> dict:
 def publish(root: Path, out: Path) -> None:
     root, out = Path(root), Path(out)
     data = out / "data"
-    shutil.rmtree(data, ignore_errors=True)  # no stale files from an earlier build
+    if data.exists():
+        shutil.rmtree(data)  # no stale files from an earlier build; real errors raise
     now = datetime.now(timezone.utc).isoformat()
     wins = stats.windows(root)
     fleets: dict[str, dict] = {g: {} for g in GROUPS}
@@ -131,7 +132,7 @@ def publish(root: Path, out: Path) -> None:
                 index_by_window[w.key].append(
                     {"car_id": c["car_id"], "group": group, "number": c["number"],
                      "fleet_label": c["vehicle"]["fleet_label"], "qualified": c["qualified"], "ranked": c["ranked"],
-                     "ttoe_sec": c["ttoe_sec"], "pct_ttoe": c["pct"]["ttoe_sec"]}
+                     "ttoe_sec": c["ttoe_sec"], "ttoe_vs_avg_sec": c["ttoe_vs_avg_sec"], "pct_ttoe": c["pct"]["ttoe_sec"]}
                 )
             fleets[group][w.key] = _fleet(cars)
         _write(data / w.key / "index.json", index_by_window[w.key])

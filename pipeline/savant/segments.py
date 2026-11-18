@@ -100,7 +100,7 @@ def _clean_cars(
 
     Bus numbers are normalized (``0952`` -> ``952``) since the feed reports both forms; rail tokens are kept as-is.
     """
-    keep = [i for i, c in enumerate(cars) if c.isdigit()]
+    keep = [i for i, c in enumerate(cars) if c.isascii() and c.isdigit()]
     kept = [str(int(cars[i])) if group == "bus" else cars[i] for i in keep]
     if not occupancy:
         return kept, []
@@ -109,7 +109,7 @@ def _clean_cars(
 
 def _benchmark(dep: dict, arr: dict) -> float | None:
     try:
-        # older monthly archives only carry scheduled_travel_time (v5 fallback)
+        # scheduled_tt is the current LAMP column; scheduled_travel_time is a harmless v5-era fallback
         b = float(_sched(arr)) - float(_sched(dep))
     except (TypeError, ValueError):
         return None

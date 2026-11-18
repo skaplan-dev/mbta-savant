@@ -250,3 +250,13 @@ def test_qualify_uses_quarter_of_median_trips(tmp_path):
     rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
     assert rows["D"]["trips"] == 120 and rows["D"]["qualified"] is False
     assert all(rows[n]["qualified"] for n in "ABC")
+
+
+def test_bus_numbers_normalized_on_read_across_cached_segments(tmp_path):
+    write(tmp_path, "bus", {
+        D0: [seg(D0, "t1", ["0952"], 100, route="1", group="bus")],
+        D0 + timedelta(1): [seg(D0 + timedelta(1), "t2", ["952"], 100, route="1", group="bus")],
+    })
+    rows = stats.car_stats(tmp_path, "bus", window(D0, D0 + timedelta(1)))
+    assert [r["number"] for r in rows] == ["952"]
+    assert rows[0]["trips"] == 2

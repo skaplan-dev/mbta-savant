@@ -296,3 +296,7 @@ def test_rail_numbers_untouched():
         r["vehicle_consist"] = "0700|0701"
     segs = segments.build_segments("blue", rows)
     assert segs and all(s["cars"] == ["0700", "0701"] for s in segs)
+
+
+def test_unicode_digit_car_tokens_dropped():
+    assert segments._clean_cars("orange", ["3901", "\u00b2", "0042"], []) == (["3901", "0042"], [])

@@ -63,10 +63,13 @@ def windows(root: Path) -> list[Window]:
 # One narrow row per (segment, car) for the window. Expected travel/dwell are medians over segments,
 # computed before the unnest so a multi-car train counts once. Each segment's delta is capped at
 # TTOE_CAP_SEC, so a disrupted trip counts as at most that much slower than expected.
+# Bus numbers are normalized on read ("0952" -> "952") so older cached segments merge with new ones;
+# non-numeric tokens fall back to the raw token.
+_BUS_NUMBER = "coalesce(CAST(TRY_CAST(cars[i] AS BIGINT) AS VARCHAR), cars[i])"
 _CAR_SEG = f"""
 CREATE TEMP TABLE car_seg AS
 SELECT service_date, trip_id, route_id, travel_sec, benchmark_sec, distance_mi, exp_travel,
-  dwell_sec - exp_dwell AS dwell_delta, cars[i] AS number, occupancy_pct[i] AS occ,
+  dwell_sec - exp_dwell AS dwell_delta, __NUMBER__ AS number, occupancy_pct[i] AS occ,
   least(travel_sec - exp_travel, {TTOE_CAP_SEC}) AS delta,
   least(travel_sec, exp_travel + {TTOE_CAP_SEC}) AS capped_travel
 FROM (
@@ -141,7 +144,7 @@ def car_stats(root: Path, group: str, window: Window) -> list[dict]:
     try:
         args = [segment_glob(root, group), window.start.isoformat(), window.end.isoformat()]
         data_days = [r[0] for r in con.execute(_DATA_DAYS, args).fetchall()]
-        con.execute(_CAR_SEG, args)
+        con.execute(_CAR_SEG.replace("__NUMBER__", _BUS_NUMBER if is_bus else "cars[i]"), args)
         per_car = con.execute(_PER_CAR)
         cols = [c[0] for c in per_car.description]
         cars = [dict(zip(cols, r)) for r in per_car.fetchall()]
