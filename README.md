@@ -39,6 +39,10 @@ One-time bootstrap, in the AWS account that will host the site:
 The nightly job re-ingests a rolling 3-day window (D-2..D) and rebuilds all stats.
 
 After any re-backfill or segment-logic change, re-upload segments and bump the cache key
-`segments-vN-` in `.github/workflows/nightly.yml`. Segments built before this switch to the public LAMP
-files came from TransitMatters' raw events, so a new account should backfill from scratch rather than
-mix the two.
+`segments-vN-` in `.github/workflows/nightly.yml`.
+
+Segments built earlier from TransitMatters' raw events and segments built from the public LAMP files
+agree closely (Orange Line days matched to within about 1%), so an existing local `work/` folder can be
+reused: `backfill` skips days that already exist and only fetches the gaps. Bus days before 2025-12-25
+exist only in a history built from the raw events, since the public bus file starts then; backfilling
+those days from the public files produces nothing.
