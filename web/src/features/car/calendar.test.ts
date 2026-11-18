@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayScore, monthSummaries, weekGrid, yearMonths } from './calendar';
+import { dayScore, monthSummaries, savedShort, weekGrid, yearMonths } from './calendar';
 
 describe('yearMonths', () => {
     it('lays out months Sunday-first and stops at the end date', () => {
@@ -56,5 +56,14 @@ describe('dayScore and monthSummaries', () => {
             { key: '2026-04', label: 'Apr', days: 2, tripsPerDay: 16, ttoe: 4 },
             { key: '2026-05', label: 'May', days: 1, tripsPerDay: 5, ttoe: 2 },
         ]);
+    });
+});
+
+describe('savedShort', () => {
+    it('drops the decimal once the value reaches 10 s', () => {
+        expect(savedShort(2.34)).toBe('+2.3');
+        expect(savedShort(-9.94)).toBe('−9.9');
+        expect(savedShort(-9.96)).toBe('−10');
+        expect(savedShort(-12.4)).toBe('−12');
     });
 });

@@ -179,7 +179,12 @@ export default function PercentilePanel({
         workload.push({
             id: 'miles',
             pct: p(car.pct.miles),
-            value: car.miles == null ? '–' : `${(car.miles / 1000).toFixed(1)}k`,
+            value:
+                car.miles == null
+                    ? '–'
+                    : car.miles < 1000
+                      ? fmtNum(car.miles, 0)
+                      : `${(car.miles / 1000).toFixed(1)}k`,
         });
 
     const rankedCount = groupFile?.cars.filter((c) => c.qualified && c.ranked).length;

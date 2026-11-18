@@ -18,6 +18,8 @@ export const useGroup = (window: string, group: string) =>
     useQuery({
         queryKey: ['group', window, group],
         queryFn: () => fetchGroup(window, group),
+        // Never request /data//groups/... while the season is still unknown.
+        enabled: !!window && !!group,
         staleTime,
     });
 

@@ -1,6 +1,13 @@
 import type { Car, WindowInfo } from '../../api';
 import { pctColor, seasonLabel, signed } from '../../format';
-import { dayScore, monthSummaries, weekGrid, yearMonths, type CalDay } from './calendar';
+import {
+    dayScore,
+    monthSummaries,
+    savedShort,
+    weekGrid,
+    yearMonths,
+    type CalDay,
+} from './calendar';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const HELP =
@@ -224,7 +231,7 @@ export default function CalendarPanel({
                                     <td key={m.key} className={td}>
                                         {m.ttoe == null || avg == null
                                             ? '–'
-                                            : signed(avg - m.ttoe, 1)}
+                                            : savedShort(avg - m.ttoe)}
                                     </td>
                                 ))}
                             </tr>

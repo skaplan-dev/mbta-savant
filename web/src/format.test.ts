@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { doorLabel, GROUPS, isGroup, pacePlus, pctColor, signed, timeSaved } from './format';
+import {
+    doorLabel,
+    GROUPS,
+    isGroup,
+    ordinal,
+    pacePlus,
+    pctColor,
+    signed,
+    timeSaved,
+} from './format';
 
 describe('signed', () => {
     it('never shows a negative zero', () => {
@@ -45,5 +54,28 @@ describe('groups', () => {
         expect(isGroup('red')).toBe(true);
         expect(isGroup('purple')).toBe(false);
         expect(GROUPS.bus.color).toBe('#ffc72c');
+    });
+});
+
+describe('ordinal', () => {
+    it('uses st/nd/rd/th with the teens as th', () => {
+        expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 51, 100, 101, 111, 112].map(ordinal)).toEqual([
+            '1st',
+            '2nd',
+            '3rd',
+            '4th',
+            '11th',
+            '12th',
+            '13th',
+            '21st',
+            '22nd',
+            '23rd',
+            '51st',
+            '100th',
+            '101st',
+            '111th',
+            '112th',
+        ]);
+        expect(ordinal(0)).toBe('0th');
     });
 });

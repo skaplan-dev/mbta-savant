@@ -58,4 +58,11 @@ export const GROUPS: Record<GroupId, { name: string; color: string }> = {
 export const GROUP_IDS = Object.keys(GROUPS) as GroupId[];
 export const isGroup = (g: string): g is GroupId => Object.hasOwn(GROUPS, g);
 
+/** 1 → "1st", 22 → "22nd", 11 → "11th". */
+export function ordinal(n: number): string {
+    const r100 = n % 100;
+    if (r100 >= 11 && r100 <= 13) return `${n}th`;
+    return `${n}${['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+}
+
 export const seasonLabel = (k: string): string => (k === 'last30' ? 'Last 30 Days' : k);

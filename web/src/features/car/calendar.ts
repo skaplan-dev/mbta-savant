@@ -1,4 +1,5 @@
 import type { GameLogEntry } from '../../api';
+import { signed } from '../../format';
 
 // Pure date math for the service calendar. Dates are ISO "YYYY-MM-DD" strings handled in UTC so
 // the layout never shifts with the viewer's time zone.
@@ -60,6 +61,11 @@ export function weekGrid(start: string, end: string): { weeks: number; days: Cal
         });
     }
     return { weeks: days.length ? days[days.length - 1].row + 1 : 0, days };
+}
+
+/** Month-summary label: one decimal, but whole seconds once |v| rounds to 10+ so cells don't clip. */
+export function savedShort(v: number): string {
+    return signed(v, Math.abs(v) >= 9.95 ? 0 : 1);
 }
 
 /** 0-100 score for a day (faster than the line average → high/red), as in the mockup. */

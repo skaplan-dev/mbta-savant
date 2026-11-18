@@ -1,4 +1,4 @@
-import { pctColor } from '../format';
+import { ordinal, pctColor } from '../format';
 import { GROW, useGrowIn } from './useGrowIn';
 
 /**
@@ -12,7 +12,7 @@ export default function PercentileBar({ pct, label }: { pct: number | null; labe
     return (
         <div
             role="img"
-            aria-label={`${label}: ${pct == null ? 'not ranked' : `${pct}th percentile`}`}
+            aria-label={`${label}: ${pct == null ? 'not ranked' : `${ordinal(pct)} percentile`}`}
             className={`relative mx-1 h-[26px] ${pct == null ? 'opacity-45' : ''}`}
         >
             <span className="bg-track absolute inset-x-0 top-1/2 -mt-1 h-2 rounded" />
