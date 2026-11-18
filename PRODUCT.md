@@ -31,7 +31,7 @@ Static site at savant.labs.transitmatters.org, rebuilt nightly from TransitMatte
 - Copy must say it is a fan site, not an official MBTA assessment, and credit the vehicle inventory source.
 
 ## Evidence on Hand
-Real published data in out/data (built from work/v2: 2025–2026 seasons, ~200 Red cars, ~150 Orange, ~94 Blue, ~200 Green, ~1,000 buses). Sanity check: docs/sanity-check-2026-11.md. No vehicle photos exist; do not fabricate photos of specific cars.
+Real published data in out/data (built from work/v2: 2025–2026 seasons, ~200 Red cars, ~150 Orange, ~94 Blue, ~200 Green, ~1,000 buses). No vehicle photos exist; do not fabricate photos of specific cars.
 
 ## Product Principles
 1. Every car is a player: the car page is the heart of the site.

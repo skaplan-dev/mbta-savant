@@ -4,7 +4,6 @@ Baseball-Savant-style stats for MBTA vehicles, served from S3 + CloudFront.
 
 - `pipeline/` - Python data pipeline (`savant` package, managed with `uv`).
 - `web/` - Vite + React + TypeScript site.
-- `docs/` - design doc and implementation plan.
 
 ## Development
 

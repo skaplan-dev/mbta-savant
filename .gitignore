@@ -6,3 +6,4 @@ work/
 out/
 __pycache__/
 .duckdb_tmp/
+docs/

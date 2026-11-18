@@ -1,5 +1,5 @@
 // Single source for stat definitions: used by the stat popovers and the Glossary page.
-// Copy started from docs/design/mockups and has since been corrected to match the pipeline.
+// Copy started from the early design mockups and has since been corrected to match the pipeline.
 
 export type StatId =
     | 'time-saved'
