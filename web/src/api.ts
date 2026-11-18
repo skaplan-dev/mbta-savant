@@ -36,6 +36,7 @@ export interface IndexEntry {
     qualified: boolean;
     ranked: boolean;
     ttoe_sec: number | null;
+    ttoe_vs_avg_sec: number | null;
     pct_ttoe: number | null;
 }
 
@@ -73,8 +74,8 @@ export interface CarStats {
     games_played_pct: number | null;
     iron_horse_days: number | null;
     miles: number | null;
-    // Buses carry a route list; rail carries null.
-    routes: string[] | null;
+    // Count of distinct routes served in the window; buses only (rail is null). Per-day route lists are in game_log[].routes.
+    routes: number | null;
     crowd_load_pct: number | null;
     teammates: [string, number][];
     vehicle: Vehicle;

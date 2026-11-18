@@ -3,8 +3,9 @@
 # nothing; GitHub Actions minutes are free for public repos. The nightly job caches
 # work/segments in GitHub Actions: on a normal night S3 egress is about the new day's files
 # plus LIST requests (pennies); a cold cache does a full pull of about 740 MB (roughly
-# $0.07). LAMP reads are about 65 MB/night (about
-# $0.20/month). Total: well under $1/month.
+# $0.07). Each night re-ingests a rolling
+# 3-day window (D-2..D) to pick up late LAMP data, so LAMP reads are about 3x65 = 195 MB/night
+# (about $0.50/month egress). Total: well under $1/month.
 name: nightly
 
 on:
@@ -48,10 +49,12 @@ jobs:
               echo "Invalid date input: expected YYYY-MM-DD" >&2
               exit 1
             fi
-            echo "INGEST_DATE=$INPUT_DATE" >> "$GITHUB_ENV"
+            D="$INPUT_DATE"
           else
-            echo "INGEST_DATE=$(TZ=America/New_York date -d yesterday +%F)" >> "$GITHUB_ENV"
+            D=$(TZ=America/New_York date -d yesterday +%F)
           fi
+          echo "INGEST_DATE=$D" >> "$GITHUB_ENV"
+          echo "START_DATE=$(date -d "$D - 2 days" +%F)" >> "$GITHUB_ENV"
       # Restore the newest segments cache (restore-keys prefix match) and save a new one
       # under this run's key. The post-step save only runs if the job succeeds, which is fine.
       # The 10 GB repo cache limit is ample (~0.75 GB/yr of segments).
@@ -68,22 +71,25 @@ jobs:
       # reconciled with S3 after manual backfills; the cache cuts egress, S3 stays the truth.
       - name: Sync segments from S3
         run: aws s3 sync s3://$BUCKET/segments ./work/segments
-      - name: Ingest
-        run: uv run savant ingest --date "$INGEST_DATE" --root ../work
+      - name: Ingest rolling window
+        run: uv run --frozen savant backfill --start "$START_DATE" --end "$INGEST_DATE" --force --root ../work
         working-directory: pipeline
       - name: Build stats
-        run: uv run savant build --root ../work --out ../out
+        run: uv run --frozen savant build --root ../work --out ../out
         working-directory: pipeline
-      - name: Push new day's segments
+      - name: Push window's segments
         run: |
-          # Only today's ingest date, for every group. S3 stays the durable copy; never --delete.
+          # The three re-ingested days, for every group. S3 stays the durable copy; never --delete.
           shopt -s nullglob
-          for f in work/segments/*/"${INGEST_DATE:0:4}"/"${INGEST_DATE}".parquet; do
-            aws s3 cp "$f" "s3://$BUCKET/segments/${f#work/segments/}"
+          for d in "$START_DATE" "$(date -d "$INGEST_DATE - 1 day" +%F)" "$INGEST_DATE"; do
+            for f in work/segments/*/"${d:0:4}"/"${d}".parquet; do
+              aws s3 cp "$f" "s3://$BUCKET/segments/${f#work/segments/}"
+            done
           done
       - name: Publish data
         run: |
-          test -s out/data/meta.json || { echo "out/data/meta.json missing or empty; refusing to --delete" >&2; exit 1; }
+          test -s out/data/meta.json && jq -e '.windows | length > 0' out/data/meta.json >/dev/null \
+            || { echo "out/data/meta.json missing, empty or without windows; refusing to --delete" >&2; exit 1; }
           aws s3 sync ./out/data s3://$BUCKET/data --delete \
             --content-type application/json \
             --cache-control "public, max-age=3600"
