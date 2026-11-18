@@ -45,22 +45,27 @@ export default function StatTerm({
         const clip = wrap.current?.closest('.panel')?.getBoundingClientRect();
         const lo = Math.max(8, (clip?.left ?? 0) + 8);
         const hi = Math.min(window.innerWidth, clip?.right ?? Infinity) - 8;
+
         const next =
             natural < lo
                 ? lo - natural
                 : natural + r.width > hi
                   ? Math.max(lo - natural, hi - natural - r.width)
                   : 0;
+
         if (next !== shift) setShift(next);
     }, [open, shift]);
 
     // Esc dismisses even a hover-only tooltip (WCAG 1.4.13).
     useEffect(() => {
         if (!open) return;
+
         const onKey = (e: KeyboardEvent) => {
             if (e.key === 'Escape') setDismissed(true);
         };
+
         document.addEventListener('keydown', onKey);
+
         return () => document.removeEventListener('keydown', onKey);
     }, [open]);
 

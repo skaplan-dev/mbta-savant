@@ -24,7 +24,9 @@ import { useLineData } from './useLineData';
 
 const th =
     'border-panel-line bg-wash border-b px-2 py-2 text-left text-[17px] font-medium leading-tight';
+
 const td = 'border-panel-line border-b px-2 py-1.5 whitespace-nowrap';
+
 // Rank and Car stay pinned while the table scrolls sideways on narrow screens. Rank is a fixed 56px
 // so Car's left offset lines up; both need an opaque background so scrolled cells don't show through.
 const stickyRank = 'sticky left-0 z-[1] w-14 min-w-14';
@@ -46,6 +48,7 @@ export default function LinePage({
         () => rankCars((file?.cars ?? []).filter((c) => isRanked(group, c))),
         [file, group]
     );
+
     const unranked = useMemo(
         () => unrankedCars(group, file?.cars ?? [], file?.qualify_min_trips),
         [file, group]
@@ -56,7 +59,9 @@ export default function LinePage({
 
     if (!line || (season && isPending))
         return <p className="text-ink-2 py-16 text-center text-xl">Loading…</p>;
+
     if (isError) return <LoadError onRetry={() => void refetch()} />;
+
     if (!file) return <NotFound />;
 
     const fleetList = Object.values(fleets?.[season] ?? {}).sort((a, b) => b.cars - a.cars);
@@ -96,6 +101,7 @@ function FleetStrip({ fleets }: { fleets: FleetSummary[] }) {
                 {fleets.map((f) => {
                     const saved = f.median.ttoe_vs_avg_sec;
                     const pace = f.median.speed_vs_avg_pct;
+
                     return (
                         <li
                             key={f.fleet_label}
@@ -149,6 +155,7 @@ function SortBtn({
     label: string;
 }) {
     const arrow = sort.key === k ? (sort.dir === 'asc' ? '▲' : '▼') : '↕';
+
     return (
         <button
             type="button"
@@ -180,8 +187,10 @@ export function Table({
                 ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' }
                 : { key, dir: firstDir(key, group) }
         );
+
     const aria = (key: SortKey) =>
         sort.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none';
+
     return (
         <section className="panel" aria-label="Leaderboard">
             <div className="overflow-x-auto">
@@ -253,6 +262,7 @@ export function Table({
                                 <td className={td}>{car.trips.toLocaleString('en-US')}</td>
                                 {cols.map((c) => {
                                     const pct = car.pct[c.pct];
+
                                     return (
                                         <td
                                             key={c.id}

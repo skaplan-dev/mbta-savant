@@ -28,6 +28,7 @@ describe('topLeaders', () => {
             e('8', null),
             e('9', -8, { group: 'bus' }),
         ];
+
         expect(topLeaders(idx, 'red').map((x) => x.number)).toEqual(['7', '2', '5', '6', '3']);
     });
     it('never ranks mattapan', () => {

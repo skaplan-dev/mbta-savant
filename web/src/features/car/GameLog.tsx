@@ -29,18 +29,23 @@ export default function CarTabs({
     onTab: (t: TabId) => void;
 }) {
     const isBus = group === 'bus';
+
     const tabs: [TabId, string][] = [
         ['log', 'GAME LOG'],
         ['mates', isBus ? 'ROUTES' : 'COUPLED WITH'],
     ];
+
     const refs = useRef<(HTMLButtonElement | null)[]>([]);
+
     const onKey = (e: KeyboardEvent, i: number) => {
         const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+
         if (!d) return;
         const j = (i + d + tabs.length) % tabs.length;
         onTab(tabs[j][0]);
         refs.current[j]?.focus();
     };
+
     return (
         <div id="tabs" className="scroll-mt-4">
             <div
@@ -93,8 +98,10 @@ function GameLog({ car, avg, isBus }: { car: Car; avg: number | null; isBus: boo
     const [all, setAll] = useState(false);
     const rows = [...car.game_log].reverse();
     const shown = all ? rows : rows.slice(0, PAGE);
+
     if (!rows.length)
         return <p className="text-ink-2 text-center text-lg">No service days this season.</p>;
+
     return (
         <>
             <table className="mb-4 w-full border-collapse text-base sm:text-lg">
@@ -110,6 +117,7 @@ function GameLog({ car, avg, isBus }: { car: Car; avg: number | null; isBus: boo
                 <tbody>
                     {shown.map((g) => {
                         const saved = g.ttoe_sec != null && avg != null ? avg - g.ttoe_sec : null;
+
                         return (
                             <tr key={g.date} className="hover:[&>td]:bg-wash">
                                 <td className={td}>
@@ -161,6 +169,7 @@ function MatesTable({ car, group, season }: { car: Car; group: GroupId; season: 
     if (!car.teammates.length)
         return <p className="text-ink-2 text-center text-lg">No coupled cars recorded.</p>;
     const max = car.teammates[0][1];
+
     return (
         <table className="mb-8 w-full border-collapse text-base sm:text-lg">
             <thead>
@@ -191,10 +200,12 @@ function MatesTable({ car, group, season }: { car: Car; group: GroupId; season: 
 
 function RoutesTable({ car }: { car: Car }) {
     const routes = routeCounts(car);
+
     if (!routes.length)
         return <p className="text-ink-2 text-center text-lg">No routes recorded.</p>;
     const max = routes[0].days;
     const total = car.game_log.length;
+
     return (
         <table className="mb-8 w-full border-collapse text-base sm:text-lg">
             <thead>

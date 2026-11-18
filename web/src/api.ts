@@ -106,14 +106,19 @@ export interface GroupFile {
 // Returns null when the file does not exist (or the server answered with HTML).
 async function getJson<T>(path: string): Promise<T | null> {
     const res = await fetch(path);
+
     if (!res.ok) return null;
+
     if (!(res.headers.get('content-type') ?? '').includes('json')) return null;
+
     return (await res.json()) as T;
 }
 
 export const fetchMeta = () => getJson<Meta>('/data/meta.json');
+
 export const fetchGroup = (window: string, group: string) =>
     getJson<GroupFile>(`/data/${window}/groups/${group}.json`);
+
 export const fetchCar = (window: string, group: string, number: string) =>
     getJson<Car>(`/data/${window}/cars/${group}/${number}.json`);
 

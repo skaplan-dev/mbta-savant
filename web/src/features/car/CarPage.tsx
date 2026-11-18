@@ -32,7 +32,9 @@ export default function CarPage({
     useDocumentTitle(found ? carTitle(group, number) : undefined);
 
     if (!data) return <p className="text-ink-2 py-16 text-center text-xl">Loading…</p>;
+
     if (data.failed) return <LoadError onRetry={data.retry} />;
+
     if (!season || !data.available.length) return <NotFound />;
 
     const car = data.cars[season];

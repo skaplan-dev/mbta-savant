@@ -9,6 +9,7 @@ const navLink =
 export default function Masthead() {
     // The home page has its own large search.
     const isHome = useRouterState({ select: (s) => s.location.pathname === '/' });
+
     return (
         <>
             <header className="border-panel-line flex flex-col items-stretch justify-between gap-6 border-b pt-5 pb-3.5 md:flex-row md:items-center">

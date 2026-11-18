@@ -4,7 +4,9 @@ import Search from './Search';
 
 const navigate = vi.fn();
 const useAllIndexes = vi.fn();
+
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => navigate }));
+
 vi.mock('../queries', () => ({
     defaultWindow: () => '2026',
     useAllIndexes: (enabled: boolean) => useAllIndexes(enabled),
@@ -18,6 +20,7 @@ const e = (group: string, number: string, fleet_label: string) => ({
 });
 
 afterEach(cleanup);
+
 beforeEach(() => {
     navigate.mockClear();
     useAllIndexes.mockReset();

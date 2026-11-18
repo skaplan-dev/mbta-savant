@@ -14,6 +14,8 @@ export const Route = createFileRoute('/car/$group/$number')({
 function CarRoute() {
     const { group, number } = Route.useParams();
     const { season } = Route.useSearch();
+
     if (!isGroup(group)) return null;
+
     return <CarPage key={`${group}/${number}`} group={group} number={number} season={season} />;
 }

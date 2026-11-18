@@ -132,6 +132,7 @@ function LightRail({ n, color }: { n: string; color: string }) {
             <Wheel cx={205} />
         </g>
     );
+
     return (
         <g>
             <path
@@ -191,12 +192,15 @@ function Bus({ n, color, articulated }: { n: string; color: string; articulated:
     const windows: number[] = [];
     const joint = len * 0.6;
     const door2 = Math.round(len * 0.36);
+
     // Windows skip the second door and the articulation joint.
     for (let x = 70; x < len - 70; x += 46) {
         if (x + 40 > door2 - 4 && x < door2 + 32) continue;
+
         if (articulated && x + 40 > joint - 12 && x < joint + 12) continue;
         windows.push(x);
     }
+
     return (
         <g transform={`translate(${x0},0)`}>
             <path
@@ -281,6 +285,7 @@ export default function CarArt({
     lengthFt?: number;
 }) {
     let art;
+
     if (group === 'bus') art = <Bus n={number} color={color} articulated={(lengthFt ?? 0) >= 60} />;
     else if (group === 'green') art = <LightRail n={number} color={color} />;
     else if (group === 'mattapan') art = <PCC n={number} color={color} />;
@@ -293,6 +298,7 @@ export default function CarArt({
         ) : (
             <HeavyRailCar x={155} n={number} color={color} />
         );
+
     return (
         <svg
             viewBox="-10 0 640 130"

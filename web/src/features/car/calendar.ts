@@ -9,6 +9,7 @@ const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', '
 
 const toMs = (iso: string) => Date.parse(`${iso}T00:00:00Z`);
 const toIso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+
 /** Sunday = 0 … Saturday = 6 (US calendars). A 30-day window spans five or six week rows. */
 const weekday = (ms: number) => new Date(ms).getUTCDay();
 
@@ -31,18 +32,23 @@ export interface CalMonth {
 export function yearMonths(year: number, end: string): CalMonth[] {
     const endMs = toMs(end);
     const out: CalMonth[] = [];
+
     for (let m = 0; m < 12; m++) {
         const first = Date.UTC(year, m, 1);
+
         if (first > endMs) break;
         const lead = weekday(first);
         const days: CalDay[] = [];
+
         for (let ms = first; new Date(ms).getUTCMonth() === m && ms <= endMs; ms += DAY) {
             const d = new Date(ms).getUTCDate();
             const idx = lead + d - 1;
             days.push({ date: toIso(ms), col: idx % 7, row: Math.floor(idx / 7), dayOfMonth: d });
         }
+
         out.push({ key: `${year}-${String(m + 1).padStart(2, '0')}`, label: MONTHS[m], days });
     }
+
     return out;
 }
 
@@ -52,6 +58,7 @@ export function weekGrid(start: string, end: string): { weeks: number; days: Cal
     const e = toMs(end);
     const sunday = s - weekday(s) * DAY;
     const days: CalDay[] = [];
+
     for (let ms = s; ms <= e; ms += DAY) {
         days.push({
             date: toIso(ms),
@@ -60,6 +67,7 @@ export function weekGrid(start: string, end: string): { weeks: number; days: Cal
             dayOfMonth: new Date(ms).getUTCDate(),
         });
     }
+
     return { weeks: days.length ? days[days.length - 1].row + 1 : 0, days };
 }
 
@@ -71,6 +79,7 @@ export function savedShort(v: number): string {
 /** 0-100 score for a day (faster than the line average → high/red), as in the mockup. */
 export function dayScore(ttoe: number | null | undefined, avg: number | null | undefined): number {
     if (ttoe == null || avg == null) return 50;
+
     return 50 - (ttoe - avg) * 6;
 }
 
@@ -86,10 +95,12 @@ export interface MonthSummary {
 /** Per-month rollup of the game log, oldest first, keeping the last `limit` months. */
 export function monthSummaries(log: readonly GameLogEntry[], limit = 11): MonthSummary[] {
     const by = new Map<string, GameLogEntry[]>();
+
     for (const g of log) {
         const k = g.date.slice(0, 7);
         by.set(k, [...(by.get(k) ?? []), g]);
     }
+
     return [...by.keys()]
         .sort()
         .slice(-limit)
@@ -97,6 +108,7 @@ export function monthSummaries(log: readonly GameLogEntry[], limit = 11): MonthS
             const days = by.get(key)!;
             const vals = days.map((g) => g.ttoe_sec).filter((v): v is number => v != null);
             const label = MONTHS[Number(key.slice(5)) - 1];
+
             return {
                 key,
                 label: label[0] + label.slice(1).toLowerCase(),

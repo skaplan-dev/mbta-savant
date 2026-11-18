@@ -5,6 +5,7 @@ import { useDocumentTitle } from './useDocumentTitle';
 
 export default function NotFound() {
     useDocumentTitle(NOT_FOUND_TITLE);
+
     return (
         <main className="py-16 text-center md:py-20">
             <h1 className="m-0 text-[38px] font-medium tracking-tight md:text-[46px]">

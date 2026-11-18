@@ -48,6 +48,7 @@ const SECTIONS: { key: GlossaryEntry['section']; title: string; icon?: ReactNode
 ];
 
 const tocH = 'text-ink-3 mt-[18px] mb-1.5 text-[15px] font-medium tracking-[0.08em]';
+
 const tocA =
     'text-ink hover:text-brand hover:border-brand-2 block border-l-2 border-transparent py-1 pl-3 no-underline';
 
@@ -58,10 +59,12 @@ export default function GlossaryPage() {
     useEffect(() => {
         if (!hash) return;
         const el = document.getElementById(hash);
+
         if (!el) return;
         el.scrollIntoView({ block: 'start' });
         el.focus({ preventScroll: true });
     }, [hash]);
+
     return (
         <div className="mt-7 mb-[60px] grid grid-cols-1 gap-12 min-[901px]:grid-cols-[240px_minmax(0,1fr)]">
             <aside
@@ -139,6 +142,7 @@ function ScaleDemo() {
             {n}
         </span>
     );
+
     return (
         <div aria-hidden="true" className="mt-[18px] mb-1.5 flex items-center gap-3.5 text-[17px]">
             <span>POOR</span>
@@ -160,6 +164,7 @@ function ScaleDemo() {
 
 function Term({ id, e, active }: { id: StatId; e: GlossaryEntry; active: boolean }) {
     const arrow = e.better === 'higher' ? '▲ ' : e.better === 'lower' ? '▼ ' : '';
+
     return (
         <div
             id={id}

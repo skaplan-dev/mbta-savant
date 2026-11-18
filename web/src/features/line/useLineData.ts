@@ -19,11 +19,13 @@ export function defaultLineSeason(
     indexes: Readonly<Record<string, readonly IndexEntry[] | null | undefined>>
 ): string {
     const years = windows.filter((w) => w !== 'last30');
+
     const hit = years.find(
         (w) =>
             group !== 'mattapan' &&
             indexes[w]?.some((e) => e.group === group && e.qualified && e.ranked)
     );
+
     return hit ?? (windows.includes('last30') ? 'last30' : (windows[0] ?? 'last30'));
 }
 
@@ -33,14 +35,19 @@ export function useLineData(group: string, requested: string | undefined): LineD
     const keys = meta ? orderWindows(meta.windows.map((w) => w.key)) : [];
     const needDefault = !(requested && keys.includes(requested));
     const { windows, indexes, loading } = useAllIndexes(needDefault);
+
     if (metaPending) return undefined;
+
     if (!meta)
         return {
             meta: { generated_at: '', windows: [], latest_service_date: null },
             windows,
             season: 'last30',
         };
+
     if (!needDefault) return { meta, windows, season: requested! };
+
     if (loading) return undefined;
+
     return { meta, windows, season: defaultLineSeason(group, windows, indexes) };
 }

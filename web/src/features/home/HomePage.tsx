@@ -48,6 +48,7 @@ export default function HomePage() {
                             // The same per-line rule as the leaderboard page, so each card matches its link.
                             const season = defaultLineSeason(g, windows, indexes);
                             const index = indexes[season] ?? [];
+
                             return (
                                 <LeaderCard
                                     key={g}
@@ -78,6 +79,7 @@ function LeaderCard({
 }) {
     const search = { season: seasonParam(season) as string };
     const g = GROUPS[group];
+
     return (
         <section className="panel flex flex-col" aria-label={`${g.name} leaders`}>
             <h3

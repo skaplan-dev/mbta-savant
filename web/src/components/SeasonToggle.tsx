@@ -11,6 +11,7 @@ export default function SeasonToggle({ options, value }: { options: string[]; va
         >
             {options.map((k) => {
                 const on = k === value;
+
                 return (
                     <Link
                         key={k}

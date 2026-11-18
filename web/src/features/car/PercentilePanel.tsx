@@ -163,6 +163,7 @@ export default function PercentilePanel({
         },
         { id: 'door-time', pct: p(car.pct.door_time_sec), value: doorLabel(car.door_time_sec) },
     ];
+
     const workload: Row[] = [
         {
             id: 'days-in-service',
@@ -175,6 +176,7 @@ export default function PercentilePanel({
             value: car.iron_horse_days == null ? '–' : `${car.iron_horse_days} d`,
         },
     ];
+
     if (!isBus)
         workload.push({
             id: 'miles',
@@ -188,6 +190,7 @@ export default function PercentilePanel({
         });
 
     const rankedCount = groupFile?.cars.filter((c) => c.qualified && c.ranked).length;
+
     const note = ranked
         ? rankedCount
             ? isBus

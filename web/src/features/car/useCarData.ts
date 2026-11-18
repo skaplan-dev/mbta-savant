@@ -24,6 +24,7 @@ export function useCarData(
     const metaResult = useMeta();
     const { data: meta, isPending: metaPending } = metaResult;
     const keys = meta ? orderWindows(meta.windows.map((w) => w.key)) : [];
+
     const results = useQueries({
         queries: keys.map((w) => ({
             queryKey: ['car', w, group, number],
@@ -31,12 +32,15 @@ export function useCarData(
             staleTime: 60 * 60 * 1000,
         })),
     });
+
     if (metaPending || results.some((r) => r.isPending)) return undefined;
     const failed = results.some((r) => r.isError) || metaResult.isError;
+
     const retry = () => {
         if (metaResult.isError) void metaResult.refetch();
         results.forEach((r) => r.isError && void r.refetch());
     };
+
     if (!meta)
         return {
             meta: { generated_at: '', windows: [], latest_service_date: null },
@@ -48,6 +52,7 @@ export function useCarData(
         };
     const cars: Record<string, Car | null> = {};
     keys.forEach((k, i) => (cars[k] = results[i].data ?? null));
+
     return {
         meta,
         cars,

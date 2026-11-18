@@ -5,8 +5,10 @@ export function pctColor(p: number): string {
     const blue = [50, 96, 180],
         gray = [200, 200, 200],
         red = [214, 41, 41];
+
     const t = Math.max(0, Math.min(100, p)) / 100;
     const [a, b, u] = t < 0.5 ? [blue, gray, t / 0.5] : [gray, red, (t - 0.5) / 0.5];
+
     return `rgb(${a.map((x, i) => Math.round(x + (b[i] - x) * u)).join(',')})`;
 }
 
@@ -23,6 +25,7 @@ export function signed(v: number | null | undefined, digits = 1, unit = ''): str
     if (v == null) return '–';
     const body = fmtNum(Math.abs(v), digits);
     const isZero = Number(body.replace(/,/g, '')) === 0;
+
     return `${isZero ? '' : v > 0 ? '+' : '−'}${body}${unit}`;
 }
 
@@ -40,7 +43,9 @@ export function pacePlus(car: CarLike): number | null {
 
 export function doorLabel(sec: number | null | undefined): string {
     if (sec == null) return '–';
+
     if (sec === 0) return 'typical';
+
     return `${Math.abs(sec)} s ${sec < 0 ? 'quick' : 'slow'}`;
 }
 
@@ -61,7 +66,9 @@ export const isGroup = (g: string): g is GroupId => Object.hasOwn(GROUPS, g);
 /** 1 → "1st", 22 → "22nd", 11 → "11th". */
 export function ordinal(n: number): string {
     const r100 = n % 100;
+
     if (r100 >= 11 && r100 <= 13) return `${n}th`;
+
     return `${n}${['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
 }
 

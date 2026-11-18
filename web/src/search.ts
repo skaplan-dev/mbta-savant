@@ -4,6 +4,7 @@
 export function validateSeasonSearch(search: Record<string, unknown>): { season?: string } {
     const raw: unknown = search.season;
     const s = typeof raw === 'number' ? String(raw) : typeof raw === 'string' ? raw : '';
+
     return /^(\d{4}|last30)$/.test(s) ? { season: s } : {};
 }
 
@@ -35,9 +36,11 @@ export function mergeIndexes(
     >
 ): SearchEntry[] {
     const seen = new Map<string, SearchEntry>();
+
     for (const w of windows) {
         for (const e of indexes[w] ?? []) {
             const key = `${e.group}:${e.number}`;
+
             if (!seen.has(key))
                 seen.set(key, {
                     car_id: e.car_id,
@@ -48,5 +51,6 @@ export function mergeIndexes(
                 });
         }
     }
+
     return [...seen.values()];
 }

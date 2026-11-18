@@ -52,6 +52,7 @@ describe('dayScore and monthSummaries', () => {
             { date: '2026-04-02', trips: 21, miles: null, ttoe_sec: null, routes: [] },
             { date: '2026-05-01', trips: 5, miles: null, ttoe_sec: 2, routes: [] },
         ]);
+
         expect(s).toEqual([
             { key: '2026-04', label: 'Apr', days: 2, tripsPerDay: 16, ttoe: 4 },
             { key: '2026-05', label: 'May', days: 1, tripsPerDay: 5, ttoe: 2 },

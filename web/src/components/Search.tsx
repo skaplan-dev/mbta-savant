@@ -22,7 +22,9 @@ export default function Search({ label = 'Search a car or bus number' }: { label
     // A few thousand entries at most; recomputed per render rather than memoized on the rebuilt `indexes`.
     const matches = (() => {
         const term = q.trim();
+
         if (!term) return [];
+
         return mergeIndexes(windows, indexes)
             .filter((e) => e.number.startsWith(term) && isGroup(e.group))
             .sort(
@@ -36,6 +38,7 @@ export default function Search({ label = 'Search a car or bus number' }: { label
 
     const go = (i: number) => {
         const e = matches[i];
+
         if (!e) return;
         setOpen(false);
         setQ('');

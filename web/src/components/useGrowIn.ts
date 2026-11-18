@@ -8,14 +8,17 @@ export function useGrowIn(): boolean {
     const [on, setOn] = useState(false);
     useEffect(() => {
         let inner = 0;
+
         const outer = requestAnimationFrame(() => {
             inner = requestAnimationFrame(() => setOn(true));
         });
+
         return () => {
             cancelAnimationFrame(outer);
             cancelAnimationFrame(inner);
         };
     }, []);
+
     return on;
 }
 

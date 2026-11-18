@@ -9,6 +9,7 @@ export default function PercentileBar({ pct, label }: { pct: number | null; labe
     const grown = useGrowIn();
     const p = pct ?? 0;
     const color = pctColor(p);
+
     return (
         <div
             role="img"

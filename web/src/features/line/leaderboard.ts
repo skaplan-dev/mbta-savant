@@ -4,7 +4,9 @@ import type { StatId } from '../../glossary';
 import { isRanked, unrankedReason } from '../rank';
 
 export type SortKey = 'rank' | 'car' | 'fleet' | 'trips' | StatId;
+
 export type SortDir = 'asc' | 'desc';
+
 export interface Sort {
     key: SortKey;
     dir: SortDir;
@@ -78,6 +80,7 @@ const MILES: StatCol = {
     value: (c) => c.miles,
     text: (c) => int(c.miles),
 };
+
 const ROUTES: StatCol = {
     id: 'routes-run',
     pct: 'routes',
@@ -97,8 +100,11 @@ const byNumber = (a: CarStats, b: CarStats) =>
 
 function compareNullsLast(a: number | null, b: number | null, dir: SortDir): number {
     if (a == null && b == null) return 0;
+
     if (a == null) return 1;
+
     if (b == null) return -1;
+
     return dir === 'asc' ? a - b : b - a;
 }
 
@@ -116,6 +122,7 @@ export function rankCars(cars: readonly CarStats[]): CarStats[] {
 export function firstDir(key: SortKey, group: GroupId): SortDir {
     if (key === 'car' || key === 'fleet' || key === 'rank') return 'asc';
     const col = statCols(group).find((c) => c.id === key);
+
     return col?.lowerBetter ? 'asc' : 'desc';
 }
 
@@ -129,6 +136,7 @@ export function sortCars(
     const cols = statCols(group);
     const col = cols.find((c) => c.id === sort.key);
     const sign = sort.dir === 'asc' ? 1 : -1;
+
     const cmp = (x: (typeof rows)[number], y: (typeof rows)[number]): number => {
         switch (sort.key) {
             case 'rank':
@@ -143,6 +151,7 @@ export function sortCars(
                 return col ? compareNullsLast(col.value(x.car), col.value(y.car), sort.dir) : 0;
         }
     };
+
     return rows.sort((x, y) => cmp(x, y) || x.rank - y.rank);
 }
 

@@ -8,6 +8,7 @@ export interface SeasonCandidate {
 /** Calendar-year windows newest first, then last30; anything else is dropped. */
 export function orderWindows(keys: readonly string[]): string[] {
     const years = keys.filter((k) => /^\d{4}$/.test(k)).sort((a, b) => b.localeCompare(a));
+
     return keys.includes('last30') ? [...years, 'last30'] : years;
 }
 
@@ -22,6 +23,7 @@ export function defaultSeason(
 ): string | undefined {
     const ordered = orderWindows(keys);
     const years = ordered.filter((k) => k !== 'last30' && cars[k]);
+
     return (
         years.find((k) => cars[k]!.qualified && cars[k]!.ranked) ??
         years[0] ??
@@ -39,5 +41,6 @@ export function resolveSeason(
     cars: Readonly<Record<string, SeasonCandidate | null | undefined>>
 ): string | undefined {
     if (requested && keys.includes(requested)) return requested;
+
     return defaultSeason(keys, cars);
 }

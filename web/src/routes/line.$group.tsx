@@ -14,6 +14,8 @@ export const Route = createFileRoute('/line/$group')({
 function LineRoute() {
     const { group } = Route.useParams();
     const { season } = Route.useSearch();
+
     if (!isGroup(group)) return null;
+
     return <LinePage key={group} group={group} season={season} />;
 }

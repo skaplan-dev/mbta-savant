@@ -49,6 +49,7 @@ export default function BioPanel({
         v.propulsion ? cap(v.propulsion) : null,
         isBus && v.garage ? `Garage: ${v.garage}` : null,
     ].filter((x): x is string => !!x);
+
     const built = [v.years ? `Built: ${v.years}` : null, v.fleet_label || 'Unknown fleet'].filter(
         (x): x is string => !!x
     );
@@ -182,9 +183,12 @@ function SeasonTable({
     const trips = rows.reduce((t, r) => t + r.c.trips, 0);
     const miles = rows.reduce((t, r) => t + (r.c.miles ?? 0), 0);
     const ih = Math.max(...rows.map((r) => r.c.iron_horse_days ?? 0));
+
     const th =
         'border-ink-2 border-b px-1 py-2 text-right font-bold whitespace-nowrap first:text-left';
+
     const td = 'px-1 py-[7px] text-right whitespace-nowrap first:text-left';
+
     return (
         <div className="mx-3.5 mt-[18px] mb-2 overflow-x-auto">
             <table className="w-full border-collapse text-[15px]">
@@ -236,6 +240,7 @@ function SeasonTable({
 /** A horizontal share bar that grows in from zero. */
 export function ShareBar({ frac, color }: { frac: number; color: string }) {
     const grown = useGrowIn();
+
     return (
         <div
             className={`h-3.5 rounded-r-[7px] transition-[width] ${GROW}`}
@@ -249,8 +254,10 @@ export function ShareBar({ frac, color }: { frac: number; color: string }) {
 
 function MatesMini({ car, group, season }: { car: Car; group: GroupId; season: string }) {
     const tm = car.teammates.slice(0, 6);
+
     if (!tm.length) return <p className="text-ink-3 m-0 text-base">No coupled cars recorded.</p>;
     const max = tm[0][1];
+
     return (
         <table className="w-full border-collapse text-[17px]">
             <thead>
@@ -281,9 +288,11 @@ function MatesMini({ car, group, season }: { car: Car; group: GroupId; season: s
 
 function RoutesMini({ car }: { car: Car }) {
     const routes = routeCounts(car).slice(0, 6);
+
     if (!routes.length) return <p className="text-ink-3 m-0 text-base">No routes recorded.</p>;
     const max = routes[0].days;
     const days = car.game_log.length;
+
     return (
         <table className="w-full border-collapse text-[17px]">
             <thead>

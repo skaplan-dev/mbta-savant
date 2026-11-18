@@ -4,6 +4,7 @@ import { firstDir, rankCars, sortCars, unrankedCars } from './leaderboard';
 
 function car(number: string, o: Partial<CarStats> & { pct_ttoe?: number | null } = {}): CarStats {
     const { pct_ttoe, ...rest } = o;
+
     return {
         car_id: `red:${number}`,
         number,
@@ -24,6 +25,7 @@ describe('leaderboard', () => {
         car('2', { ttoe_vs_avg_sec: -3, pct_ttoe: 90, steadiness_sec: 20 }),
         car('3', { ttoe_vs_avg_sec: -2, pct_ttoe: 80, steadiness_sec: null }),
     ];
+
     it('ranks by Time Saved, best first', () => {
         expect(rankCars(cars).map((c) => c.number)).toEqual(['2', '3', '1']);
     });
@@ -56,9 +58,11 @@ describe('leaderboard', () => {
 });
 
 import { defaultLineSeason } from './useLineData';
+
 describe('defaultLineSeason', () => {
     const entry = (group: string, ranked: boolean) =>
         ({ group, qualified: ranked, ranked }) as never;
+
     const w = ['2026', '2025', 'last30'];
     it('picks the newest year with a ranked car, else last30', () => {
         expect(

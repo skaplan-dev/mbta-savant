@@ -10,6 +10,7 @@ import {
 } from './calendar';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 const HELP =
     'Each square is a service day, colored by Time Saved that day: red = faster than the line’s average car, blue = slower.';
 
@@ -28,29 +29,38 @@ export default function CalendarPanel({
     latest: string | null;
 }) {
     const days = new Map(car.game_log.map((g) => [g.date, g]));
+
     const cellFill = (date: string) => {
         const g = days.get(date);
+
         return { g, fill: g ? pctColor(dayScore(g.ttoe_sec, avg)) : 'var(--color-track)' };
     };
+
     const title = (d: CalDay) => {
         const g = days.get(d.date);
+
         if (!g) return `${d.date} · did not run`;
+
         const saved =
             g.ttoe_sec != null && avg != null
                 ? ` · ${signed(avg - g.ttoe_sec, 1, ' s')} saved per stop`
                 : '';
+
         return `${d.date} · ${g.trips} trips${saved}`;
     };
 
     let svg;
+
     if (season === 'last30') {
         const start = window?.start ?? car.game_log[0]?.date;
         const end = window?.end ?? latest ?? car.game_log.at(-1)?.date;
         const grid = start && end ? weekGrid(start, end) : { weeks: 0, days: [] };
+
         const cell = 40,
             gap = 5,
             W = 7 * (cell + gap) - gap,
             H = 20 + grid.weeks * (cell + gap);
+
         svg = (
             <svg
                 width="100%"
@@ -73,8 +83,10 @@ export default function CalendarPanel({
                 ))}
                 {grid.days.map((d) => {
                     const { g, fill } = cellFill(d.date);
+
                     const x = d.col * (cell + gap),
                         y = 20 + d.row * (cell + gap);
+
                     return (
                         <g key={d.date}>
                             <rect x={x} y={y} width={cell} height={cell} rx="3" fill={fill}>
@@ -98,6 +110,7 @@ export default function CalendarPanel({
         const year = Number(season);
         const end = latest && latest < `${season}-12-31` ? latest : `${season}-12-31`;
         const months = yearMonths(year, end);
+
         const cell = 13,
             gap = 2,
             mw = 7 * (cell + gap),
@@ -105,9 +118,12 @@ export default function CalendarPanel({
             cols = 4,
             padX = 14,
             padY = 10;
+
         const rows = Math.ceil(months.length / cols);
+
         const W = cols * mw + (cols - 1) * padX,
             H = rows * mh + (rows - 1) * padY;
+
         svg = (
             <svg
                 width="100%"
@@ -119,6 +135,7 @@ export default function CalendarPanel({
                 {months.map((m, i) => {
                     const ox = (i % cols) * (mw + padX),
                         oy = Math.floor(i / cols) * (mh + padY);
+
                     return (
                         <g key={m.key}>
                             <text

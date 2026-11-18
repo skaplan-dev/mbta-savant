@@ -24,12 +24,14 @@ describe('mergeIndexes', () => {
         number,
         fleet_label: label,
     });
+
     it('merges every window, preferring the newest, and records where each car lives', () => {
         const merged = mergeIndexes(['2026', '2025', 'last30'], {
             '2026': [e('red', '1900', 'new')],
             '2025': [e('red', '1900', 'old'), e('red', '1800')],
             last30: [e('bus', '1400'), e('red', '1800')],
         });
+
         expect(merged.map((m) => `${m.group}:${m.number}:${m.window}`).sort()).toEqual([
             'bus:1400:last30',
             'red:1800:2025',

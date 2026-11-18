@@ -12,6 +12,7 @@ describe('car helpers', () => {
             { date: 'a', trips: 1, miles: null, ttoe_sec: null, routes: ['28', '39'] },
             { date: 'b', trips: 1, miles: null, ttoe_sec: null, routes: ['39'] },
         ];
+
         expect(routeCounts({ game_log: log })).toEqual([
             { route: '39', days: 2 },
             { route: '28', days: 1 },

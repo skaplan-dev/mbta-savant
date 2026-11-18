@@ -7,9 +7,12 @@ export function unrankedReason(
     qualifyMin: number | undefined
 ): string | null {
     if (group === 'mattapan') return 'Mattapan cars aren’t ranked.';
+
     if (!car.ranked) return 'Not in the vehicle roster, so not ranked.';
+
     if (!car.qualified)
         return `Not enough trips this season to be ranked${qualifyMin ? ` (needs ${qualifyMin.toLocaleString('en-US')})` : ''}.`;
+
     return null;
 }
 

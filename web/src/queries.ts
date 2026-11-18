@@ -31,6 +31,7 @@ export const useFleets = (group: string) =>
 export function defaultWindow(meta: Meta | null | undefined): string | undefined {
     if (!meta) return undefined;
     const years = meta.windows.map((w) => w.key).filter((k) => /^\d{4}$/.test(k));
+
     return years.sort().at(-1) ?? meta.windows[0]?.key;
 }
 
@@ -41,6 +42,7 @@ export function defaultWindow(meta: Meta | null | undefined): string | undefined
 export function useAllIndexes(enabled = true) {
     const { data: meta, isPending: metaPending } = useMeta();
     const windows = meta ? orderWindows(meta.windows.map((w) => w.key)) : [];
+
     const results = useQueries({
         queries: windows.map((w) => ({
             queryKey: ['index', w],
@@ -49,8 +51,10 @@ export function useAllIndexes(enabled = true) {
             enabled,
         })),
     });
+
     const indexes: Record<string, IndexEntry[] | null | undefined> = {};
     windows.forEach((w, i) => (indexes[w] = results[i].data));
+
     return {
         meta,
         windows,
