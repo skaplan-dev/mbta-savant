@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { ArrowRight } from 'lucide-react';
 import { useMemo } from 'react';
 import type { IndexEntry } from '../../api';
 import CarPill from '../../components/CarPill';
@@ -19,7 +20,6 @@ import { topLeaders } from './leaders';
 interface LineCard {
     group: GroupId;
     season: string;
-    /** The group's entries in `season`. */
     entries: IndexEntry[];
 }
 
@@ -42,14 +42,14 @@ export default function HomePage() {
     return (
         <main>
             <section className="py-10 text-center md:py-14">
-                <h1 className="m-0 text-[34px] font-medium tracking-tight md:text-[52px]">
+                <h1 className="text-display m-0 font-medium">
                     Every MBTA train car and bus, with a stat line.
                 </h1>
-                <p className="text-ink-2 mx-auto mt-3 mb-7 max-w-[60ch] text-xl md:text-[22px]">
+                <p className="text-ink-2 text-lead mx-auto mt-3 mb-7 max-w-[60ch]">
                     Built nightly from the T’s own arrival and departure records: find a car, see
                     how it ranks against its line.
                 </p>
-                <div className="mx-auto max-w-[720px] text-left [&_input]:h-16 [&_input]:text-2xl">
+                <div className="[&_input]:text-subsection mx-auto max-w-[720px] text-left [&_input]:h-16">
                     <Search />
                 </div>
                 <div className="mt-7 flex justify-center">
@@ -57,9 +57,11 @@ export default function HomePage() {
                 </div>
             </section>
             <section aria-labelledby="leaders-h" className="pb-10">
-                <SectionHeading id="leaders-h" className="m-0 mb-4 text-[30px]">
+                <SectionHeading id="leaders-h" className="m-0 mb-4">
                     Line Leaders
-                    <span className="text-ink-3 ml-3 text-xl font-light">top 5 by Time Saved</span>
+                    <span className="text-ink-3 text-lead ml-3 font-normal">
+                        top 5 by Time Saved
+                    </span>
                 </SectionHeading>
                 {loading ? (
                     <Loading inline />
@@ -82,7 +84,7 @@ function LeaderCard({ group, season, entries }: LineCard) {
     return (
         <section className="panel flex flex-col" aria-label={`${g.name} leaders`}>
             <h3
-                className={`m-0 flex items-baseline justify-between px-4 py-2.5 text-[26px] font-medium ${g.onColor}`}
+                className={`text-subsection m-0 flex items-baseline justify-between px-4 py-2.5 font-medium ${g.onColor}`}
                 style={{ background: g.color }}
             >
                 <Link
@@ -93,7 +95,7 @@ function LeaderCard({ group, season, entries }: LineCard) {
                 >
                     {g.name}
                 </Link>
-                <span className="text-base font-light">{seasonLabel(season)}</span>
+                <span className="text-ui font-normal">{seasonLabel(season)}</span>
             </h3>
             <div className="flex-1 px-4 py-2">
                 {leaders.length > 0 ? (
@@ -101,12 +103,12 @@ function LeaderCard({ group, season, entries }: LineCard) {
                         {leaders.map((e, i) => (
                             <li
                                 key={e.car_id}
-                                className="border-row-rule flex items-center gap-3 border-b border-dashed py-2 text-xl last:border-b-0"
+                                className="border-row-rule text-lead flex items-center gap-3 border-b border-dashed py-2 last:border-b-0"
                             >
-                                <span className="text-ink-3 w-4 text-lg">{i + 1}</span>
+                                <span className="text-ink-3 text-ui w-4">{i + 1}</span>
                                 <CarPill group={group} number={e.number} season={season} />
                                 <span
-                                    className="text-ink-2 min-w-0 flex-1 truncate text-base"
+                                    className="text-ink-2 text-meta min-w-0 flex-1 truncate"
                                     title={e.fleet_label}
                                 >
                                     {e.fleet_label}
@@ -126,8 +128,8 @@ function LeaderCard({ group, season, entries }: LineCard) {
                     </ol>
                 ) : (
                     <div className="py-2">
-                        <p className="m-0 mb-2 text-xl font-medium">Not ranked</p>
-                        <p className="text-ink-2 m-0 mb-3 text-base">
+                        <p className="text-lead m-0 mb-2 font-medium">Not ranked</p>
+                        <p className="text-ink-2 text-ui m-0 mb-3">
                             {g.ranked ? 'No qualified cars yet.' : UNRANKED_LINE_NOTE}
                         </p>
                         <div className="flex flex-wrap gap-2">
@@ -147,9 +149,10 @@ function LeaderCard({ group, season, entries }: LineCard) {
                 to="/line/$group"
                 params={{ group }}
                 search={{ season }}
-                className="text-brand border-panel-line border-t px-4 py-2.5 text-lg"
+                className="text-brand border-panel-line text-ui border-t px-4 py-2.5"
             >
-                {leaders.length ? 'Full leaderboard' : 'See the cars'} &rarr;
+                {leaders.length ? 'Full leaderboard' : 'See the cars'}{' '}
+                <ArrowRight className="inline size-[1em] align-[-0.125em]" strokeWidth={2.5} />
             </Link>
         </section>
     );

@@ -1,5 +1,5 @@
 import type { GameLogEntry } from '../../api';
-import { signed } from '../../format';
+import { fmtSaved, pctColor, pctInk, signed } from '../../format';
 
 // Pure date math for the service calendar. Dates are ISO "YYYY-MM-DD" strings handled in UTC so
 // the layout never shifts with the viewer's time zone.
@@ -15,7 +15,6 @@ const weekday = (ms: number) => new Date(ms).getUTCDay();
 
 export interface CalDay {
     date: string;
-    /** Day of week, Sunday = 0. */
     col: number;
     /** Week row within the month (or within the whole grid for last30). */
     row: number;
@@ -53,7 +52,6 @@ export function yearMonths(year: number, end: string): CalMonth[] {
 }
 
 export interface WeekGrid {
-    /** Rows used. */
     weeks: number;
     days: CalDay[];
 }
@@ -82,11 +80,34 @@ export function savedShort(v: number): string {
     return signed(v, Math.abs(v) >= 9.95 ? 0 : 1);
 }
 
-/** 0-100 score for a day (faster than the line average → high/red), as in the mockup. */
+/** 0-100 score for a day (faster than the line average → high/red). */
 export function dayScore(ttoe: number | null | undefined, avg: number | null | undefined): number {
     if (ttoe == null || avg == null) return 50;
 
     return 50 - (ttoe - avg) * 6;
+}
+
+/**
+ * A calendar cell's fill and the color of its day number: a day that ran is on the percentile scale
+ * (black or white numbers, whichever reads); one that did not is the neutral track.
+ */
+export function dayColors(day: GameLogEntry | undefined, avg: number | null) {
+    if (!day) return { fill: 'var(--color-track)', ink: 'var(--color-ink-2)' };
+    const score = dayScore(day.ttoe_sec, avg);
+
+    return { fill: pctColor(score), ink: pctInk(score) };
+}
+
+/** What a calendar day says, for its hover title and the tap readout. */
+export function dayText(date: string, day: GameLogEntry | undefined, avg: number | null): string {
+    if (!day) return `${date} · did not run`;
+
+    const saved =
+        day.ttoe_sec != null && avg != null
+            ? ` · ${fmtSaved(avg - day.ttoe_sec)} saved per stop`
+            : '';
+
+    return `${date} · ${day.trips} trips${saved}`;
 }
 
 export interface MonthSummary {

@@ -33,7 +33,7 @@ function Label({ x, y, n }: { x: number; y: number; n: string }) {
     );
 }
 
-/** Heavy-rail car (Red, Orange, Blue): the mockup's carSvg body. */
+/** Heavy-rail car (Red, Orange, Blue): the shared body. */
 function HeavyRailCar({ x, n, color }: { x: number; n: string; color: string }) {
     return (
         <g transform={`translate(${x},0)`}>
@@ -214,7 +214,6 @@ function Bus({ n, color, articulated }: { n: string; color: string; articulated:
             />
             <rect x="0" y="80" width={len} height="12" fill={color} />
             <rect x="0" y="24" width={len} height="5" fill={color} opacity="0.9" />
-            {/* front: windshield and door */}
             <rect x="4" y="34" width="22" height="40" rx="3" fill={GLASS} />
             <rect
                 x="32"
@@ -311,7 +310,7 @@ export default function CarArt({
         <svg
             viewBox="-10 0 640 130"
             aria-hidden="true"
-            className="absolute bottom-[26%] left-1/2 h-auto w-[112%] -translate-x-1/2"
+            className="absolute bottom-[34%] left-1/2 h-auto w-full max-w-[560px] -translate-x-1/2"
         >
             {ART[art]({ n: number, mate, color, lengthFt })}
         </svg>

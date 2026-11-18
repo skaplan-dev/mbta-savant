@@ -1,5 +1,3 @@
-// Season windows: calendar years ("2026") plus the rolling "last30".
-
 export const LAST30 = 'last30';
 
 export const isYearKey = (k: string) => /^\d{4}$/.test(k);
@@ -41,6 +39,6 @@ export interface SeasonSearch {
 }
 
 // Optional `?season=` on the line and car routes; anything that isn't a year or "last30" is dropped
-// (the page then uses its default season). The router keeps search values as raw strings (main.tsx).
+// (the page then uses its default season). `parseSearch` (search.ts) delivers the value as a string.
 export const validateSeasonSearch = ({ season }: SeasonSearch): SeasonSearch =>
     isSeasonKey(season) ? { season } : {};

@@ -14,12 +14,9 @@ export default function PanelHeader({
     children?: ReactNode;
 }) {
     return (
-        <div className="flex items-center justify-center gap-3 px-[18px] pt-4 pb-2.5">
-            <h2 id={id} className="m-0 text-center text-[27px] font-medium">
-                <span className="border-brand-2 border-b-[3px] border-dotted pb-0.5">
-                    {seasonLabel(season)}
-                </span>{' '}
-                {title}
+        <div className="flex min-h-[3.75rem] items-center justify-center gap-3 px-[18px] pt-4 pb-2.5">
+            <h2 id={id} className="text-subsection m-0 text-center font-medium">
+                <span className="text-brand">{seasonLabel(season)}</span> {title}
             </h2>
             {children}
         </div>

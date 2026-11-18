@@ -1,5 +1,4 @@
 // Single source for stat definitions: used by the stat popovers and the Glossary page.
-// Copy started from the early design mockups and has since been corrected to match the pipeline.
 
 export type StatId =
     | 'time-saved'
@@ -18,9 +17,7 @@ export type StatId =
 export interface GlossaryEntry {
     name: string;
     section: 'performance' | 'workload' | 'fun';
-    /** Popover copy. */
     short: string;
-    /** Glossary lead sentence. */
     lead: string;
     better: 'higher' | 'lower' | 'none';
     /** Label shown beside the name on the Glossary page. */
@@ -146,7 +143,6 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
 
 const isStatId = (k: string): k is StatId => Object.hasOwn(GLOSSARY, k);
 
-/** Glossary order. */
 export const STAT_IDS = Object.keys(GLOSSARY).filter(isStatId);
 
 export interface RankingsParagraph {
@@ -157,7 +153,6 @@ export interface RankingsParagraph {
     scale?: boolean;
 }
 
-// "How rankings work".
 export const HOW_RANKINGS: RankingsParagraph[] = [
     {
         lead: 'Every car is a player.',

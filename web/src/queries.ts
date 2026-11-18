@@ -6,12 +6,19 @@ import {
     type UseQueryResult,
 } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
-import { fetchCar, fetchFleets, fetchGroup, fetchIndex, fetchMeta, type IndexEntry } from './api';
+import {
+    fetchCar,
+    fetchFleets,
+    fetchGroup,
+    fetchGroupSummary,
+    fetchIndex,
+    fetchMeta,
+    type IndexEntry,
+} from './api';
 import type { GroupId } from './groups';
 import { orderWindows } from './seasons';
 
 // Every fetcher resolves null for a missing file, so "missing" is data, not an error.
-// Stale/GC times are QueryClient defaults (main.tsx).
 
 export const metaQuery = queryOptions({ queryKey: ['meta'], queryFn: fetchMeta });
 
@@ -23,6 +30,12 @@ export const groupQuery = (window: string | undefined, group: GroupId) =>
     queryOptions({
         queryKey: ['group', window, group],
         queryFn: window ? () => fetchGroup(window, group) : skipToken,
+    });
+
+export const groupSummaryQuery = (window: string | undefined, group: GroupId) =>
+    queryOptions({
+        queryKey: ['group-summary', window, group],
+        queryFn: window ? () => fetchGroupSummary(window, group) : skipToken,
     });
 
 export const carQuery = (window: string, group: GroupId, number: string) =>

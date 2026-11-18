@@ -1,11 +1,55 @@
 @import 'tailwindcss';
 
+/*
+ * Roboto Condensed, self-hosted: one variable file (weights 100-900, latin) instead of a render-blocking
+ * stylesheet and font file from two Google origins. Glyphs outside latin fall back to the system font.
+ */
+@font-face {
+    font-family: 'Roboto Condensed Variable';
+    font-style: normal;
+    font-display: swap;
+    font-weight: 100 900;
+    src: url('@fontsource-variable/roboto-condensed/files/roboto-condensed-latin-wght-normal.woff2')
+        format('woff2-variations');
+    unicode-range:
+        U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+        U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/*
+ * While the font loads, Arial is shown scaled to Roboto Condensed's metrics (measured from the font
+ * files: average advance width 89.33% of Arial's, ascent 0.9277em, descent 0.2441em), so text does not
+ * reflow when the real face arrives.
+ */
+@font-face {
+    font-family: 'Roboto Condensed Fallback';
+    src: local('Arial'), local('Helvetica'), local('Liberation Sans');
+    font-weight: 400;
+    size-adjust: 89.33%;
+    ascent-override: 103.85%;
+    descent-override: 27.33%;
+    line-gap-override: 0%;
+}
+
+@font-face {
+    font-family: 'Roboto Condensed Fallback';
+    src:
+        local('Arial Bold'), local('Arial-BoldMT'), local('Helvetica Bold'),
+        local('Liberation Sans Bold');
+    font-weight: 700;
+    size-adjust: 89.33%;
+    ascent-override: 103.85%;
+    descent-override: 27.33%;
+    line-gap-override: 0%;
+}
+
 @theme {
-    --font-sans: 'Roboto Condensed', 'Arial Narrow', sans-serif;
+    --font-sans:
+        'Roboto Condensed Variable', 'Roboto Condensed Fallback', 'Arial Narrow', sans-serif;
 
     --color-ink: #1d2427;
     --color-ink-2: #4d5a5f;
-    --color-ink-3: #6f7c81;
+    --color-ink-3: #627074;
     --color-brand: #2c6e7c;
     --color-brand-2: #5d929d;
     --color-rule: #6f9ca6;
@@ -27,15 +71,35 @@
     --color-line-orange: #ed8b00;
     --color-line-blue: #003da5;
     --color-line-green: #00843d;
-    --color-line-mattapan: #7a8b8f;
+    --color-line-mattapan: #66767a;
     --color-line-bus: #ffc72c;
 
-    /* The mockups use the browser's normal line height everywhere. */
-    --text-sm--line-height: normal;
-    --text-base--line-height: normal;
-    --text-lg--line-height: normal;
-    --text-xl--line-height: normal;
-    --text-2xl--line-height: normal;
+    /*
+     * Type roles. Sizes come only from this scale; each carries its own leading (and tracking where it
+     * helps). Titles, sections and subsections are all medium weight so a subheading never outweighs
+     * the title above it; bold is reserved for small group labels (lead) and the wordmark.
+     * display and title are fluid so headings ease between phone and desktop; everything else is fixed.
+     */
+    --text-meta: 0.9375rem; /* captions, units, small labels */
+    --text-meta--line-height: 1.3;
+    --text-ui: 1.0625rem; /* default UI, table and list text */
+    --text-ui--line-height: 1.3;
+    --text-lead: 1.25rem; /* emphasized rows, subtitles, group labels, reading prose */
+    --text-lead--line-height: 1.3;
+    --text-subsection: 1.5rem; /* card and panel titles, glossary terms */
+    --text-subsection--line-height: 1.2;
+    --text-section: 1.875rem; /* page sections */
+    --text-section--line-height: 1.15;
+    --text-section--letter-spacing: -0.01em;
+    --text-title: clamp(2.125rem, 1.7rem + 1.4vw, 2.875rem); /* page titles */
+    --text-title--line-height: 1.1;
+    --text-title--letter-spacing: -0.015em;
+    --text-display: clamp(2.125rem, 1.35rem + 2.4vw, 3.25rem); /* the home hero */
+    --text-display--line-height: 1.08;
+    --text-display--letter-spacing: -0.02em;
+    --text-wordmark: clamp(2.75rem, 1.9rem + 2.3vw, 3.5rem); /* the logo lockup */
+
+    --tracking-caps: 0.06em;
 
     --radius-panel: 8px;
     --shadow-panel: 0 1px 2px rgb(29 36 39 / 0.04), 0 6px 18px -8px rgb(29 36 39 / 0.1);
@@ -48,7 +112,8 @@
     body {
         margin: 0;
         overflow-x: hidden;
-        line-height: normal;
+        font-size: var(--text-ui);
+        line-height: 1.3;
         background: #fff;
         color: var(--color-ink);
         font-family: var(--font-sans);
@@ -57,6 +122,11 @@
     ::selection {
         background: color-mix(in srgb, var(--color-brand) 22%, white);
         color: var(--color-ink);
+    }
+    h1,
+    h2,
+    h3 {
+        text-wrap: balance;
     }
     a {
         text-underline-offset: 3px;

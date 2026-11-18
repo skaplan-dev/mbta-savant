@@ -1,14 +1,5 @@
 import type { CarStats, Metric } from './api';
-import {
-    doorLabel,
-    fmtInt,
-    fmtMilesShort,
-    fmtNum,
-    fmtSaved,
-    fmtUnit,
-    pacePlus,
-    timeSaved,
-} from './format';
+import { doorLabel, fmtInt, fmtNum, fmtSaved, pacePlus, timeSaved } from './format';
 import type { StatId } from './glossary';
 import { GROUPS, type GroupId, type Mode } from './groups';
 
@@ -21,7 +12,6 @@ export interface Stat {
     section: 'performance' | 'workload';
     /** Numeric value that the leaderboard cell displays, so sorting matches what is shown. */
     value: (c: CarStats) => number | null;
-    /** Leaderboard cell. */
     text: (c: CarStats) => string;
     /** Percentile panel value, where it's shorter than the leaderboard's. */
     brief?: (c: CarStats) => string;
@@ -53,7 +43,7 @@ export const STATS: readonly Stat[] = [
         pct: 'on_time_pct',
         section: 'performance',
         value: (c) => c.on_time_pct,
-        text: (c) => fmtUnit(c.on_time_pct, 1, '%'),
+        text: (c) => fmtNum(c.on_time_pct, 1, '%'),
         brief: (c) => fmtNum(c.on_time_pct, 1),
     },
     {
@@ -61,7 +51,7 @@ export const STATS: readonly Stat[] = [
         pct: 'steadiness_sec',
         section: 'performance',
         value: (c) => c.steadiness_sec,
-        text: (c) => fmtUnit(c.steadiness_sec, 1, ' s'),
+        text: (c) => fmtNum(c.steadiness_sec, 1, ' s'),
         lowerBetter: true,
     },
     {
@@ -78,14 +68,14 @@ export const STATS: readonly Stat[] = [
         pct: 'games_played_pct',
         section: 'workload',
         value: (c) => c.games_played_pct,
-        text: (c) => fmtUnit(c.games_played_pct, 0, '%'),
+        text: (c) => fmtNum(c.games_played_pct, 0, '%'),
     },
     {
         id: 'iron-horse',
         pct: 'iron_horse_days',
         section: 'workload',
         value: (c) => c.iron_horse_days,
-        text: (c) => fmtUnit(c.iron_horse_days, 0, ' d'),
+        text: (c) => fmtNum(c.iron_horse_days, 0, ' d'),
     },
     {
         id: 'miles',
@@ -93,7 +83,8 @@ export const STATS: readonly Stat[] = [
         section: 'workload',
         value: (c) => c.miles,
         text: (c) => fmtInt(c.miles),
-        brief: (c) => fmtMilesShort(c.miles),
+        brief: (c) =>
+            c.miles != null && c.miles >= 1000 ? fmtNum(c.miles / 1000, 1, 'k') : fmtInt(c.miles),
         mode: 'rail',
     },
     {
@@ -109,9 +100,7 @@ export const STATS: readonly Stat[] = [
 
 const forGroup = (group: GroupId) => STATS.filter((s) => !s.mode || s.mode === GROUPS[group].mode);
 
-/** Leaderboard columns for a line. */
 export const boardStats = (group: GroupId): Stat[] => forGroup(group);
 
-/** Percentile panel rows for one section. */
 export const panelStats = (group: GroupId, section: Stat['section']): Stat[] =>
     forGroup(group).filter((s) => s.section === section && !s.boardOnly);

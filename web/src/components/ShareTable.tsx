@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react';
-import { fmtInt, pctOf } from '../format';
+import { barEdge, fmtInt, pctOf } from '../format';
 import { GROW, useGrowIn } from './useGrowIn';
 
-/** A horizontal share bar that grows in from zero. */
 export function ShareBar({ frac, color }: { frac: number; color: string }) {
     const grown = useGrowIn();
 
@@ -12,6 +11,7 @@ export function ShareBar({ frac, color }: { frac: number; color: string }) {
             style={{
                 width: grown ? `${Math.max(6, frac * 100)}%` : 0,
                 background: `color-mix(in srgb, ${color} 70%, white)`,
+                border: `1px solid ${barEdge(color)}`,
             }}
         />
     );
@@ -24,7 +24,7 @@ export interface ShareRow {
 }
 
 const FULL = {
-    table: 'mb-8 w-full border-collapse text-base sm:text-lg',
+    table: 'mb-8 w-full border-collapse text-ui',
     th: 'border-ink-2 border-b px-2.5 py-2.5 text-right font-bold first:text-left',
     barTh: 'w-1/2 text-left!',
     td: 'border-b border-table-rule px-2.5 py-2 text-right first:text-left',
@@ -34,8 +34,8 @@ const FULL = {
 };
 
 const COMPACT = {
-    table: 'w-full border-collapse text-[17px]',
-    th: 'px-1 pb-1.5 text-left text-base font-bold',
+    table: 'w-full border-collapse text-ui',
+    th: 'px-1 pb-1.5 text-left text-meta font-bold',
     barTh: '',
     td: 'px-1 py-[3px]',
     barTd: 'w-full',

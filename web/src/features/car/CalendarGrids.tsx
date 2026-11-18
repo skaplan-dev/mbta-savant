@@ -1,6 +1,5 @@
 import type { GameLogEntry } from '../../api';
-import { fmtSaved, pctColor } from '../../format';
-import { dayScore, weekGrid, yearMonths, type CalDay } from './calendar';
+import { dayColors, dayText, weekGrid, yearMonths, type CalDay } from './calendar';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -11,22 +10,19 @@ export interface DayLookup {
     avg: number | null;
 }
 
-const fill = ({ days, avg }: DayLookup, date: string) => {
-    const g = days.get(date);
-
-    return g ? pctColor(dayScore(g.ttoe_sec, avg)) : 'var(--color-track)';
-};
+const colors = ({ days, avg }: DayLookup, date: string) => dayColors(days.get(date), avg);
 
 function DayTitle({ lookup: { days, avg }, day }: { lookup: DayLookup; day: CalDay }) {
-    const g = days.get(day.date);
-
-    if (!g) return <title>{`${day.date} · did not run`}</title>;
-
-    const saved =
-        g.ttoe_sec != null && avg != null ? ` · ${fmtSaved(avg - g.ttoe_sec)} saved per stop` : '';
-
-    return <title>{`${day.date} · ${g.trips} trips${saved}`}</title>;
+    return <title>{dayText(day.date, days.get(day.date), avg)}</title>;
 }
+
+/** Which day the readout shows, and how a cell reports a tap. */
+export interface DayPicker {
+    selected: string | null;
+    onPick: (date: string) => void;
+}
+
+const A11Y_HINT = 'Every day is listed in the game log below.';
 
 const L30 = { cell: 40, gap: 5, head: 20 };
 
@@ -35,7 +31,9 @@ export function LastThirtyGrid({
     lookup,
     start,
     end,
-}: {
+    selected,
+    onPick,
+}: DayPicker & {
     lookup: DayLookup;
     start: string | undefined;
     end: string | undefined;
@@ -50,7 +48,7 @@ export function LastThirtyGrid({
             width="100%"
             viewBox={`0 0 ${W} ${H}`}
             role="img"
-            aria-label="Last 30 days service calendar"
+            aria-label={`Last 30 days service calendar. ${A11Y_HINT}`}
             className="block"
         >
             {DOW.map((t, i) => (
@@ -77,7 +75,11 @@ export function LastThirtyGrid({
                             width={cell}
                             height={cell}
                             rx="3"
-                            fill={fill(lookup, d.date)}
+                            fill={colors(lookup, d.date).fill}
+                            onClick={() => onPick(d.date)}
+                            className="cursor-pointer"
+                            stroke={selected === d.date ? 'var(--color-ink)' : 'none'}
+                            strokeWidth="2"
                         >
                             <DayTitle lookup={lookup} day={d} />
                         </rect>
@@ -86,7 +88,7 @@ export function LastThirtyGrid({
                             y={y + 15}
                             fontSize="12"
                             style={{
-                                fill: lookup.days.has(d.date) ? '#fff' : 'var(--color-ink-3)',
+                                fill: colors(lookup, d.date).ink,
                             }}
                             pointerEvents="none"
                         >
@@ -99,14 +101,16 @@ export function LastThirtyGrid({
     );
 }
 
-const YEAR = { cell: 13, gap: 2, head: 18, cols: 4, padX: 14, padY: 10 };
+const YEAR = { cell: 13, gap: 2, head: 18, cols: 3, padX: 16, padY: 10 };
 
-/** A calendar year: small-multiple months, four per row, through `latest`. */
+/** A calendar year: small-multiple months, three per row, through `latest`. */
 export function YearGrid({
     lookup,
     season,
     latest,
-}: {
+    selected,
+    onPick,
+}: DayPicker & {
     lookup: DayLookup;
     season: string;
     latest: string | null;
@@ -125,7 +129,7 @@ export function YearGrid({
             width="100%"
             viewBox={`0 0 ${W} ${H}`}
             role="img"
-            aria-label={`${season} service calendar`}
+            aria-label={`${season} service calendar. ${A11Y_HINT}`}
             className="block"
         >
             {months.map((m, i) => {
@@ -137,7 +141,7 @@ export function YearGrid({
                         <text
                             x={ox}
                             y={oy + 11}
-                            fontSize="12"
+                            fontSize="10"
                             fontWeight="500"
                             className="fill-ink"
                         >
@@ -151,7 +155,11 @@ export function YearGrid({
                                 width={cell}
                                 height={cell}
                                 rx="2"
-                                fill={fill(lookup, d.date)}
+                                fill={colors(lookup, d.date).fill}
+                                onClick={() => onPick(d.date)}
+                                className="cursor-pointer"
+                                stroke={selected === d.date ? 'var(--color-ink)' : 'none'}
+                                strokeWidth="2"
                             >
                                 <DayTitle lookup={lookup} day={d} />
                             </rect>

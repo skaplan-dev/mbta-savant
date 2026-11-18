@@ -2,7 +2,7 @@ import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react';
 import { getRouteApi } from '@tanstack/react-router';
 import { useState } from 'react';
 import type { Car } from '../../api';
-import { fmtInt, fmtSaved, pctColor } from '../../format';
+import { fmtInt, fmtSaved, pctColor, pctInk } from '../../format';
 import { GROUPS, type GroupId } from '../../groups';
 import { dayScore } from './calendar';
 import PartnerTable from './PartnerTable';
@@ -57,7 +57,7 @@ export default function CarTabs({
                 {tabs.map(([id, label]) => (
                     <Tab
                         key={id}
-                        className="border-panel-line text-ink not-data-selected:hover:bg-wash data-selected:bg-brand-2 data-selected:border-brand-2 cursor-pointer rounded-full border bg-white px-3.5 py-3 text-[15px] tracking-[0.04em] data-selected:text-white sm:px-[34px] sm:text-lg"
+                        className="border-panel-line text-ink not-data-selected:hover:bg-wash data-selected:bg-brand data-selected:border-brand text-meta tracking-caps sm:text-ui cursor-pointer rounded-full border bg-white px-3.5 py-3 data-selected:text-white sm:px-[34px]"
                     >
                         {label}
                     </Tab>
@@ -82,11 +82,11 @@ function GameLog({ car, avg, group }: { car: Car; avg: number | null; group: Gro
     const shown = all ? rows : rows.slice(0, PAGE);
 
     if (!rows.length)
-        return <p className="text-ink-2 text-center text-lg">No service days this season.</p>;
+        return <p className="text-ink-2 text-ui text-center">No service days this season.</p>;
 
     return (
         <>
-            <table className="mb-4 w-full border-collapse text-base sm:text-lg">
+            <table className="text-ui mb-4 w-full border-collapse">
                 <thead>
                     <tr>
                         <th className={th}>Date</th>
@@ -115,12 +115,16 @@ function GameLog({ car, avg, group }: { car: Car; avg: number | null; group: Gro
                                 )}
                                 <td className={td}>
                                     <span
-                                        className="inline-block min-w-[72px] rounded-[3px] px-2 py-0.5 text-center font-medium text-white"
+                                        className="inline-block min-w-[72px] rounded-[3px] px-2 py-0.5 text-center font-medium"
                                         style={{
                                             background:
                                                 saved == null
                                                     ? 'var(--color-average)'
                                                     : pctColor(dayScore(g.ttoe_sec, avg)),
+                                            color:
+                                                saved == null
+                                                    ? '#000'
+                                                    : pctInk(dayScore(g.ttoe_sec, avg)),
                                         }}
                                     >
                                         {fmtSaved(saved)}
@@ -137,7 +141,7 @@ function GameLog({ car, avg, group }: { car: Car; avg: number | null; group: Gro
                     <button
                         type="button"
                         onClick={() => setAll(!all)}
-                        className="border-panel-line text-brand hover:bg-wash cursor-pointer rounded-full border bg-white px-5 py-2 text-base"
+                        className="border-panel-line text-brand hover:bg-wash text-ui cursor-pointer rounded-full border bg-white px-5 py-3"
                     >
                         {all ? 'Show fewer days' : `Show all ${rows.length} days`}
                     </button>

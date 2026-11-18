@@ -5,7 +5,7 @@ import LineDot from './LineDot';
 import Search from './Search';
 
 const navLink =
-    'inline-flex items-center gap-2 text-lg text-ink no-underline hover:text-brand sm:text-[21px] [&.active]:text-brand';
+    'inline-flex items-center gap-2 text-ui text-ink no-underline hover:text-brand sm:text-lead [&.active]:text-brand';
 
 export default function Masthead() {
     // The home page has its own large search.
@@ -21,10 +21,10 @@ export default function Masthead() {
                 >
                     <Emblem className="size-[60px] flex-none md:size-[76px]" />
                     <span className="leading-[0.9]">
-                        <span className="text-brand text-[44px] font-normal tracking-[-0.01em] md:text-[56px]">
+                        <span className="text-brand text-wordmark font-normal tracking-[-0.01em]">
                             <b className="text-ink mr-2 font-bold tracking-normal">MBTA</b>savant
                         </span>
-                        <span className="text-ink-2 mt-1.5 block text-base font-light md:text-[19px]">
+                        <span className="text-ink-2 text-ui mt-1.5 block font-light">
                             every car, every trip &middot;{' '}
                             <strong className="text-ink font-medium">
                                 a TransitMatters Labs project

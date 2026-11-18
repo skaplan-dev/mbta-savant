@@ -37,7 +37,7 @@ export default function PartnerTable({
 
     if (!rows.length)
         return (
-            <p className={compact ? 'text-ink-3 m-0 text-base' : 'text-ink-2 text-center text-lg'}>
+            <p className={compact ? 'text-ink-3 text-ui m-0' : 'text-ink-2 text-ui text-center'}>
                 {rail ? 'No coupled cars recorded.' : 'No routes recorded.'}
             </p>
         );

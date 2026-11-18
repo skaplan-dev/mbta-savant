@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { marriedMate, routeCounts } from './shared';
+import { marriedMate, noSeasonData, routeCounts } from './shared';
 
 describe('car helpers', () => {
     it('finds a married pair at 95% shared trips', () => {
@@ -17,5 +17,16 @@ describe('car helpers', () => {
             { route: '39', days: 2 },
             { route: '28', days: 1 },
         ]);
+    });
+});
+
+describe('noSeasonData', () => {
+    it('names the car and the season once, and says what to do next', () => {
+        expect(noSeasonData('Bus', '1210', '2025')).toBe(
+            'Bus 1210 has no data for 2025. Pick another season above.'
+        );
+        expect(noSeasonData('Car', '1902', 'last30')).toBe(
+            'Car 1902 has no data for Last 30 Days. Pick another season above.'
+        );
     });
 });

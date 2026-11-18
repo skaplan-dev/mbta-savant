@@ -55,12 +55,12 @@ export default function SearchBox({
                     onKeyDown={(ev) => {
                         if (ev.key === 'Escape') setQ('');
                     }}
-                    className="rounded-panel border-panel-line text-ink placeholder:text-ink-3 h-14 w-full border bg-white px-[18px] text-xl"
+                    className="rounded-panel border-panel-line text-ink placeholder:text-ink-3 text-lead h-14 w-full border bg-white px-[18px]"
                 />
                 {term !== '' && (
                     <ComboboxOptions className="panel absolute top-full right-0 left-0 z-20 mt-1.5 list-none p-1 empty:invisible">
                         {matches.length === 0 && (
-                            <li className="text-ink-3 px-3 py-2 text-lg">
+                            <li className="text-ink-3 text-ui px-3 py-2">
                                 {loading ? 'Loading…' : 'No match'}
                             </li>
                         )}
@@ -68,13 +68,11 @@ export default function SearchBox({
                             <ComboboxOption
                                 key={e.car_id}
                                 value={e}
-                                className="data-focus:bg-wash flex cursor-pointer items-center gap-3 rounded px-3 py-2 text-xl"
+                                className="data-focus:bg-wash text-lead flex cursor-pointer items-center gap-3 rounded px-3 py-2"
                             >
                                 <LineDot group={e.group} className="size-[11px] flex-none" />
                                 <span className="font-medium">{e.number}</span>
-                                <span className="text-ink-2 truncate text-base">
-                                    {e.fleet_label}
-                                </span>
+                                <span className="text-ink-2 text-ui truncate">{e.fleet_label}</span>
                             </ComboboxOption>
                         ))}
                     </ComboboxOptions>

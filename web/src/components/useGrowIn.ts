@@ -22,6 +22,5 @@ export function useGrowIn(): boolean {
     return on;
 }
 
-/** Exponential ease-out used by every growing bar. */
 export const GROW =
     'duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none';

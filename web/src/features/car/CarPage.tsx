@@ -4,13 +4,13 @@ import ResourceView from '../../components/ResourceView';
 import SeasonBar from '../../components/SeasonBar';
 import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { GROUPS, type GroupId } from '../../groups';
-import { groupQuery } from '../../queries';
-import { seasonLabel } from '../../seasons';
+import { groupSummaryQuery } from '../../queries';
 import { carTitle } from '../../titles';
 import BioPanel from './BioPanel';
 import CalendarPanel from './CalendarPanel';
 import CarTabs from './CarTabs';
 import PercentilePanel from './PercentilePanel';
+import { noSeasonData } from './shared';
 import { useCarData, type CarData } from './useCarData';
 
 const route = getRouteApi('/car/$group/$number');
@@ -37,25 +37,24 @@ function CarView({ group, number, data }: { group: GroupId; number: string; data
     const { meta, files, season, car } = data;
     const { tab = 'log' } = route.useSearch();
     // The line averages only color the calendar and game log, so the page doesn't wait for them.
-    const { data: groupFile } = useQuery(groupQuery(season, group));
-    const avg = groupFile?.averages.ttoe_sec ?? null;
+    const { data: summary } = useQuery(groupSummaryQuery(season, group));
+    const avg = summary?.averages.ttoe_sec ?? null;
 
     useDocumentTitle(carTitle(group, number));
 
     return (
-        <>
+        <main>
             <SeasonBar
                 latest={meta.latest_service_date}
                 options={files.map((f) => f.window)}
                 value={season}
                 className="mt-2 mb-[34px]"
             />
-            <main className="grid grid-cols-1 items-stretch gap-4 min-[761px]:grid-cols-2 min-[1180px]:grid-cols-3">
+            <div className="grid grid-cols-1 items-stretch gap-4 min-[761px]:grid-cols-2 min-[1180px]:grid-cols-3">
                 <BioPanel
                     group={group}
                     number={number}
                     season={season}
-                    hasSeasonData={!!car}
                     car={data.bio}
                     files={files}
                 />
@@ -65,9 +64,10 @@ function CarView({ group, number, data }: { group: GroupId; number: string; data
                             group={group}
                             season={season}
                             car={car}
-                            groupFile={groupFile}
+                            summary={summary}
                         />
                         <CalendarPanel
+                            key={season}
                             season={season}
                             car={car}
                             avg={avg}
@@ -77,14 +77,13 @@ function CarView({ group, number, data }: { group: GroupId; number: string; data
                     </>
                 ) : (
                     <section className="panel grid place-items-center p-8 text-center min-[1180px]:col-span-2">
-                        <p className="text-ink-2 m-0 text-xl">
-                            {GROUPS[group].noun} {number} has no {GROUPS[group].name} data for{' '}
-                            {seasonLabel(season)}. Pick another season above.
+                        <p className="text-ink-2 text-lead m-0">
+                            {noSeasonData(GROUPS[group].noun, number, season)}
                         </p>
                     </section>
                 )}
-            </main>
+            </div>
             {car && <CarTabs group={group} season={season} car={car} avg={avg} tab={tab} />}
-        </>
+        </main>
     );
 }

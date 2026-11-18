@@ -1,14 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import {
-    createRouter,
-    parseSearchWith,
-    RouterProvider,
-    stringifySearchWith,
-} from '@tanstack/react-router';
+import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import { routeTree } from './routeTree.gen';
+import { parseSearch, stringifySearch } from './search';
 
 const HOUR = 60 * 60 * 1000;
 
@@ -20,10 +16,8 @@ const queryClient = new QueryClient({
 const router = createRouter({
     routeTree,
     defaultPreload: 'intent',
-    // Search values stay plain strings (`?season=2026`, not JSON-decoded to a number), so each
-    // route's validateSearch sees exactly what's in the URL and links need no casts.
-    parseSearch: parseSearchWith((v) => v),
-    stringifySearch: stringifySearchWith(String),
+    parseSearch,
+    stringifySearch,
 });
 
 declare module '@tanstack/react-router' {

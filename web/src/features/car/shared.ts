@@ -1,5 +1,6 @@
 import type { Car } from '../../api';
 import { compareNumeric } from '../../compare';
+import { seasonLabel } from '../../seasons';
 
 /** The married partner: the first teammate when they share at least 95% of this car's trips. */
 export function marriedMate(car: Pick<Car, 'teammates' | 'trips'>): string | null {
@@ -8,12 +9,14 @@ export function marriedMate(car: Pick<Car, 'teammates' | 'trips'>): string | nul
     return first && car.trips > 0 && first[1] / car.trips >= 0.95 ? first[0] : null;
 }
 
+export const noSeasonData = (noun: string, number: string, season: string) =>
+    `${noun} ${number} has no data for ${seasonLabel(season)}. Pick another season above.`;
+
 export interface RouteCount {
     route: string;
     days: number;
 }
 
-/** Days on each route from the game log, most-run first. */
 export function routeCounts(car: Pick<Car, 'game_log'>): RouteCount[] {
     const m = new Map<string, number>();
 

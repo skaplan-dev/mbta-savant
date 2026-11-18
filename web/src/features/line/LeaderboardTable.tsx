@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { CarStats } from '../../api';
 import CarPill from '../../components/CarPill';
@@ -8,7 +9,7 @@ import { boardStats } from '../../stats';
 import { firstDir, sortCars, type Sort, type SortKey } from './leaderboard';
 
 const th =
-    'border-panel-line bg-wash border-b px-2 py-2 text-left align-bottom text-[17px] font-medium leading-tight whitespace-nowrap aria-[sort=ascending]:text-brand aria-[sort=descending]:text-brand';
+    'border-panel-line bg-wash border-b px-2 py-2 text-left align-bottom text-ui font-medium leading-tight whitespace-nowrap aria-[sort=ascending]:text-brand aria-[sort=descending]:text-brand';
 
 const td = 'border-panel-line border-b px-2 py-1.5 whitespace-nowrap';
 
@@ -16,12 +17,6 @@ const td = 'border-panel-line border-b px-2 py-1.5 whitespace-nowrap';
 // so Car's left offset lines up; both need an opaque background so scrolled cells don't show through.
 const stickyRank = 'sticky left-0 z-[1] w-[72px] min-w-[72px]';
 const stickyCar = 'sticky left-[72px] z-[1] shadow-[1px_0_0_var(--color-panel-line)]';
-
-// Up and down chevrons; the one matching the sort direction is drawn in the brand color.
-const CHEVRONS = [
-    ['M1.5 5.5 5 2l3.5 3.5', 'asc'],
-    ['M1.5 8.5 5 12l3.5-3.5', 'desc'],
-] as const;
 
 // Module scope on purpose: defined inside the table it would be a new component type every render,
 // remounting the button on each sort and dropping keyboard focus.
@@ -37,6 +32,7 @@ function SortBtn({
     label: string;
 }) {
     const dir = sort.key === k ? sort.dir : null;
+    const Chevron = dir === 'asc' ? ChevronUp : dir === 'desc' ? ChevronDown : ChevronsUpDown;
 
     return (
         <button
@@ -45,29 +41,7 @@ function SortBtn({
             aria-label={`Sort by ${label}`}
             className="hover:bg-panel-line/60 ml-0.5 inline-grid size-5 cursor-pointer place-items-center rounded border-0 bg-transparent p-0 align-[-3px]"
         >
-            <svg
-                viewBox="0 0 10 14"
-                aria-hidden="true"
-                fill="none"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-3.5 w-2.5"
-            >
-                {CHEVRONS.map(([d, chevronDir]) => (
-                    <path
-                        key={chevronDir}
-                        d={d}
-                        className={
-                            dir === chevronDir
-                                ? 'stroke-brand'
-                                : dir
-                                  ? 'stroke-ink-3/25'
-                                  : 'stroke-ink-3/60'
-                        }
-                    />
-                ))}
-            </svg>
+            <Chevron className={`size-4 ${dir ? 'text-brand' : 'text-ink-3'}`} strokeWidth={2.5} />
         </button>
     );
 }
@@ -98,7 +72,7 @@ export default function LeaderboardTable({
     return (
         <section className="panel" aria-label="Leaderboard">
             <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-[17px]">
+                <table className="text-ui w-full border-collapse">
                     <thead>
                         <tr>
                             <th
@@ -169,7 +143,7 @@ export default function LeaderboardTable({
                                         >
                                             {c.text(car)}
                                             {pct != null && (
-                                                <small className="text-ink-2 ml-1.5 text-[13px]">
+                                                <small className="text-ink text-meta ml-1.5">
                                                     {pct}
                                                 </small>
                                             )}

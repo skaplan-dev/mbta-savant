@@ -7,7 +7,6 @@ type RankFlags = Pick<CarStats, 'ranked' | 'qualified'>;
 
 export const UNRANKED_LINE_NOTE = 'Mattapan’s handful of trolleys get stats but aren’t ranked.';
 
-/** Why a car has no bubbles, or null when it is ranked. */
 export function unrankedReason(
     group: GroupId,
     car: RankFlags,

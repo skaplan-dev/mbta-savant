@@ -1,8 +1,7 @@
-import { Link } from '@tanstack/react-router';
 import type { Car } from '../../api';
 import LineDot from '../../components/LineDot';
 import StatTerm from '../../components/StatTerm';
-import { fmtInt, fmtSaved, fmtUnit, timeSaved } from '../../format';
+import { fmtInt, fmtNum, fmtSaved, timeSaved } from '../../format';
 import { GROUPS, type GroupId } from '../../groups';
 import { isYearKey } from '../../seasons';
 import CarArt from './CarArt';
@@ -11,8 +10,6 @@ import { marriedMate } from './shared';
 import type { CarFile } from './useCarData';
 
 const HERO_BG = 'linear-gradient(#eef3f5, #eef3f5 72%, #d9e3e6 72%, #d9e3e6 74%, #e4ebed 74%)';
-
-const pageLink = 'text-ink hover:text-brand block py-0.5 no-underline hover:underline';
 
 const Sep = () => <span className="text-ink-3 mx-1.5">|</span>;
 
@@ -31,16 +28,12 @@ export default function BioPanel({
     group,
     number,
     season,
-    hasSeasonData,
     car,
     files,
 }: {
     group: GroupId;
     number: string;
-    /** The selected season; carried onto the leaderboard and teammate links. */
     season: string;
-    /** False when the car has no file for `season`; the Game Log and partner links are hidden. */
-    hasSeasonData: boolean;
     car: Car;
     files: CarFile[];
 }) {
@@ -63,7 +56,7 @@ export default function BioPanel({
                 </div>
                 <div
                     className={`absolute -bottom-12 left-1/2 grid size-24 -translate-x-1/2 place-items-center rounded-full border-4 border-white font-bold tracking-[0.01em] shadow-[0_3px_10px_rgb(0_0_0/0.18)] ${
-                        number.length > 4 ? 'text-2xl' : 'text-[30px]'
+                        number.length > 4 ? 'text-subsection' : 'text-section'
                     } ${info.onColor}`}
                     style={{ background: info.color }}
                     aria-hidden="true"
@@ -72,21 +65,21 @@ export default function BioPanel({
                 </div>
             </div>
             <div className="px-[18px] pt-[58px] pb-1.5 text-center">
-                <h1 id="carName" className="m-0 mb-1.5 text-[40px] font-medium tracking-[-0.01em]">
+                <h1 id="carName" className="text-title m-0 mb-1.5 font-medium">
                     {info.noun} {number}
                 </h1>
-                <div className="mb-2 flex flex-wrap items-center justify-center gap-x-2.5 text-2xl">
+                <div className="text-lead mb-2 flex flex-wrap items-center justify-center gap-x-2.5">
                     <LineDot group={group} className="size-4" />
                     {info.name}
                     <span className="text-ink-3">|</span>
                     {v.builder ? `${v.builder} ${v.model ?? ''}` : 'Unknown builder'}
                 </div>
                 {specs.some(Boolean) && (
-                    <p className="my-[3px] text-lg">
+                    <p className="text-ui my-[3px]">
                         <Specs items={specs} />
                     </p>
                 )}
-                <p className="my-[3px] text-lg">
+                <p className="text-ui my-[3px]">
                     <Specs
                         items={[!!v.years && `Built: ${v.years}`, v.fleet_label || 'Unknown fleet']}
                     />
@@ -95,69 +88,27 @@ export default function BioPanel({
 
             <SeasonTable files={files.filter((f) => isYearKey(f.window))} group={group} />
 
-            <div className="grid gap-3.5 px-[18px] pt-3 pb-5 min-[761px]:grid-cols-[0.9fr_1.4fr]">
-                <div>
-                    <h3 className="mt-1.5 mb-2.5 text-2xl font-medium">{info.noun} Pages</h3>
-                    <ul className="m-0 list-none p-0 text-lg">
-                        {hasSeasonData && (
-                            <li>
-                                <Link
-                                    from="/car/$group/$number"
-                                    to="."
-                                    search={(prev) => ({ ...prev, tab: undefined })}
-                                    hash="tabs"
-                                    resetScroll={false}
-                                    className={pageLink}
-                                >
-                                    Game Log
-                                </Link>
-                            </li>
-                        )}
-                        <li>
-                            <Link to="/glossary" className={pageLink}>
-                                Stat Glossary
-                            </Link>
-                        </li>
-                        {hasSeasonData && (
-                            <li>
-                                <Link
-                                    from="/car/$group/$number"
-                                    to="."
-                                    search={(prev) => ({ ...prev, tab: 'mates' })}
-                                    hash="tabs"
-                                    resetScroll={false}
-                                    className={pageLink}
-                                >
-                                    {info.partner.link}
-                                </Link>
-                            </li>
-                        )}
-                        <li>
-                            <Link
-                                to="/line/$group"
-                                params={{ group }}
-                                search={{ season }}
-                                className={pageLink}
-                            >
-                                Line Leaderboard
-                            </Link>
-                        </li>
-                    </ul>
-                </div>
-                <div className="min-w-0">
-                    <h3 className="mt-1.5 mb-2.5 text-2xl font-medium">
-                        <StatTerm id={info.partner.stat} />
-                    </h3>
-                    <PartnerTable car={car} group={group} season={season} compact />
-                </div>
+            <div className="min-w-0 px-[18px] pt-3 pb-5">
+                <h3 className="text-lead mt-1.5 mb-2.5 font-bold">
+                    <StatTerm id={info.partner.stat} />
+                </h3>
+                <PartnerTable car={car} group={group} season={season} compact />
             </div>
         </section>
     );
 }
 
-const th = 'border-ink-2 border-b px-1 py-2 text-right font-bold whitespace-nowrap first:text-left';
-const td = 'px-1 py-[7px] text-right whitespace-nowrap first:text-left';
+// Tighter cell padding under 320px, where even the columns that remain would not quite fit.
+const th =
+    'border-ink-2 border-b px-1 py-2 text-right font-bold whitespace-nowrap first:text-left @max-[20rem]:px-0.5';
+
+const td = 'px-1 py-[7px] text-right whitespace-nowrap first:text-left @max-[20rem]:px-0.5';
 const total = `${td} border-panel-line border-t`;
+
+// Miles drops out when the table itself is under 360px wide (the card is narrow on phones and in the
+// two-column layout), so the other columns fit without a hidden horizontal scroll. The percentile
+// panel still shows Miles Logged.
+const NARROW_HIDE = '@max-[22.5rem]:hidden';
 
 /** One row per calendar year with a file, newest first, plus career totals. */
 function SeasonTable({ files, group }: { files: CarFile[]; group: GroupId }) {
@@ -169,16 +120,16 @@ function SeasonTable({ files, group }: { files: CarFile[]; group: GroupId }) {
     const ironHorse = Math.max(...cars.map((c) => c.iron_horse_days ?? 0));
 
     return (
-        <div className="mx-3.5 mt-[18px] mb-2 overflow-x-auto">
-            <table className="w-full border-collapse text-[15px]">
+        <div className="@container mx-3.5 mt-[18px] mb-2 overflow-x-auto">
+            <table className="text-meta w-full border-collapse">
                 <thead>
                     <tr>
                         <th className={th}>Season</th>
                         <th className={th}>Trips</th>
-                        {showMiles && <th className={th}>Miles</th>}
+                        {showMiles && <th className={`${th} ${NARROW_HIDE}`}>Miles</th>}
                         <th className={th}>Saved/stop</th>
                         <th className={th}>On-Sched</th>
-                        <th className={`${th} leading-tight whitespace-normal!`}>Iron Horse</th>
+                        <th className={`${th} leading-tight whitespace-normal!`}>Streak</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -186,18 +137,20 @@ function SeasonTable({ files, group }: { files: CarFile[]; group: GroupId }) {
                         <tr key={window}>
                             <td className={td}>{window}</td>
                             <td className={td}>{fmtInt(c.trips)}</td>
-                            {showMiles && <td className={td}>{fmtInt(c.miles)}</td>}
+                            {showMiles && (
+                                <td className={`${td} ${NARROW_HIDE}`}>{fmtInt(c.miles)}</td>
+                            )}
                             <td className={td}>{fmtSaved(timeSaved(c))}</td>
-                            <td className={td}>{fmtUnit(c.on_time_pct, 1, '%')}</td>
+                            <td className={td}>{fmtNum(c.on_time_pct, 1, '%')}</td>
                             <td className={td}>{c.iron_horse_days ?? '–'}</td>
                         </tr>
                     ))}
                     <tr className="bg-wash font-bold">
-                        <td className={total}>
-                            {files.length} Season{files.length === 1 ? '' : 's'}
-                        </td>
+                        <td className={total}>Total</td>
                         <td className={total}>{fmtInt(trips)}</td>
-                        {showMiles && <td className={total}>{fmtInt(miles)}</td>}
+                        {showMiles && (
+                            <td className={`${total} ${NARROW_HIDE}`}>{fmtInt(miles)}</td>
+                        )}
                         <td className={total} />
                         <td className={total} />
                         <td className={total}>{ironHorse}</td>

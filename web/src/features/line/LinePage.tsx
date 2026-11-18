@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import type { FleetsFile } from '../../api';
@@ -8,7 +7,6 @@ import SeasonBar from '../../components/SeasonBar';
 import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { fmtInt } from '../../format';
 import { GROUPS, type GroupId } from '../../groups';
-import { fleetsQuery } from '../../queries';
 import { UNRANKED_LINE_NOTE } from '../../rank';
 import { seasonLabel } from '../../seasons';
 import { lineTitle } from '../../titles';
@@ -37,23 +35,19 @@ function LineLoader({ group }: { group: GroupId }) {
     );
 }
 
-/** Fleets largest first. */
 const fleetList = (fleets: FleetsFile | null, season: string) =>
     Object.values(fleets?.[season] ?? {}).sort((a, b) => b.cars - a.cars);
 
 function LineView({
     group,
-    data: { meta, windows, season, file },
+    data: { meta, windows, season, file, fleets: fleetsFile },
 }: {
     group: GroupId;
     data: LineData;
 }) {
     const { ranked, unranked } = useMemo(() => splitCars(group, file), [group, file]);
 
-    const { data: fleets = [] } = useQuery({
-        ...fleetsQuery(group),
-        select: (f) => fleetList(f, season),
-    });
+    const fleets = useMemo(() => fleetList(fleetsFile, season), [fleetsFile, season]);
 
     useDocumentTitle(lineTitle(season, group));
 
@@ -65,11 +59,11 @@ function LineView({
                 value={season}
                 className="mt-2 mb-[26px]"
             />
-            <h1 className="m-0 text-[34px] font-medium tracking-tight md:text-[46px]">
+            <h1 className="text-title m-0 font-medium">
                 <LineDot group={group} className="mr-3 inline-block size-[18px] align-middle" />
                 {seasonLabel(season)} {GROUPS[group].name} Leaderboard
             </h1>
-            <p className="text-ink-2 mt-1.5 mb-6 text-lg md:text-xl">
+            <p className="text-ink-2 text-ui md:text-lead mt-1.5 mb-6">
                 {GROUPS[group].ranked
                     ? `${fmtInt(ranked.length)} ranked cars. Click a column to sort; cars need ${fmtInt(file.qualify_min_trips)} trips to qualify.`
                     : UNRANKED_LINE_NOTE}

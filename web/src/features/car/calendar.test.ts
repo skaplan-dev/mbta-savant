@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { dayScore, monthSummaries, savedShort, weekGrid, yearMonths } from './calendar';
+import { contrast, hex, rgbOf, WHITE } from '../../test/contrast';
+import {
+    dayColors,
+    dayScore,
+    dayText,
+    monthSummaries,
+    savedShort,
+    weekGrid,
+    yearMonths,
+} from './calendar';
 
 describe('yearMonths', () => {
     it('lays out months Sunday-first and stops at the end date', () => {
@@ -66,5 +75,59 @@ describe('savedShort', () => {
         expect(savedShort(-9.94)).toBe('−9.9');
         expect(savedShort(-9.96)).toBe('−10');
         expect(savedShort(-12.4)).toBe('−12');
+    });
+});
+
+describe('dayColors', () => {
+    const day = (ttoe_sec: number | null) => ({
+        date: '2026-03-02',
+        trips: 20,
+        miles: 100,
+        ttoe_sec,
+        routes: ['Red'],
+    });
+
+    it('keeps a day number readable (4.5:1) on every fill the calendar can draw', () => {
+        const avg = 100;
+
+        for (let saved = -30; saved <= 30; saved += 0.5) {
+            const { fill, ink } = dayColors(day(avg - saved), avg);
+            const text = ink === '#fff' ? WHITE : [0, 0, 0];
+
+            expect(contrast(text, rgbOf(fill)), `${saved} s saved`).toBeGreaterThanOrEqual(4.5);
+        }
+    });
+    it('falls back to the neutral middle when the line average is unknown', () => {
+        const { fill, ink } = dayColors(day(95), null);
+
+        expect(fill).toBe('rgb(200,200,200)');
+        expect(ink).toBe('#000');
+    });
+    it('draws a day that did not run in the track color, with a number that still reads', () => {
+        const { fill, ink } = dayColors(undefined, 100);
+
+        expect(fill).toBe('var(--color-track)');
+        // --color-track and --color-ink-2
+        expect(contrast(hex('#4d5a5f'), hex('#dde7ea'))).toBeGreaterThanOrEqual(4.5);
+        expect(ink).toBe('var(--color-ink-2)');
+    });
+});
+
+describe('dayText', () => {
+    const day = { date: '2026-03-02', trips: 20, miles: 100, ttoe_sec: 97, routes: ['Red'] };
+
+    it('says what happened on a day that ran', () => {
+        expect(dayText('2026-03-02', day, 100)).toBe(
+            '2026-03-02 · 20 trips · +3.0 s saved per stop'
+        );
+    });
+    it('leaves out the time when there is nothing to compare it with', () => {
+        expect(dayText('2026-03-02', day, null)).toBe('2026-03-02 · 20 trips');
+        expect(dayText('2026-03-02', { ...day, ttoe_sec: null }, 100)).toBe(
+            '2026-03-02 · 20 trips'
+        );
+    });
+    it('says so when the car did not run', () => {
+        expect(dayText('2026-03-03', undefined, 100)).toBe('2026-03-03 · did not run');
     });
 });

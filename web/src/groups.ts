@@ -36,7 +36,6 @@ const MODES: Record<Mode, ModeInfo> = {
 
 export interface GroupInfo extends ModeInfo {
     name: string;
-    /** Nav label. */
     short: string;
     color: string;
     /** Text class that reads on `color`. */
@@ -65,10 +64,11 @@ function rail(name: string, short: string, color: string, art: ArtKind, ranked =
 
 export const GROUPS: Record<GroupId, GroupInfo> = {
     red: rail('Red Line', 'Red', '#da291c', 'heavy-rail'),
-    orange: rail('Orange Line', 'Orange', '#ed8b00', 'heavy-rail'),
+    // Dark text: white on this orange is only 2.5:1.
+    orange: { ...rail('Orange Line', 'Orange', '#ed8b00', 'heavy-rail'), onColor: 'text-ink' },
     blue: rail('Blue Line', 'Blue', '#003da5', 'heavy-rail'),
     green: rail('Green Line', 'Green', '#00843d', 'light-rail'),
-    mattapan: rail('Mattapan Line', 'Mattapan', '#7a8b8f', 'pcc', false),
+    mattapan: rail('Mattapan Line', 'Mattapan', '#66767a', 'pcc', false),
     bus: {
         ...MODES.bus,
         name: 'Bus',

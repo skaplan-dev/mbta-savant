@@ -4,7 +4,6 @@ import Loading from './Loading';
 import LoadError from './LoadError';
 import NotFound from './NotFound';
 
-/** Renders a page's loading, error and not-found states; `children` only runs once data is ready. */
 export default function ResourceView<T>({
     resource,
     children,

@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mergeIndexes } from '../carSearch';
+import { mergeIndexes, type SearchEntry } from '../carSearch';
 import { indexEntry } from '../test/fixtures';
 import SearchBox from './SearchBox';
 
@@ -26,8 +26,8 @@ const entries = mergeIndexes(
 );
 
 function setup() {
-    const onPick = vi.fn();
-    const onWant = vi.fn();
+    const onPick = vi.fn<(e: SearchEntry) => void>();
+    const onWant = vi.fn<() => void>();
     render(
         <SearchBox
             label="Search"

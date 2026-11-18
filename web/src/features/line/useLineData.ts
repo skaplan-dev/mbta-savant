@@ -1,19 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
-import type { GroupFile, Meta } from '../../api';
+import type { FleetsFile, GroupFile, Meta } from '../../api';
 import type { GroupId } from '../../groups';
-import { groupQuery, useAllIndexes, useWindows } from '../../queries';
+import { fleetsQuery, groupQuery, useAllIndexes, useWindows } from '../../queries';
 import { lineSeason } from '../../rank';
 import { failure, type Resource } from '../../resource';
 
 export interface LineData {
     meta: Meta;
-    /** Windows for the season toggle, newest first. */
     windows: string[];
     season: string;
     file: GroupFile;
+    fleets: FleetsFile | null;
 }
 
-/** The line's season (requested, else its default) and that season's group file. */
 export function useLineData(group: GroupId, requested: string | undefined): Resource<LineData> {
     const { meta, windows } = useWindows();
     // Every window's index is only needed to pick a default season.
@@ -26,8 +25,10 @@ export function useLineData(group: GroupId, requested: string | undefined): Reso
             : undefined;
 
     const file = useQuery(groupQuery(season, group));
+    const fleets = useQuery(fleetsQuery(group));
 
-    if (meta.isPending || (meta.data && (!season || file.isPending))) return { status: 'loading' };
+    if (meta.isPending || fleets.isPending || (meta.data && (!season || file.isPending)))
+        return { status: 'loading' };
 
     const failed = failure(meta, file);
 
@@ -35,5 +36,8 @@ export function useLineData(group: GroupId, requested: string | undefined): Reso
 
     if (!meta.data || !season || !file.data) return { status: 'missing' };
 
-    return { status: 'ready', data: { meta: meta.data, windows, season, file: file.data } };
+    return {
+        status: 'ready',
+        data: { meta: meta.data, windows, season, file: file.data, fleets: fleets.data ?? null },
+    };
 }

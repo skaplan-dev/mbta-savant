@@ -23,7 +23,7 @@ export default function InfoPopover({
             <PopoverPanel
                 anchor={{ to: 'top', gap: 8, padding: 8 }}
                 transition
-                className="bg-ink z-10 w-[260px] max-w-[80vw] rounded-md px-3 py-2.5 text-left text-[15px] leading-[1.35] font-normal whitespace-normal text-white shadow-[0_6px_20px_rgb(0_0_0/0.2)] transition duration-150 ease-out data-closed:translate-y-1 data-closed:opacity-0 motion-reduce:transition-none"
+                className="bg-ink text-meta z-10 w-[260px] max-w-[80vw] rounded-md px-3 py-2.5 text-left leading-[1.35] font-normal whitespace-normal text-white shadow-[0_6px_20px_rgb(0_0_0/0.2)] transition duration-150 ease-out data-closed:translate-y-1 data-closed:opacity-0 motion-reduce:transition-none"
             >
                 {children}
             </PopoverPanel>

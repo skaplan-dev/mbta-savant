@@ -8,10 +8,8 @@ export default function NotFound() {
 
     return (
         <main className="py-16 text-center md:py-20">
-            <h1 className="m-0 text-[38px] font-medium tracking-tight md:text-[46px]">
-                Nothing here
-            </h1>
-            <p className="text-ink-2 mx-auto mt-3 mb-7 max-w-[52ch] text-xl md:text-[21px]">
+            <h1 className="text-title m-0 font-medium">Nothing here</h1>
+            <p className="text-ink-2 text-lead mx-auto mt-3 mb-7 max-w-[52ch]">
                 We couldn&rsquo;t find that page or car. Try a car or bus number below, or head back{' '}
                 <Link to="/" className="text-brand">
                     home

@@ -1,15 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
     doorLabel,
-    fmtMilesShort,
-    fmtUnit,
+    fmtNum,
     ordinal,
+    barEdge,
+    EDGE_MIX,
     pacePlus,
     pctColor,
+    pctInk,
     signed,
     timeSaved,
 } from './format';
 import { GROUPS, isGroup } from './groups';
+import { panelStats } from './stats';
+import { car } from './test/fixtures';
+import { contrast, hex, mix, rgbOf, WHITE } from './test/contrast';
 
 describe('signed', () => {
     it('never shows a negative zero', () => {
@@ -40,13 +45,18 @@ describe('car stats', () => {
 });
 
 describe('units', () => {
+    const miles = (n: number) =>
+        panelStats('red', 'workload')
+            .find((s) => s.id === 'miles')
+            ?.brief?.(car('1900', { miles: n }));
+
     it('formats with a unit, or a dash when missing', () => {
-        expect(fmtUnit(89.91, 1, '%')).toBe('89.9%');
-        expect(fmtUnit(null, 0, ' s')).toBe('–');
+        expect(fmtNum(89.91, 1, '%')).toBe('89.9%');
+        expect(fmtNum(null, 0, ' s')).toBe('–');
     });
     it('shortens miles from 1,000 up', () => {
-        expect(fmtMilesShort(820.4)).toBe('820');
-        expect(fmtMilesShort(51578)).toBe('51.6k');
+        expect(miles(820.4)).toBe('820');
+        expect(miles(51578)).toBe('51.6k');
     });
 });
 
@@ -62,11 +72,35 @@ describe('pctColor', () => {
     });
 });
 
+describe('pctInk', () => {
+    it('picks white on the saturated ends and black on the pale middle', () => {
+        expect(pctInk(0)).toBe('#fff');
+        expect(pctInk(50)).toBe('#000');
+        expect(pctInk(100)).toBe('#fff');
+    });
+    it('keeps the number readable (4.5:1) at every percentile', () => {
+        for (let p = 0; p <= 100; p++) {
+            const ink = pctInk(p) === '#fff' ? WHITE : [0, 0, 0];
+            expect(contrast(ink, rgbOf(pctColor(p))), `percentile ${p}`).toBeGreaterThanOrEqual(
+                4.5
+            );
+        }
+    });
+});
+
 describe('groups', () => {
     it('validates group ids', () => {
         expect(isGroup('red')).toBe(true);
         expect(isGroup('purple')).toBe(false);
         expect(GROUPS.bus.color).toBe('#ffc72c');
+    });
+    it('gives every group a label color that reads on its fill (4.5:1)', () => {
+        const INK = '#1d2427'; // --color-ink
+
+        for (const [id, g] of Object.entries(GROUPS)) {
+            const text = g.onColor === 'text-white' ? WHITE : hex(INK);
+            expect(contrast(text, hex(g.color)), id).toBeGreaterThanOrEqual(4.5);
+        }
     });
 });
 
@@ -90,5 +124,22 @@ describe('ordinal', () => {
             '112th',
         ]);
         expect(ordinal(0)).toBe('0th');
+    });
+});
+
+describe('barEdge', () => {
+    it('outlines every line color at 3:1 against white, so a share bar keeps its shape', () => {
+        const INK = hex('#1d2427'); // --color-ink
+
+        for (const [id, g] of Object.entries(GROUPS)) {
+            const edge = mix(hex(g.color), INK, EDGE_MIX);
+
+            expect(contrast(edge, WHITE), id).toBeGreaterThanOrEqual(3);
+        }
+    });
+    it('mixes the line color toward ink', () => {
+        expect(barEdge('#ffc72c')).toBe(
+            `color-mix(in srgb, #ffc72c ${EDGE_MIX}%, var(--color-ink))`
+        );
     });
 });
