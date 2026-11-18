@@ -52,8 +52,14 @@ export function yearMonths(year: number, end: string): CalMonth[] {
     return out;
 }
 
-/** A Sunday-first week grid covering start..end inclusive; `weeks` is the number of rows used. */
-export function weekGrid(start: string, end: string): { weeks: number; days: CalDay[] } {
+export interface WeekGrid {
+    /** Rows used. */
+    weeks: number;
+    days: CalDay[];
+}
+
+/** A Sunday-first week grid covering start..end inclusive. */
+export function weekGrid(start: string, end: string): WeekGrid {
     const s = toMs(start);
     const e = toMs(end);
     const sunday = s - weekday(s) * DAY;
@@ -68,7 +74,7 @@ export function weekGrid(start: string, end: string): { weeks: number; days: Cal
         });
     }
 
-    return { weeks: days.length ? days[days.length - 1].row + 1 : 0, days };
+    return { weeks: (days.at(-1)?.row ?? -1) + 1, days };
 }
 
 /** Month-summary label: one decimal, but whole seconds once |v| rounds to 10+ so cells don't clip. */
@@ -98,14 +104,16 @@ export function monthSummaries(log: readonly GameLogEntry[], limit = 11): MonthS
 
     for (const g of log) {
         const k = g.date.slice(0, 7);
-        by.set(k, [...(by.get(k) ?? []), g]);
+        const month = by.get(k);
+
+        if (month) month.push(g);
+        else by.set(k, [g]);
     }
 
-    return [...by.keys()]
-        .sort()
+    return [...by]
+        .sort(([a], [b]) => a.localeCompare(b))
         .slice(-limit)
-        .map((key) => {
-            const days = by.get(key)!;
+        .map(([key, days]) => {
             const vals = days.map((g) => g.ttoe_sec).filter((v): v is number => v != null);
             const label = MONTHS[Number(key.slice(5)) - 1];
 

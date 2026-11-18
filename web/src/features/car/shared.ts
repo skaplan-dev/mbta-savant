@@ -1,4 +1,5 @@
 import type { Car } from '../../api';
+import { compareNumeric } from '../../compare';
 
 /** The married partner: the first teammate when they share at least 95% of this car's trips. */
 export function marriedMate(car: Pick<Car, 'teammates' | 'trips'>): string | null {
@@ -20,8 +21,5 @@ export function routeCounts(car: Pick<Car, 'game_log'>): RouteCount[] {
 
     return [...m]
         .map(([route, days]) => ({ route, days }))
-        .sort(
-            (a, b) =>
-                b.days - a.days || a.route.localeCompare(b.route, undefined, { numeric: true })
-        );
+        .sort((a, b) => b.days - a.days || compareNumeric(a.route, b.route));
 }

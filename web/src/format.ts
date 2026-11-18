@@ -1,4 +1,4 @@
-import type { Car, CarStats } from './api';
+import type { CarStats } from './api';
 
 // percentile -> Savant-style blue, gray, red
 export function pctColor(p: number): string {
@@ -12,6 +12,9 @@ export function pctColor(p: number): string {
     return `rgb(${a.map((x, i) => Math.round(x + (b[i] - x) * u)).join(',')})`;
 }
 
+/** Value-cell tint from a percentile color; the same blue-gray-red scale, lightened. */
+export const tint = (color: string) => `color-mix(in srgb, ${color} 35%, white)`;
+
 export const fmtNum = (v: number | null | undefined, digits = 1): string =>
     v == null
         ? '–'
@@ -19,6 +22,16 @@ export const fmtNum = (v: number | null | undefined, digits = 1): string =>
               minimumFractionDigits: digits,
               maximumFractionDigits: digits,
           });
+
+export const fmtInt = (v: number | null | undefined) => fmtNum(v, 0);
+
+/** "89.9%", "6 s"; a missing value is a bare dash. */
+export const fmtUnit = (v: number | null | undefined, digits: number, unit: string) =>
+    v == null ? '–' : `${fmtNum(v, digits)}${unit}`;
+
+/** "820", then "51.6k" from 1,000 up. */
+export const fmtMilesShort = (v: number | null) =>
+    v == null ? '–' : v < 1000 ? fmtInt(v) : `${(v / 1000).toFixed(1)}k`;
 
 // "+2.9 s", "−2.1 s"; a value that rounds to zero shows "0.0" with no sign.
 export function signed(v: number | null | undefined, digits = 1, unit = ''): string {
@@ -29,17 +42,21 @@ export function signed(v: number | null | undefined, digits = 1, unit = ''): str
     return `${isZero ? '' : v > 0 ? '+' : '−'}${body}${unit}`;
 }
 
-type CarLike = Pick<CarStats, 'ttoe_vs_avg_sec' | 'speed_vs_avg_pct'> | Car;
+export const fmtSaved = (v: number | null | undefined) => signed(v, 1, ' s');
+
+/** Whole-number share of `total`, e.g. 21 for 21%. */
+export const pctOf = (part: number, total: number) => Math.round((part / total) * 100);
+
+// Accept fleet medians as well as cars, so every surface derives these the same way.
+type VsAverage = Partial<Pick<CarStats, 'ttoe_vs_avg_sec' | 'speed_vs_avg_pct'>>;
 
 // Seconds saved per stop vs the line's average car (positive = faster).
-export function timeSaved(car: CarLike): number | null {
-    return car.ttoe_vs_avg_sec == null ? null : -car.ttoe_vs_avg_sec;
-}
+export const timeSaved = ({ ttoe_vs_avg_sec: v }: VsAverage): number | null =>
+    v == null ? null : -v;
 
 // Speed on a 100 scale (100 = the line's average car).
-export function pacePlus(car: CarLike): number | null {
-    return car.speed_vs_avg_pct == null ? null : Math.round(100 + car.speed_vs_avg_pct);
-}
+export const pacePlus = ({ speed_vs_avg_pct: v }: VsAverage): number | null =>
+    v == null ? null : Math.round(100 + v);
 
 export function doorLabel(sec: number | null | undefined): string {
     if (sec == null) return '–';
@@ -49,20 +66,6 @@ export function doorLabel(sec: number | null | undefined): string {
     return `${Math.abs(sec)} s ${sec < 0 ? 'quick' : 'slow'}`;
 }
 
-export type GroupId = 'red' | 'orange' | 'blue' | 'green' | 'mattapan' | 'bus';
-
-export const GROUPS: Record<GroupId, { name: string; color: string }> = {
-    red: { name: 'Red Line', color: '#da291c' },
-    orange: { name: 'Orange Line', color: '#ed8b00' },
-    blue: { name: 'Blue Line', color: '#003da5' },
-    green: { name: 'Green Line', color: '#00843d' },
-    mattapan: { name: 'Mattapan Line', color: '#7a8b8f' },
-    bus: { name: 'Bus', color: '#ffc72c' },
-};
-
-export const GROUP_IDS = Object.keys(GROUPS) as GroupId[];
-export const isGroup = (g: string): g is GroupId => Object.hasOwn(GROUPS, g);
-
 /** 1 → "1st", 22 → "22nd", 11 → "11th". */
 export function ordinal(n: number): string {
     const r100 = n % 100;
@@ -71,8 +74,3 @@ export function ordinal(n: number): string {
 
     return `${n}${['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
 }
-
-export const seasonLabel = (k: string): string => (k === 'last30' ? 'Last 30 Days' : k);
-
-/** Value-cell tint from a percentile color; the same blue-gray-red scale, lightened. */
-export const tint = (color: string) => `color-mix(in srgb, ${color} 35%, white)`;

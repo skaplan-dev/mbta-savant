@@ -1,7 +1,10 @@
-import type { CarStats, Metric } from '../../api';
-import { doorLabel, fmtNum, pacePlus, signed, timeSaved, type GroupId } from '../../format';
+import type { CarStats, GroupFile } from '../../api';
+import { byNumber, compareNullsLast } from '../../compare';
+import { timeSaved } from '../../format';
 import type { StatId } from '../../glossary';
-import { isRanked, unrankedReason } from '../rank';
+import type { GroupId } from '../../groups';
+import { unrankedReason } from '../../rank';
+import { boardStats } from '../../stats';
 
 export type SortKey = 'rank' | 'car' | 'fleet' | 'trips' | StatId;
 
@@ -12,103 +15,35 @@ export interface Sort {
     dir: SortDir;
 }
 
-export interface StatCol {
-    id: StatId;
-    pct: Metric;
-    /** Numeric value that the cell displays, so sorting matches what is shown. */
-    value: (c: CarStats) => number | null;
-    text: (c: CarStats) => string;
-    /** Smaller values are better (best-first is ascending). */
-    lowerBetter?: boolean;
+export interface UnrankedCar {
+    car: CarStats;
+    reason: string;
 }
 
-const int = (v: number | null) => (v == null ? '–' : Math.round(v).toLocaleString('en-US'));
-
-const PERFORMANCE: StatCol[] = [
-    {
-        id: 'time-saved',
-        pct: 'ttoe_sec',
-        value: timeSaved,
-        text: (c) => signed(timeSaved(c), 1, ' s'),
-    },
-    {
-        id: 'pace-plus',
-        pct: 'speed_vs_expected_pct',
-        value: pacePlus,
-        text: (c) => int(pacePlus(c)),
-    },
-    {
-        id: 'on-schedule',
-        pct: 'on_time_pct',
-        value: (c) => c.on_time_pct,
-        text: (c) => (c.on_time_pct == null ? '–' : `${fmtNum(c.on_time_pct, 1)}%`),
-    },
-    {
-        id: 'consistency',
-        pct: 'steadiness_sec',
-        value: (c) => c.steadiness_sec,
-        text: (c) => (c.steadiness_sec == null ? '–' : `${Math.round(c.steadiness_sec)} s`),
-        lowerBetter: true,
-    },
-    {
-        id: 'door-time',
-        pct: 'door_time_sec',
-        value: (c) => c.door_time_sec,
-        text: (c) => doorLabel(c.door_time_sec),
-        lowerBetter: true,
-    },
-];
-
-const WORKLOAD: StatCol[] = [
-    {
-        id: 'days-in-service',
-        pct: 'games_played_pct',
-        value: (c) => c.games_played_pct,
-        text: (c) => (c.games_played_pct == null ? '–' : `${Math.round(c.games_played_pct)}%`),
-    },
-    {
-        id: 'iron-horse',
-        pct: 'iron_horse_days',
-        value: (c) => c.iron_horse_days,
-        text: (c) => (c.iron_horse_days == null ? '–' : `${c.iron_horse_days} d`),
-    },
-];
-
-const MILES: StatCol = {
-    id: 'miles',
-    pct: 'miles',
-    value: (c) => c.miles,
-    text: (c) => int(c.miles),
-};
-
-const ROUTES: StatCol = {
-    id: 'routes-run',
-    pct: 'routes',
-    value: (c) => c.routes,
-    text: (c) => int(c.routes),
-};
-
-/** Stat columns for a line: Miles Logged for rail, Routes Run for buses. */
-export const statCols = (group: GroupId): StatCol[] => [
-    ...PERFORMANCE,
-    ...WORKLOAD,
-    group === 'bus' ? ROUTES : MILES,
-];
-
-const byNumber = (a: CarStats, b: CarStats) =>
-    a.number.localeCompare(b.number, undefined, { numeric: true });
-
-function compareNullsLast(a: number | null, b: number | null, dir: SortDir): number {
-    if (a == null && b == null) return 0;
-
-    if (a == null) return 1;
-
-    if (b == null) return -1;
-
-    return dir === 'asc' ? a - b : b - a;
+export interface LineCars {
+    /** Ranked cars, best Time Saved first (pct, then the value); the position is the car's rank. */
+    ranked: CarStats[];
+    /** Cars with trips that have no percentile ranking, most trips first, and why. */
+    unranked: UnrankedCar[];
 }
 
-/** Cars ordered best Time Saved first (pct, then the value); the position is the car's rank. */
+export function splitCars(group: GroupId, file: GroupFile): LineCars {
+    const ranked: CarStats[] = [];
+    const unranked: UnrankedCar[] = [];
+
+    for (const car of file.cars) {
+        const reason = unrankedReason(group, car, file.qualify_min_trips);
+
+        if (!reason) ranked.push(car);
+        else if (car.trips > 0) unranked.push({ car, reason });
+    }
+
+    return {
+        ranked: rankCars(ranked),
+        unranked: unranked.sort((a, b) => b.car.trips - a.car.trips || byNumber(a.car, b.car)),
+    };
+}
+
 export function rankCars(cars: readonly CarStats[]): CarStats[] {
     return [...cars].sort(
         (a, b) =>
@@ -121,23 +56,22 @@ export function rankCars(cars: readonly CarStats[]): CarStats[] {
 /** The direction a first click on a column uses: best first for stats, natural order otherwise. */
 export function firstDir(key: SortKey, group: GroupId): SortDir {
     if (key === 'car' || key === 'fleet' || key === 'rank') return 'asc';
-    const col = statCols(group).find((c) => c.id === key);
 
-    return col?.lowerBetter ? 'asc' : 'desc';
+    return boardStats(group).find((c) => c.id === key)?.lowerBetter ? 'asc' : 'desc';
+}
+
+export interface RankedRow {
+    car: CarStats;
+    rank: number;
 }
 
 /** Sorts rows (already in rank order). Ties fall back to rank, so the result is stable. */
-export function sortCars(
-    ranked: readonly CarStats[],
-    sort: Sort,
-    group: GroupId
-): { car: CarStats; rank: number }[] {
+export function sortCars(ranked: readonly CarStats[], sort: Sort, group: GroupId): RankedRow[] {
     const rows = ranked.map((car, i) => ({ car, rank: i + 1 }));
-    const cols = statCols(group);
-    const col = cols.find((c) => c.id === sort.key);
+    const col = boardStats(group).find((c) => c.id === sort.key);
     const sign = sort.dir === 'asc' ? 1 : -1;
 
-    const cmp = (x: (typeof rows)[number], y: (typeof rows)[number]): number => {
+    const cmp = (x: RankedRow, y: RankedRow): number => {
         switch (sort.key) {
             case 'rank':
                 return sign * (x.rank - y.rank);
@@ -153,19 +87,4 @@ export function sortCars(
     };
 
     return rows.sort((x, y) => cmp(x, y) || x.rank - y.rank);
-}
-
-/** Cars with trips that have no percentile ranking, and why. */
-export function unrankedCars(
-    group: GroupId,
-    cars: readonly CarStats[],
-    qualifyMin: number | undefined
-): { car: CarStats; reason: string }[] {
-    return cars
-        .filter((c) => c.trips > 0 && !isRanked(group, c))
-        .sort((a, b) => b.trips - a.trips || byNumber(a, b))
-        .map((car) => ({
-            car,
-            reason: unrankedReason(group, car, qualifyMin) ?? '',
-        }));
 }

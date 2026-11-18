@@ -143,8 +143,21 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
     },
 };
 
-// "How rankings work": each paragraph is a bold lead plus body text.
-export const HOW_RANKINGS: { lead: string; body: string }[] = [
+const isStatId = (k: string): k is StatId => Object.hasOwn(GLOSSARY, k);
+
+/** Glossary order. */
+export const STAT_IDS = Object.keys(GLOSSARY).filter(isStatId);
+
+export interface RankingsParagraph {
+    /** Bold lead-in; empty for a continuation paragraph. */
+    lead: string;
+    body: string;
+    /** Illustrate the percentile scale above this paragraph. */
+    scale?: boolean;
+}
+
+// "How rankings work".
+export const HOW_RANKINGS: RankingsParagraph[] = [
     {
         lead: 'Every car is a player.',
         body: 'When a six-car train makes a trip, all six cars get credit for it. Over a season, cars get coupled into many different trains, so their own tendencies show through.',
@@ -155,6 +168,7 @@ export const HOW_RANKINGS: { lead: string; body: string }[] = [
     },
     {
         lead: '',
+        scale: true,
         body: 'A 95 means the car beat 95% of qualified cars on its line. Red is good and blue is not, whatever the stat.',
     },
     {
