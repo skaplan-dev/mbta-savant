@@ -33,6 +33,7 @@ export interface IndexEntry {
     number: string;
     fleet_label: string;
     qualified: boolean;
+    ranked: boolean;
     ttoe_sec: number | null;
     pct_ttoe: number | null;
 }
@@ -57,6 +58,7 @@ export interface CarStats {
     number: string;
     trips: number;
     qualified: boolean;
+    ranked: boolean;
     ttoe_sec: number | null;
     top_speed_mph: number | null;
     on_time_pct: number | null;

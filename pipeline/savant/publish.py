@@ -31,13 +31,17 @@ UNRANKED_GROUPS = {"mattapan"}
 
 
 def add_percentiles(group: str, cars: list[dict]) -> list[dict]:
-    out = [{**c, "pct": {m: None for m in METRICS}} for c in cars]
+    out = [
+        {**c, "pct": {m: None for m in METRICS},
+         "ranked": group not in UNRANKED_GROUPS and roster.lookup(group, c["number"]) is not None}
+        for c in cars
+    ]
     if group in UNRANKED_GROUPS:
         return out
     for metric, direction in METRICS.items():
         if direction is None:
             continue
-        ranked = [c for c in out if c.get("qualified") and c.get(metric) is not None]
+        ranked = [c for c in out if c["ranked"] and c.get("qualified") and c.get(metric) is not None]
         n = len(ranked)
         for c in ranked:
             if n == 1:
@@ -57,7 +61,7 @@ def _write(path: Path, obj) -> None:
 def _fleet(cars: list[dict]) -> dict:
     fleets: dict[str, dict] = {}
     for c in cars:
-        if not c["qualified"]:
+        if not (c["qualified"] and c["ranked"]):
             continue
         v = c["vehicle"]
         f = fleets.setdefault(v.get("fleet_key", "unknown"), {"fleet_label": v["fleet_label"], "cars": 0, "median": {}})
@@ -100,7 +104,7 @@ def publish(root: Path, out: Path) -> None:
                 _write(data / w.key / "cars" / group / f"{c['number']}.json", c)
                 index_by_window[w.key].append(
                     {"car_id": c["car_id"], "group": group, "number": c["number"],
-                     "fleet_label": c["vehicle"]["fleet_label"], "qualified": c["qualified"],
+                     "fleet_label": c["vehicle"]["fleet_label"], "qualified": c["qualified"], "ranked": c["ranked"],
                      "ttoe_sec": c["ttoe_sec"], "pct_ttoe": c["pct"]["ttoe_sec"]}
                 )
             fleets[group][w.key] = _fleet(cars)

@@ -228,3 +228,28 @@ def test_bad_direction_skips_segment_only(bad):
         del rows[0]["direction_id"]
     segs = segments.build_segments("orange", rows)
     assert [(s["from_stop"], s["to_stop"]) for s in segs] == [("70034", "70032")]
+
+
+def test_route_outside_group_dropped():
+    rows = _rows()
+    for r in rows:
+        r["route_id"] = "Red"
+    assert segments.build_segments("mattapan", rows) == []
+    assert segments.build_segments("orange", rows) == []
+
+
+def test_non_numeric_car_tokens_removed_with_occupancy():
+    rows = [r for r in _rows() if r["trip_id"] == TRIP1]
+    for r in rows:
+        r["vehicle_consist"] = "3901|WIRE|0042"
+        r["occupancy_percentage"] = "1|2|3"
+    segs = segments.build_segments("orange", rows)
+    assert segs and all(s["cars"] == ["3901", "0042"] for s in segs)
+    assert all(s["occupancy_pct"] == [1.0, 3.0] for s in segs)
+
+
+def test_segment_with_no_numeric_cars_dropped():
+    rows = [r for r in _rows() if r["trip_id"] == TRIP1]
+    for r in rows:
+        r["vehicle_consist"] = "WIRE|None"
+    assert segments.build_segments("orange", rows) == []

@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 
 import duckdb
 
-from savant.groups import distance_miles, station_for_stop
+from savant.groups import distance_miles, group_for_route, station_for_stop
 
 EASTERN = ZoneInfo("America/New_York")
 ARRIVAL = "ARR"
@@ -91,6 +91,15 @@ def parse_occupancy(value: str | None) -> list[float | None]:
         except ValueError:
             out.append(None)
     return out
+
+
+def _clean_cars(cars: list[str], occupancy: list[float | None]) -> tuple[list[str], list[float | None]]:
+    """Keep all-digit car tokens only (junk like WIRE/None is dropped), with occupancy at the same indexes."""
+    keep = [i for i, c in enumerate(cars) if c.isdigit()]
+    kept = [cars[i] for i in keep]
+    if not occupancy:
+        return kept, []
+    return kept, [occupancy[i] for i in keep if i < len(occupancy)]
 
 
 def _benchmark(dep: dict, arr: dict) -> float | None:
@@ -172,6 +181,11 @@ def build_segments(group: str, rows: list[dict]) -> list[dict]:
                 direction = int(dep.get("direction_id"))
             except (TypeError, ValueError):
                 continue  # one bad row must not fail the whole day
+            if group_for_route(dep["route_id"]) != group:
+                continue
+            cars, occupancy = _clean_cars(cars_for(dep), parse_occupancy(dep.get("occupancy_percentage")))
+            if not cars:
+                continue
             from_station, to_station = station_for_stop(dep["stop_id"]), station_for_stop(b.arrival["stop_id"])
             distance = distance_miles(from_station, to_station) if from_station and to_station else None
             out.append(
@@ -190,8 +204,8 @@ def build_segments(group: str, rows: list[dict]) -> list[dict]:
                     "dwell_sec": (b.dep_dt - b.arr_dt).total_seconds() if b.dep_dt is not None else None,
                     "benchmark_sec": _benchmark(dep, b.arrival),
                     "distance_mi": distance,
-                    "cars": cars_for(dep),
-                    "occupancy_pct": parse_occupancy(dep.get("occupancy_percentage")),
+                    "cars": cars,
+                    "occupancy_pct": occupancy,
                 }
             )
     out.sort(key=lambda s: (s["service_date"], s["trip_id"]))  # stable: chronological within a trip
