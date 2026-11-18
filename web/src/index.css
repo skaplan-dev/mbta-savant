@@ -1,27 +1,65 @@
-body {
-    font-family: system-ui, sans-serif;
-    margin: 1rem 2rem;
+@import 'tailwindcss';
+
+@theme {
+    --font-sans: 'Roboto Condensed', 'Arial Narrow', sans-serif;
+
+    --color-ink: #1d2427;
+    --color-ink-2: #4d5a5f;
+    --color-ink-3: #6f7c81;
+    --color-brand: #2c6e7c;
+    --color-brand-2: #5d929d;
+    --color-rule: #6f9ca6;
+    --color-panel-line: #cbdadd;
+    --color-track: #dde7ea;
+    --color-wash: #f2f6f7;
+    --color-poor: rgb(50, 96, 180);
+    --color-great: rgb(214, 41, 41);
+    --color-line-red: #da291c;
+    --color-line-orange: #ed8b00;
+    --color-line-blue: #003da5;
+    --color-line-green: #00843d;
+    --color-line-mattapan: #7a8b8f;
+    --color-line-bus: #ffc72c;
+
+    --radius-panel: 8px;
+    --shadow-panel: 0 1px 2px rgb(29 36 39 / 0.04), 0 6px 18px -8px rgb(29 36 39 / 0.1);
 }
-table {
-    border-collapse: collapse;
+
+@layer base {
+    html {
+        scrollbar-color: var(--color-brand-2) var(--color-wash);
+    }
+    body {
+        margin: 0;
+        overflow-x: hidden;
+        background: #fff;
+        color: var(--color-ink);
+        font-family: var(--font-sans);
+        font-variant-numeric: tabular-nums;
+    }
+    ::selection {
+        background: color-mix(in srgb, var(--color-brand) 22%, white);
+        color: var(--color-ink);
+    }
+    a {
+        text-underline-offset: 3px;
+    }
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible {
+        outline: 2px solid var(--color-brand);
+        outline-offset: 2px;
+        border-radius: 2px;
+    }
 }
-th,
-td {
-    border: 1px solid #ccc;
-    padding: 2px 8px;
-    text-align: right;
-}
-th {
-    cursor: default;
-}
-th.sortable {
-    cursor: pointer;
-}
-tr.unqualified {
-    color: #999;
-}
-footer {
-    margin-top: 2rem;
-    font-size: 0.85rem;
-    color: #555;
+
+@layer components {
+    .panel {
+        min-width: 0;
+        overflow: hidden;
+        border: 1px solid var(--color-panel-line);
+        border-radius: var(--radius-panel);
+        background: #fff;
+        box-shadow: var(--shadow-panel);
+    }
 }

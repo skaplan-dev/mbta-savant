@@ -152,3 +152,17 @@ export function fmt(v: number | string[] | null | undefined): string {
     if (Array.isArray(v)) return v.join(', ');
     return Number.isInteger(v) ? String(v) : v.toFixed(1);
 }
+
+export type IndexFile = IndexEntry[];
+
+export interface FleetSummary {
+    fleet_label: string;
+    cars: number;
+    median: Partial<Record<Metric | 'ttoe_vs_avg_sec' | 'speed_vs_avg_pct', number | null>>;
+}
+
+// window -> fleet key -> summary
+export type FleetsFile = Record<string, Record<string, FleetSummary>>;
+
+export const fetchIndex = (window: string) => getJson<IndexFile>(`/data/${window}/index.json`);
+export const fetchFleets = (group: string) => getJson<FleetsFile>(`/data/fleets/${group}.json`);
