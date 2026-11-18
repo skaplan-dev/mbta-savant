@@ -1,6 +1,9 @@
 # Cost estimate: S3 storage for ~1 GB of segments per year (~$0.023/GB-month, well
 # under $1/yr); CloudFront at hobby traffic is within the free tier; Route53/ACM add
-# nothing; GitHub Actions minutes are free for public repos. Total: well under $1/month.
+# nothing; GitHub Actions minutes are free for public repos. The nightly job caches
+# work/segments in GitHub Actions: S3 egress is about $0.0/night on a cache hit, or about
+# $0.07 for a full pull on a miss (740 MB). LAMP reads are about 65 MB/night (about
+# $0.20/month). Total: well under $1/month.
 name: nightly
 
 on:
@@ -18,6 +21,8 @@ concurrency:
 
 jobs:
   nightly:
+    # Public repo => standard runner has 4 vCPU / 16 GB. Build peak memory was ~5 GB on a
+    # synthetic half-year bus window; if the repo becomes private, a larger runner may be needed.
     runs-on: ubuntu-latest
     env:
       AWS_DEFAULT_REGION: us-east-1
@@ -46,7 +51,18 @@ jobs:
           else
             echo "INGEST_DATE=$(TZ=America/New_York date -d yesterday +%F)" >> "$GITHUB_ENV"
           fi
-      - name: Pull existing segments
+      # Restore the newest segments cache (restore-keys prefix match) and save a new one
+      # under this run's key. The post-step save only runs if the job succeeds, which is fine.
+      # The 10 GB repo cache limit is ample (~0.75 GB/yr of segments).
+      - name: Cache segments
+        id: segments-cache
+        uses: actions/cache@v4
+        with:
+          path: work/segments
+          key: segments-${{ github.run_id }}
+          restore-keys: segments-
+      - name: Pull existing segments (cache miss)
+        if: steps.segments-cache.outputs.cache-hit != 'true'
         run: aws s3 sync s3://$BUCKET/segments ./work/segments
       - name: Ingest
         run: uv run savant ingest --date "$INGEST_DATE" --root ../work
@@ -54,8 +70,13 @@ jobs:
       - name: Build stats
         run: uv run savant build --root ../work --out ../out
         working-directory: pipeline
-      - name: Push segments
-        run: aws s3 sync ./work/segments s3://$BUCKET/segments
+      - name: Push new day's segments
+        run: |
+          # Only today's ingest date, for every group. S3 stays the durable copy; never --delete.
+          shopt -s nullglob
+          for f in work/segments/*/"${INGEST_DATE:0:4}"/"${INGEST_DATE}".parquet; do
+            aws s3 cp "$f" "s3://$BUCKET/segments/${f#work/segments/}"
+          done
       - name: Publish data
         run: |
           test -s out/data/meta.json || { echo "out/data/meta.json missing or empty; refusing to --delete" >&2; exit 1; }
