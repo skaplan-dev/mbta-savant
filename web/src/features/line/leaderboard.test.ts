@@ -6,7 +6,8 @@ const car = (number: string, saved: number, pctTtoe: number, steadiness: number 
     carStats(number, {
         travel_vs_typical_sec: saved,
         steadiness_sec: steadiness,
-        pct: { travel_time_sec: pctTtoe },
+        tar: -saved,
+        pct: { travel_time_sec: pctTtoe, tar: pctTtoe },
     });
 
 describe('leaderboard', () => {

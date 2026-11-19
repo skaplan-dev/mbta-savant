@@ -47,7 +47,7 @@ export function rankCars(cars: readonly CarStats[]): CarStats[] {
     return [...cars].sort(
         (a, b) =>
             compareNullsLast(a.pct.tar, b.pct.tar, 'desc') ||
-            compareNullsLast(a.tar, b.tar, 'desc') ||
+            compareNullsLast(a.tar ?? null, b.tar ?? null, 'desc') ||
             byNumber(a, b)
     );
 }
