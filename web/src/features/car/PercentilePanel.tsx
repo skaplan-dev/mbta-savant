@@ -10,9 +10,9 @@ import { GLOSSARY } from '../../glossary';
 import { GROUPS, type GroupId } from '../../groups';
 import { isRanked, unrankedReason } from '../../rank';
 import { panelStats, tooCloseList, type Stat } from '../../stats';
+import { COLS } from './shared';
 import TarBlock from './TarBlock';
 
-const COLS = 'grid grid-cols-[32%_minmax(0,1fr)_72px]';
 const ROW_RULE = 'border-t border-dashed border-row-rule';
 
 const SCALE = [

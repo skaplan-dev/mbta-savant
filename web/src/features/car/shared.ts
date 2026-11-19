@@ -26,3 +26,6 @@ export function routeCounts(car: Pick<Car, 'game_log'>): RouteCount[] {
         .map(([route, days]) => ({ route, days }))
         .sort((a, b) => b.days - a.days || compareNumeric(a.route, b.route));
 }
+
+/** The label / bar / value grid shared by the percentile rows and the TAR block. */
+export const COLS = 'grid grid-cols-[32%_minmax(0,1fr)_72px]';

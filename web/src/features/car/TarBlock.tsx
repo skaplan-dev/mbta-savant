@@ -2,9 +2,8 @@ import { Link } from '@tanstack/react-router';
 import type { Car, GroupSummary } from '../../api';
 import PercentileBar from '../../components/PercentileBar';
 import StatTerm from '../../components/StatTerm';
-import { dwellSaved, fmtNum, fmtTrips, timeSaved } from '../../format';
-
-const COLS = 'grid grid-cols-[32%_minmax(0,1fr)_72px]';
+import { COLS } from './shared';
+import { dwellSaved, fmtNum, fmtTrips, signed, timeSaved } from '../../format';
 
 type Parts = NonNullable<Car['tar_parts']>;
 
@@ -17,7 +16,6 @@ function mathInputs(car: Car, summary: GroupSummary | null | undefined) {
 
     if (
         !car.tar_parts ||
-        car.eligible_days == null ||
         car.service_days == null ||
         !car.eligible_days ||
         fast == null ||
@@ -57,39 +55,59 @@ function TarMath({
     const steady = car.steady_adj_sec;
     const canSteady = steady != null && m.replSteady != null && m.segs != null;
 
+    const lenMin = fmtNum(m.len / 60, 1);
+    const sec = (v: number | null | undefined) => `${signed(v, 1)} s`;
+    const { field, speed, steady: st } = m.parts;
+    // Explicit operators so a reader can add the parts by hand; an unmeasured part counts as 0.
+    const join = (vals: number[]) =>
+        vals
+            .map((v, i) =>
+                i === 0 ? fmtTrips(v) : `${v < 0 ? '−' : '+'} ${fmtNum(Math.abs(v), 0)}`
+            )
+            .join(' ');
+    const stTerm = canSteady ? st : 0;
+    const totalText = canSteady
+        ? join([field, speed, stTerm])
+        : `${join([field, speed])} + 0 (not measured)`;
+
     return (
         <details className="text-ui text-ink-2 mt-3">
-            <summary className="text-brand cursor-pointer">Show the math</summary>
+            <summary className="text-brand focus-visible:outline-brand cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2">
+                Show the math
+            </summary>
             <ul className="mt-2 mb-0 list-none space-y-2 p-0">
                 <li>
                     <b className="text-ink font-medium">On the field:</b> (service share{' '}
-                    {fmtNum(share, 3)} − replacement {fmtNum(m.replShare, 3)}) ×{' '}
-                    {fmtNum(m.eligible, 0)} eligible days ({fmtNum(m.service, 0)} in service) ×{' '}
-                    {fmtNum(m.tpd, 1)} trips per day = {fmtTrips(m.parts.field)}
+                    {fmtNum(m.service, 0)} of {fmtNum(m.eligible, 0)} eligible days ={' '}
+                    {fmtNum(share, 4)} − replacement {fmtNum(m.replShare, 4)}) ×{' '}
+                    {fmtNum(m.eligible, 0)} eligible days × {fmtNum(m.tpd, 2)} trips per day ={' '}
+                    {fmtTrips(field)}
                 </li>
                 <li>
-                    <b className="text-ink font-medium">Speed:</b> ({fmtNum(m.fast, 1)} s faster per
-                    trip − replacement {fmtNum(m.replFast, 1)} s) × {fmtNum(m.trips, 0)} trips ÷{' '}
-                    {fmtNum(m.len, 0)} s typical trip length = {fmtTrips(m.parts.speed)}
+                    <b className="text-ink font-medium">Speed:</b> ({sec(m.fast)} seconds saved per
+                    trip − replacement {sec(m.replFast)}) × {fmtNum(m.trips, 0)} trips ÷{' '}
+                    {fmtNum(m.len, 0)} s ({lenMin} min) typical trip length = {fmtTrips(speed)}
                 </li>
                 <li>
                     <b className="text-ink font-medium">Steadiness:</b>{' '}
                     {canSteady ? (
                         <>
-                            ({fmtNum(steady, 1)} s − replacement {fmtNum(m.replSteady, 1)} s) ×{' '}
-                            {fmtNum(m.segs, 1)} segments per trip × {fmtNum(m.trips, 0)} trips ÷{' '}
-                            {fmtNum(m.len, 0)} s typical trip length = {fmtTrips(m.parts.steady)}
+                            ({sec(steady)} − replacement {sec(m.replSteady)}) × {fmtNum(m.segs, 1)}{' '}
+                            segments per trip × {fmtNum(m.trips, 0)} trips ÷ {fmtNum(m.len, 0)} s (
+                            {lenMin} min) typical trip length = {fmtTrips(st)}
                         </>
                     ) : (
-                        'not measured for this car, so it adds nothing'
+                        'not measured'
                     )}
                 </li>
                 <li>
-                    <b className="text-ink font-medium">Total:</b> {fmtTrips(m.parts.field)}{' '}
-                    {fmtTrips(m.parts.speed)} {fmtTrips(m.parts.steady)} = {fmtTrips(tar)} TAR. Each
-                    part is rounded separately, so the total may differ from their sum by a trip.
+                    <b className="text-ink font-medium">Total:</b> {totalText} = {fmtTrips(tar)}{' '}
+                    trips
                 </li>
             </ul>
+            <p className="text-ink-3 text-meta mt-2 mb-0">
+                Figures are rounded for display; parts may differ by a trip.
+            </p>
             <Link to="/glossary" hash="tar-calc" className="text-brand mt-2 block underline">
                 How TAR is calculated
             </Link>

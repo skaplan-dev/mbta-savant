@@ -72,7 +72,7 @@ describe('TarBlock', () => {
 
         expect(field).toContain('100 eligible days');
         expect(field).toContain('+1,390');
-        expect(screen.getByText(/differ from their sum by a trip/)).toBeTruthy();
+        expect(screen.getByText(/parts may differ by a trip/)).toBeTruthy();
         expect(screen.getByRole('link', { name: 'How TAR is calculated' })).toBeTruthy();
     });
     it('shows a dash and no math for legacy data', async () => {
@@ -99,5 +99,59 @@ describe('TarBlock', () => {
         );
 
         expect(screen.queryByText('TAR')).toBeNull();
+        expect(screen.queryByText('Show the math')).toBeNull();
+        expect(screen.getByText(/Not enough trips/)).toBeTruthy();
+    });
+    it('lets a reader recompute the field part from the rendered numbers', async () => {
+        await renderWithRouter(
+            <TarBlock
+                car={tarCar({ tar: 1629, tar_parts: { field: 1400, speed: 203, steady: 26 } })}
+                summary={summary()}
+            />
+        );
+        fireEvent.click(screen.getByText('Show the math'));
+
+        const t = screen.getByText(/On the field:/).parentElement?.textContent ?? '';
+        const num = (re: RegExp) => Number((re.exec(t)?.[1] ?? 'NaN').replace(/,/g, ''));
+        const share = num(/eligible days = ([\d.]+)/);
+        const repl = num(/− replacement ([\d.]+)\)/);
+        const days = num(/\) × ([\d,]+) eligible days/);
+        const tpd = num(/× ([\d.]+) trips per day/);
+        const shown = num(/= \+?([\d,]+)$/);
+
+        expect(share).toBe(0.9);
+        expect(Math.abs((share - repl) * days * tpd - shown)).toBeLessThanOrEqual(1);
+    });
+    it('uses explicit operators and a real minus for negative parts', async () => {
+        await renderWithRouter(
+            <TarBlock
+                car={tarCar({ tar: -447, tar_parts: { field: -451, speed: 12, steady: -8 } })}
+                summary={summary()}
+            />
+        );
+        fireEvent.click(screen.getByText('Show the math'));
+
+        expect(screen.getByText(/Total:/).parentElement?.textContent).toContain(
+            '−451 + 12 − 8 = −447 trips'
+        );
+        expect(screen.getByText('On the field −451')).toBeTruthy();
+    });
+    it('counts an unmeasured steadiness as 0 in the total', async () => {
+        await renderWithRouter(
+            <TarBlock car={tarCar({ steady_adj_sec: null })} summary={summary()} />
+        );
+        fireEvent.click(screen.getByText('Show the math'));
+
+        expect(screen.getByText(/Total:/).parentElement?.textContent).toContain(
+            '+1,390 + 203 + 0 (not measured) = +1,619 trips'
+        );
+    });
+    it('does not crash or show math when tar_parts is missing', async () => {
+        await renderWithRouter(
+            <TarBlock car={tarCar({ tar_parts: undefined })} summary={summary()} />
+        );
+
+        expect(screen.getByText('+1,619 trips above replacement')).toBeTruthy();
+        expect(screen.queryByText('Show the math')).toBeNull();
     });
 });
