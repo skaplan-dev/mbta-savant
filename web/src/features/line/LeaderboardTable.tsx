@@ -68,7 +68,6 @@ function LeaderRow({
                         style={pct == null ? undefined : { background: tint(pctColor(pct)) }}
                     >
                         {c.text(car)}
-                        {pct != null && <small className="text-ink text-meta ml-1.5">{pct}</small>}
                     </td>
                 );
             })}

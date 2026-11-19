@@ -20,6 +20,17 @@ vi.stubGlobal(
 );
 
 describe('LeaderboardTable', () => {
+    it('shows stat values without percentile numbers', async () => {
+        await renderWithRouter(
+            <LeaderboardTable
+                group="red"
+                season="2026"
+                ranked={[carStats('1', { trip_vs_typical_sec: -32, pct: { trip_time_sec: 87 } })]}
+            />
+        );
+        expect(await screen.findByText(/\+32 s/)).toBeTruthy();
+        expect(screen.queryByText('87')).toBeNull();
+    });
     it('keeps keyboard focus on a sort button after activating it', async () => {
         await renderWithRouter(
             <LeaderboardTable
