@@ -8,6 +8,7 @@ from pathlib import Path
 
 from savant import lamp
 from savant.groups import GROUPS
+from savant.pages import write_pages
 from savant.publish import publish
 from savant.segments import day_path, write_day
 
@@ -69,6 +70,12 @@ def cmd_build(args) -> int:
     return 0
 
 
+def cmd_pages(args) -> int:
+    n = write_pages(Path(args.template), Path(args.data), Path(args.out), args.host)
+    print(f"wrote {n} pages to {args.out}")
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="savant")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -92,6 +99,13 @@ def main(argv=None) -> int:
     u.add_argument("--root", default="./work")
     u.add_argument("--out", default="./out")
     u.set_defaults(func=cmd_build)
+
+    g = sub.add_parser("pages", help="per-page HTML shells, sitemap.xml and robots.txt for crawlers")
+    g.add_argument("--template", required=True, help="the deployed index.html")
+    g.add_argument("--data", required=True, help="a data/ folder (meta.json, <window>/index.json, ...)")
+    g.add_argument("--out", required=True)
+    g.add_argument("--host", required=True, help="canonical hostname, e.g. mbtasavant.com")
+    g.set_defaults(func=cmd_pages)
 
     args = p.parse_args(argv)
     return args.func(args)
