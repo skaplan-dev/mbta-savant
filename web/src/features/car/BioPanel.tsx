@@ -1,6 +1,7 @@
 import type { Car } from '../../api';
 import LineDot from '../../components/LineDot';
 import StatTerm from '../../components/StatTerm';
+import { commonsUrl, fleetPhoto, photoSrc, type FleetPhoto } from '../../fleetPhotos';
 import { fmtInt, fmtNum, fmtSaved, timeSaved } from '../../format';
 import { GROUPS, type GroupId } from '../../groups';
 import { isYearKey } from '../../seasons';
@@ -10,6 +11,28 @@ import { marriedMate } from './shared';
 import type { CarFile } from './useCarData';
 
 const HERO_BG = 'linear-gradient(#eef3f5, #eef3f5 72%, #d9e3e6 72%, #d9e3e6 74%, #e4ebed 74%)';
+
+/** A photo of the car's fleet (not necessarily this car), with the credit its license requires. */
+function HeroPhoto({ photo, alt }: { photo: FleetPhoto; alt: string }) {
+    return (
+        <>
+            <img
+                src={photoSrc(photo)}
+                alt={alt}
+                className="size-full object-cover"
+                style={photo.position ? { objectPosition: photo.position } : undefined}
+            />
+            <a
+                href={commonsUrl(photo)}
+                target="_blank"
+                rel="noreferrer"
+                className="absolute top-1.5 right-1.5 rounded-[3px] bg-black/50 px-1.5 py-px text-[11px] text-white no-underline hover:underline"
+            >
+                Photo: {photo.artist}, {photo.license}
+            </a>
+        </>
+    );
+}
 
 const Sep = () => <span className="text-ink-3 mx-1.5">|</span>;
 
@@ -40,6 +63,7 @@ export default function BioPanel({
     const info = GROUPS[group];
     const v = car.vehicle;
     const mate = info.mode === 'rail' ? marriedMate(car) : null;
+    const photo = fleetPhoto(v.fleet_key);
 
     const specs = [
         !!mate && `Married pair: ${number}/${mate}`,
@@ -52,7 +76,14 @@ export default function BioPanel({
         <section className="panel" aria-labelledby="carName">
             <div className="relative">
                 <div className="relative h-[196px] overflow-hidden" style={{ background: HERO_BG }}>
-                    <CarArt group={group} number={number} mate={mate} lengthFt={v.length_ft} />
+                    {photo ? (
+                        <HeroPhoto
+                            photo={photo}
+                            alt={`A ${v.fleet_label} ${info.noun.toLowerCase()}`}
+                        />
+                    ) : (
+                        <CarArt group={group} number={number} mate={mate} lengthFt={v.length_ft} />
+                    )}
                 </div>
                 <div
                     className={`absolute -bottom-12 left-1/2 grid size-24 -translate-x-1/2 place-items-center rounded-full border-4 border-white font-bold tracking-[0.01em] shadow-[0_3px_10px_rgb(0_0_0/0.18)] ${
