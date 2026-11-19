@@ -114,7 +114,7 @@ SELECT {keys},
   count(DISTINCT (service_date, trip_id)) AS trips,
   avg(seg_delta) AS seg_trip,
   avg(delta) AS seg_travel,
-  avg(dwell_clip) AS seg_dwell,
+  CASE WHEN count(dwell_clip) = 0 THEN NULL ELSE sum(dwell_clip) / count(*) END AS seg_dwell,
   avg(exp_seg) AS seg_exp,
   avg(CASE WHEN travel_sec <= benchmark_sec THEN 100.0 ELSE 0.0 END) FILTER (WHERE benchmark_sec IS NOT NULL)
     AS on_time_pct,

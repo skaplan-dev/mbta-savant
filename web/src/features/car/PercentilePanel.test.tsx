@@ -85,6 +85,22 @@ describe('PercentilePanel', () => {
             )
         ).toBeTruthy();
     });
+    it('says "among buses" for a too-close bus stat', async () => {
+        await renderWithRouter(
+            <PercentilePanel
+                group="bus"
+                season="2026"
+                car={car('1400')}
+                summary={summary('bus', { too_close: ['on_time_pct'] })}
+            />
+        );
+
+        expect(
+            screen.getByText(
+                'Too close to call among buses: On-Schedule %. Cars are within a hair of each other, so these aren’t ranked.'
+            )
+        ).toBeTruthy();
+    });
     it('has Performance then Availability sections', async () => {
         await renderWithRouter(
             <PercentilePanel group="red" season="2026" car={car('1902')} summary={summary('red')} />

@@ -91,6 +91,7 @@ function RouteView({
                     ranked={ranked}
                     cols={COLS}
                     tooClose={file.too_close}
+                    scope="route"
                 />
             )}
             {unranked.length > 0 && <NotRanked group="bus" season={season} rows={unranked} />}

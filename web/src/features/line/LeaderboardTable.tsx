@@ -105,12 +105,16 @@ function SortBtn({
     );
 }
 
+/** Boards with fewer ranked cars than this get no percentiles (the pipeline's MIN_CARS). */
+const MIN_RANKED = 5;
+
 export default function LeaderboardTable({
     group,
     season,
     ranked,
     cols = boardStats(group),
     tooClose = [],
+    scope = 'line',
 }: {
     group: GroupId;
     season: string;
@@ -119,6 +123,8 @@ export default function LeaderboardTable({
     cols?: readonly Stat[];
     /** Metrics too close to call on this line; their cells are untinted. */
     tooClose?: readonly Metric[];
+    /** Whether this is a whole line's board or one bus route's, for the banner's wording. */
+    scope?: 'line' | 'route';
 }) {
     const [sort, setSort] = useState<Sort>({ key: 'time-saved', dir: 'desc' });
     const rows = useMemo(() => sortCars(ranked, sort, group), [ranked, sort, group]);
@@ -176,8 +182,9 @@ export default function LeaderboardTable({
         <section className="panel" aria-label="Leaderboard">
             {tooCloseNames.length > 0 && (
                 <p className="text-ink-2 text-ui m-0 px-3 py-2">
-                    Too close to call on this line: {tooCloseNames.join(', ')}. Shown without
-                    colors.
+                    {ranked.length < MIN_RANKED
+                        ? `Too few ranked ${group === 'bus' ? 'buses' : 'cars'} on this ${scope} for percentiles; values are shown without colors.`
+                        : `Too close to call on this ${scope}: ${tooCloseNames.join(', ')}. Shown without colors.`}
                 </p>
             )}
             <div className="overflow-x-auto">

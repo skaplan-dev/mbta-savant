@@ -4,7 +4,8 @@ import type { Car, WindowInfo } from '../../api';
 import PanelHeader from '../../components/PanelHeader';
 import InfoPopover from '../../components/InfoPopover';
 import { LAST30 } from '../../seasons';
-import { dayText, monthSummaries, savedShort } from './calendar';
+import { signed } from '../../format';
+import { dayText, monthSummaries } from './calendar';
 import { LastThirtyGrid, YearGrid, type DayLookup } from './CalendarGrids';
 
 const HELP =
@@ -134,7 +135,7 @@ export default function CalendarPanel({
                                     <td key={m.key} className={`${td} ${drop(i)}`}>
                                         {m.trip == null || typical == null
                                             ? '–'
-                                            : savedShort(typical - m.trip)}
+                                            : signed(typical - m.trip, 0)}
                                     </td>
                                 ))}
                             </tr>

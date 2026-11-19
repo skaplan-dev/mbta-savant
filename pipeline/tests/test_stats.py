@@ -368,3 +368,18 @@ def test_last_seen_normalizes_bus_numbers(tmp_path):
 
 def test_last_seen_empty_group(tmp_path):
     assert stats.last_seen(tmp_path, "blue") == {}
+
+
+def test_dwell_averages_over_all_segments_so_trip_is_travel_plus_dwell(tmp_path):
+    # X is missing dwell on one segment per trip; Y has none at all.
+    segs = []
+    for car, dwells in (("X", {"B": 50.0, "C": None, "D": 50.0}), ("Z", {"B": 20.0, "C": 20.0, "D": 20.0}),
+                        ("Y", {"B": None, "C": None, "D": None})):
+        for i in range(6):
+            for a, b in zip("ABC", "BCD"):
+                segs.append(seg(D0, f"{car}{i}", [car], 100, from_stop=a, to_stop=b, dwell=dwells[b]))
+    write(tmp_path, "orange", {D0: segs})
+    rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
+    x, y = rows["X"], rows["Y"]
+    assert x["trip_time_sec"] == pytest.approx(x["travel_time_sec"] + x["dwell_time_sec"])
+    assert y["dwell_time_sec"] is None

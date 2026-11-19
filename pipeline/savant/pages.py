@@ -76,10 +76,13 @@ def car_description(entry: dict, season: str) -> str:
             else f"{who.rstrip(',')}: trips, routes and day-by-day game log {when}. Updated nightly from MBTA data."
         )
     saved = -vs_typ  # trip_vs_typical_sec is time *over* the typical car; the site shows it as Time Saved
-    delta = f"saves {saved:.0f} s per trip" if saved >= 0 else f"loses {-saved:.0f} s per trip"
     average = "the typical bus" if group == "bus" else f"the typical {line} car"
     pct = entry.get("pct_trip")
     rank = f", ahead of {pct}% of them" if pct is not None else ""
+    r = round(saved)
+    if r == 0:
+        return f"{who} matches {average} {when}{rank}. On-schedule rate, streaks and game log, updated nightly."
+    delta = f"saves {abs(r)} s per trip" if r > 0 else f"loses {abs(r)} s per trip"
     return f"{who} {delta} against {average} {when}{rank}. On-schedule rate, streaks and game log, updated nightly."
 
 

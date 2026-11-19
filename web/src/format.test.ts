@@ -16,7 +16,7 @@ import {
     timeSaved,
 } from './format';
 import { GROUPS, isGroup } from './groups';
-import { boardStats, panelStats, STATS } from './stats';
+import { BOARD_ORDER, boardStats, panelStats, STATS } from './stats';
 import { GLOSSARY, STAT_IDS } from './glossary';
 import { car, carStats } from './test/fixtures';
 import { contrast, hex, mix, rgbOf, WHITE } from './test/contrast';
@@ -210,5 +210,11 @@ describe('barEdge', () => {
         expect(barEdge('#ffc72c')).toBe(
             `color-mix(in srgb, #ffc72c ${EDGE_MIX}%, var(--color-ink))`
         );
+    });
+});
+
+describe('BOARD_ORDER', () => {
+    it('lists every stat so a new one cannot silently drop off the leaderboard', () => {
+        expect(STATS.map((s) => s.id).filter((id) => !BOARD_ORDER.includes(id))).toEqual([]);
     });
 });

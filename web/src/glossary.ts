@@ -34,7 +34,7 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
         lead: 'Seconds this car saves per trip, compared with the line’s typical car (the median ranked car).',
         better: 'higher',
         betterLabel: 'HIGHER IS BETTER',
-        calc: 'Time Saved is Travel Time plus Dwell Time. Travel time runs from leaving one stop to arriving at the next; dwell time runs from arriving at a stop to leaving it. For every segment the car runs, we compare its travel time with the median for that segment, direction, hour and day type, and do the same for dwell at each stop, counting any delay past five minutes as five minutes (30 seconds for dwell). We total those differences over a typical trip and show the result relative to the line’s typical car (the median ranked car). The percentage is the same difference as a share of the trip’s expected time.',
+        calc: 'Time Saved is Travel Time plus Dwell Time. Travel time runs from leaving one stop to arriving at the next; dwell time runs from arriving at a stop to leaving it. For every segment the car runs, we compare its travel time with the median for that segment, direction, hour and day type, and do the same for dwell at each stop, counting any travel delay past five minutes as five minutes, and dwell differences beyond 30 seconds either way as 30. We total those differences over a typical trip and show the result relative to the line’s typical car (the median ranked car). Time Saved, Travel Time and Dwell Time are each compared with their own typical car, so the parts shown may not add up exactly (within about a second). The percentage is the same difference as a share of the trip’s expected time.',
         example:
             '+32 s · +1.8% means about 32 seconds less time per trip than the typical car, 1.8% of the trip',
     },
@@ -55,7 +55,7 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
         lead: 'Seconds of dwell time this car saves per trip, compared with the line’s typical car at the same stops and times.',
         better: 'higher',
         betterLabel: 'HIGHER IS BETTER',
-        calc: 'Dwell time runs from arriving at a stop to leaving it. At each stop, we compare the car’s dwell with the median dwell there for the same direction, hour and day type, counting anything past 30 seconds as 30. We total those differences over a typical trip and show the result relative to the line’s typical car (the median ranked car). Dwell depends on crowds and operators as much as on the car, so take it with a grain of salt.',
+        calc: 'Dwell time runs from arriving at a stop to leaving it. At each stop, we compare the car’s dwell with the median dwell there for the same direction, hour and day type, counting differences beyond 30 seconds either way as 30. We total those differences over a typical trip and show the result relative to the line’s typical car (the median ranked car). Dwell depends on crowds and operators as much as on the car, so take it with a grain of salt.',
         example: '+12 s means about 12 seconds less dwell per trip than the typical car',
     },
     'on-schedule': {
@@ -169,7 +169,7 @@ export const HOW_RANKINGS: RankingsParagraph[] = [
     },
     {
         lead: 'Too close to call.',
-        body: 'When a line’s cars are within a hair of each other on a stat, a percentile would only exaggerate tiny differences. Those stats are shown without percentiles and marked too close to call.',
+        body: 'When a line’s cars are within a hair of each other on a stat, a percentile would only exaggerate tiny differences. Those stats are shown without percentiles and marked too close to call. Boards with fewer than 5 ranked cars get no percentiles either.',
     },
     {
         lead: 'Qualifying.',

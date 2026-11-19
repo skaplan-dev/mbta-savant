@@ -27,6 +27,7 @@ function Section({
     ranked,
     tooClose,
     line,
+    among = false,
     first = false,
 }: {
     Icon: LucideIcon;
@@ -36,6 +37,8 @@ function Section({
     ranked: boolean;
     tooClose: readonly Metric[];
     line: string;
+    /** Buses have no line to name, so the note says "among buses". */
+    among?: boolean;
     first?: boolean;
 }) {
     const close = stats.filter((s) => tooClose.includes(s.pct));
@@ -91,7 +94,7 @@ function Section({
             ))}
             {ranked && close.length > 0 && (
                 <p className="text-ink-3 text-meta mt-2.5 mb-0 text-center">
-                    Too close to call on the {line}:{' '}
+                    Too close to call {among ? 'among buses' : `on the ${line}`}:{' '}
                     {close.map((s) => GLOSSARY[s.id].name).join(', ')}. Cars are within a hair of
                     each other, so these aren’t ranked.
                 </p>
@@ -149,6 +152,7 @@ export default function PercentilePanel({
                     ranked={ranked}
                     tooClose={tooClose}
                     line={info.name}
+                    among={group === 'bus'}
                     first
                 />
                 <Section
@@ -159,6 +163,7 @@ export default function PercentilePanel({
                     ranked={ranked}
                     tooClose={tooClose}
                     line={info.name}
+                    among={group === 'bus'}
                 />
                 <div className="text-ink-2 text-ui mt-[18px] flex flex-wrap justify-center gap-x-[22px] gap-y-1">
                     {car.crowd_load_pct != null && (

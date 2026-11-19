@@ -104,3 +104,13 @@ def test_cli_writes_files(tmp_path):
                  "--out", str(tmp_path / "pages"), "--host", "mbtasavant.com"]) == 0
     assert (tmp_path / "pages" / "car" / "red" / "1902.html").exists()
     assert (tmp_path / "pages" / "sitemap.xml").exists()
+
+
+def test_car_description_rounds_zero_saving_to_matches_typical():
+    base = {"group": "red", "number": "1800", "ranked": True, "qualified": True, "pct_trip": 50}
+    for vs in (0.0, -0.0, 0.3, -0.3):
+        d = pages.car_description({**base, "trip_vs_typical_sec": vs}, "2026")
+        assert "Car 1800 matches the typical Red Line car in 2026, ahead of 50% of them." in d
+        assert "-0" not in d and "loses" not in d and "saves" not in d
+    assert "saves 1 s per trip" in pages.car_description({**base, "trip_vs_typical_sec": -0.6}, "2026")
+    assert "loses 2 s per trip" in pages.car_description({**base, "trip_vs_typical_sec": 1.6}, "2026")

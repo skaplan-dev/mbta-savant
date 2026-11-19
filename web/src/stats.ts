@@ -113,7 +113,7 @@ export const STATS: readonly Stat[] = [
 const forGroup = (group: GroupId) => STATS.filter((s) => !s.mode || s.mode === GROUPS[group].mode);
 
 // Leaderboard column order; the car page's panels use registry order instead.
-const BOARD_ORDER: StatId[] = [
+export const BOARD_ORDER: StatId[] = [
     'time-saved',
     'days-in-service',
     'iron-horse',

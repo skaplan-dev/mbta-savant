@@ -7,6 +7,8 @@ import LeaderboardTable from './LeaderboardTable';
 
 afterEach(cleanup);
 
+const five = ['1', '2', '3', '4', '5'].map((n) => carStats(n));
+
 // jsdom has no ResizeObserver; the virtualized board only needs it to exist.
 vi.stubGlobal(
     'ResizeObserver',
@@ -87,7 +89,7 @@ describe('LeaderboardTable', () => {
             <LeaderboardTable
                 group="red"
                 season="2026"
-                ranked={[carStats('1')]}
+                ranked={five}
                 tooClose={['on_time_pct', 'dwell_time_sec']}
             />
         );
@@ -127,7 +129,7 @@ describe('LeaderboardTable', () => {
             <LeaderboardTable
                 group="bus"
                 season="2026"
-                ranked={[carStats('1')]}
+                ranked={five}
                 cols={routeBoardStats()}
                 tooClose={['routes', 'on_time_pct']}
             />
@@ -137,5 +139,42 @@ describe('LeaderboardTable', () => {
                 'Too close to call on this line: On-Schedule %. Shown without colors.'
             )
         ).toBeTruthy();
+    });
+
+    it('says "on this route" on a route board with enough ranked buses', async () => {
+        await renderWithRouter(
+            <LeaderboardTable
+                group="bus"
+                season="2026"
+                ranked={five}
+                cols={routeBoardStats()}
+                tooClose={['on_time_pct']}
+                scope="route"
+            />
+        );
+        expect(
+            await screen.findByText(
+                'Too close to call on this route: On-Schedule %. Shown without colors.'
+            )
+        ).toBeTruthy();
+    });
+
+    it('does not claim a tie when a route board has too few ranked buses', async () => {
+        await renderWithRouter(
+            <LeaderboardTable
+                group="bus"
+                season="2026"
+                ranked={five.slice(0, 3)}
+                cols={routeBoardStats()}
+                tooClose={['on_time_pct', 'trip_time_sec']}
+                scope="route"
+            />
+        );
+        expect(
+            await screen.findByText(
+                'Too few ranked buses on this route for percentiles; values are shown without colors.'
+            )
+        ).toBeTruthy();
+        expect(screen.queryByText(/Too close to call/)).toBeNull();
     });
 });
