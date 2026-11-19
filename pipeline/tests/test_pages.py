@@ -133,3 +133,10 @@ def test_descriptions_lead_with_tar():
     r = pages.route_description("28", "2026", {"ranked_cars": 80, "buses": 120})
     assert "by TAR (trips above replacement), Time Saved" in r
     assert "TAR" in pages.HOME_DESCRIPTION and "TAR" in pages.GLOSSARY_DESCRIPTION
+
+
+def test_bus_tar_description_says_among_buses():
+    entry = {"group": "bus", "number": "1201", "fleet_label": "2019-20 New Flyer XDE40 hybrid", "ranked": True,
+             "qualified": True, "travel_vs_typical_sec": -5.0, "pct_travel": 70, "tar": 1600, "pct_tar": 90}
+    d = pages.car_description(entry, "2026")
+    assert "was worth 1,600 trips above replacement among MBTA buses in 2026" in d
