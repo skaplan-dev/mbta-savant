@@ -7,7 +7,7 @@ import StatTerm from '../../components/StatTerm';
 import { fmtDate, fmtInt, pctColor, tint } from '../../format';
 import { GROUPS, type GroupId } from '../../groups';
 import { GLOSSARY } from '../../glossary';
-import { boardStats, STATS, type Stat } from '../../stats';
+import { boardStats, type Stat } from '../../stats';
 import { firstDir, sortCars, type Sort, type SortKey, type RankedRow } from './leaderboard';
 
 const th =
@@ -165,8 +165,8 @@ export default function LeaderboardTable({
     const items = virtual ? virtualizer.getVirtualItems() : null;
     const rowProps = { group, season, cols };
 
-    const tooCloseNames = tooClose
-        .flatMap((m) => STATS.filter((s) => s.pct === m))
+    const tooCloseNames = cols
+        .filter((s) => tooClose.includes(s.pct))
         .map((s) => GLOSSARY[s.id].name);
 
     const aria = (key: SortKey) =>

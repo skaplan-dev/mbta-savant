@@ -115,9 +115,10 @@ export interface GroupSummary {
     qualify_min_trips: number;
     /** Qualified, roster-listed cars the percentiles are among. */
     ranked_cars: number;
-    segs_per_trip: number | null;
-    typical: GroupFile['typical'];
-    too_close: Metric[];
+    /** Optional: files built before the per-trip stats lack these. */
+    segs_per_trip?: number | null;
+    typical?: GroupFile['typical'];
+    too_close?: Metric[];
 }
 
 export interface GroupFile {
@@ -126,11 +127,13 @@ export interface GroupFile {
     generated_at: string;
     qualify_min_trips: number;
     /** Average segments per trip on the line. */
-    segs_per_trip: number | null;
+    segs_per_trip?: number | null;
     /** The typical car's (median of ranked cars) absolute values. */
-    typical: Partial<Record<'trip_time_sec' | 'travel_time_sec' | 'dwell_time_sec', number | null>>;
+    typical?: Partial<
+        Record<'trip_time_sec' | 'travel_time_sec' | 'dwell_time_sec', number | null>
+    >;
     /** Stats where the line's cars are too close together to show percentiles. */
-    too_close: Metric[];
+    too_close?: Metric[];
     cars: CarStats[];
 }
 

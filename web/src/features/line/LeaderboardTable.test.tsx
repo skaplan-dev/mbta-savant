@@ -2,6 +2,7 @@ import { cleanup, fireEvent, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { carStats } from '../../test/fixtures';
 import { renderWithRouter } from '../../test/router';
+import { routeBoardStats } from '../../stats';
 import LeaderboardTable from './LeaderboardTable';
 
 afterEach(cleanup);
@@ -119,5 +120,22 @@ describe('LeaderboardTable', () => {
             'TravelTime',
         ]);
         expect(heads.at(-1)).toContain('Last Seen');
+    });
+
+    it('names only real columns in the too-close banner', async () => {
+        await renderWithRouter(
+            <LeaderboardTable
+                group="bus"
+                season="2026"
+                ranked={[carStats('1')]}
+                cols={routeBoardStats()}
+                tooClose={['routes', 'on_time_pct']}
+            />
+        );
+        expect(
+            await screen.findByText(
+                'Too close to call on this line: On-Schedule %. Shown without colors.'
+            )
+        ).toBeTruthy();
     });
 });

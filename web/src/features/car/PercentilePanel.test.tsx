@@ -94,4 +94,13 @@ describe('PercentilePanel', () => {
 
         expect(names).toEqual(['Performance', 'Availability']);
     });
+    it('renders with a summary from before the per-trip stats existed', async () => {
+        const { typical: _t, too_close: _c, segs_per_trip: _s, ...old } = summary('red');
+
+        await renderWithRouter(
+            <PercentilePanel group="red" season="2026" car={car('1902')} summary={old} />
+        );
+
+        expect(title()).toBe('2026 Red Line Percentile Rankings');
+    });
 });
