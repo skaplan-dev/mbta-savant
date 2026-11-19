@@ -5,14 +5,17 @@ Expected travel time is the median over every segment in the window (all vehicle
 dwell at its ``to_stop``, so expected dwell is the median keyed on (route_id, direction, to_stop,
 hour_bucket, day_type). Each segment is credited to every car in its ``cars`` list.
 
-TTOE-family stats (TTOE, game-log TTOE) use a per-segment delta capped at TTOE_CAP_SEC, so one
-disrupted trip cannot decide a rank.
+Trip-time stats are per trip: a per-segment mean times the window's median segments per trip (median
+over trips of segment count, trip = (service_date, trip_id), for the line or, on bus by_route, the
+route). ``travel_time_sec`` is the mean travel delta (capped at TTOE_CAP_SEC per segment) per trip,
+``dwell_time_sec`` the mean dwell delta (clipped to +/-DOOR_CLIP_SEC; null dwell counts as 0 in the
+total) per trip, ``trip_time_sec`` their combined per-segment delta per trip, and ``exp_trip_sec`` the
+expected travel plus dwell per trip. The game log carries ``trip_time_sec`` per day.
 
 Event times are whole seconds, so medians and quartiles of per-segment values land on the same integer
-for nearly every car on a line. Steadiness and Door Time are therefore means, which resolve below a
+for nearly every car on a line. Steadiness and the trip-time stats are therefore means, which resolve below a
 second: Steadiness is the mean distance of each delta (clipped to +/-STEADY_CLIP_SEC) from the car's own
-median, and Door Time is the mean dwell delta clipped to +/-DOOR_CLIP_SEC. Speed vs Expected is
-``100 * (sum(expected) / sum(min(travel, expected + cap)) - 1)`` over the car's segments.
+median.
 
 Games Played and Iron Horse are counted over the group's *data days* (window days on which the group
 has any segment), so a feed outage neither lowers a car's games played nor breaks its streak.
@@ -78,10 +81,13 @@ def windows(root: Path) -> list[Window]:
 _BUS_NUMBER = "coalesce(CAST(TRY_CAST(cars[i] AS BIGINT) AS VARCHAR), cars[i])"
 _CAR_SEG = f"""
 CREATE TEMP TABLE car_seg AS
-SELECT service_date, trip_id, route_id, travel_sec, benchmark_sec, distance_mi, exp_travel,
-  dwell_sec - exp_dwell AS dwell_delta, __NUMBER__ AS number, occupancy_pct[i] AS occ,
+SELECT service_date, trip_id, route_id, travel_sec, benchmark_sec, distance_mi,
+  __NUMBER__ AS number, occupancy_pct[i] AS occ,
   least(travel_sec - exp_travel, {TTOE_CAP_SEC}) AS delta,
-  least(travel_sec, exp_travel + {TTOE_CAP_SEC}) AS capped_travel
+  CASE WHEN dwell_sec IS NULL OR exp_dwell IS NULL THEN NULL
+    ELSE greatest(least(dwell_sec - exp_dwell, {DOOR_CLIP_SEC}), -{DOOR_CLIP_SEC}) END AS dwell_clip,
+  least(travel_sec - exp_travel, {TTOE_CAP_SEC}) + coalesce(dwell_clip, 0) AS seg_delta,
+  exp_travel + coalesce(exp_dwell, 0) AS exp_seg
 FROM (
   SELECT *, unnest(generate_series(1, len(cars))) AS i
   FROM (
@@ -106,12 +112,13 @@ WITH clipped AS (
 own AS (SELECT {keys}, median(steady_delta) AS steady_median FROM clipped GROUP BY {keys})
 SELECT {keys},
   count(DISTINCT (service_date, trip_id)) AS trips,
-  avg(delta) AS ttoe_sec,
-  100 * (sum(exp_travel) / nullif(sum(capped_travel), 0) - 1) AS speed_vs_expected_pct,
+  avg(seg_delta) AS seg_trip,
+  avg(delta) AS seg_travel,
+  avg(dwell_clip) AS seg_dwell,
+  avg(exp_seg) AS seg_exp,
   avg(CASE WHEN travel_sec <= benchmark_sec THEN 100.0 ELSE 0.0 END) FILTER (WHERE benchmark_sec IS NOT NULL)
     AS on_time_pct,
   avg(abs(steady_delta - steady_median)) AS steadiness_sec,
-  avg(greatest(least(dwell_delta, {DOOR_CLIP_SEC}), -{DOOR_CLIP_SEC})) AS door_time_sec,
   sum(distance_mi) AS miles,
   avg(occ) AS crowd_load_pct,
   count(DISTINCT route_id) AS routes,
@@ -127,9 +134,37 @@ _PER_ROUTE_CAR = _per("route_id, number")
 _ROUTE_DAYS = "SELECT route_id, list(DISTINCT service_date ORDER BY service_date) FROM car_seg GROUP BY route_id"
 
 _GAME_LOG = """
-SELECT number, service_date, count(DISTINCT trip_id), sum(distance_mi), avg(delta), list(DISTINCT route_id ORDER BY route_id)
+SELECT number, service_date, count(DISTINCT trip_id), sum(distance_mi), avg(seg_delta), list(DISTINCT route_id ORDER BY route_id)
 FROM car_seg GROUP BY number, service_date ORDER BY number, service_date
 """
+
+# Median segments per trip, counted before cars are unnest so a multi-car train is one trip.
+_SEGS_PER_TRIP = """
+SELECT median(n) FROM (
+  SELECT count(*) AS n FROM read_parquet($1) WHERE service_date BETWEEN $2 AND $3 GROUP BY service_date, trip_id
+)
+"""
+_SEGS_PER_TRIP_ROUTE = """
+SELECT route_id, median(n) FROM (
+  SELECT route_id, count(*) AS n FROM read_parquet($1) WHERE service_date BETWEEN $2 AND $3
+  GROUP BY route_id, service_date, trip_id
+) GROUP BY route_id
+"""
+
+
+def _per_trip(row: dict, spt: float) -> dict:
+    """Replace a row's per-segment means with per-trip values (None stays None)."""
+    def scale(v):
+        return None if v is None else v * spt
+
+    return {
+        "trip_time_sec": scale(row.pop("seg_trip")),
+        "travel_time_sec": scale(row.pop("seg_travel")),
+        "dwell_time_sec": scale(row.pop("seg_dwell")),
+        "exp_trip_sec": scale(row.pop("seg_exp")),
+        "segs_per_trip": spt,
+    }
+
 
 # Co-occurrence counted per trip, not per segment.
 _TEAMMATES = """
@@ -184,14 +219,17 @@ def car_stats(root: Path, group: str, window: Window) -> list[dict]:
     try:
         args = [segment_glob(root, group), window.start.isoformat(), window.end.isoformat()]
         data_days = [r[0] for r in con.execute(_DATA_DAYS, args).fetchall()]
+        spt = con.execute(_SEGS_PER_TRIP, args).fetchone()[0]
+        route_spt = dict(con.execute(_SEGS_PER_TRIP_ROUTE, args).fetchall()) if is_bus else {}
         con.execute(_CAR_SEG.replace("__NUMBER__", _BUS_NUMBER if is_bus else "cars[i]"), args)
         per_car = con.execute(_PER_CAR)
         cols = [c[0] for c in per_car.description]
         cars = [dict(zip(cols, r)) for r in per_car.fetchall()]
         logs: dict[str, list[dict]] = {}
-        for number, day, trips, miles, ttoe, routes in con.execute(_GAME_LOG).fetchall():
+        for number, day, trips, miles, seg_trip, routes in con.execute(_GAME_LOG).fetchall():
             logs.setdefault(number, []).append(
-                {"date": day, "trips": trips, "miles": None if is_bus else miles, "ttoe_sec": ttoe, "routes": routes}
+                {"date": day, "trips": trips, "miles": None if is_bus else miles,
+                 "trip_time_sec": None if seg_trip is None else seg_trip * spt, "routes": routes}
             )
         by_route: dict[str, list[dict]] = {}
         if is_bus:
@@ -202,6 +240,7 @@ def car_stats(root: Path, group: str, window: Window) -> list[dict]:
                 row = dict(zip(rcols, r))
                 route, number, days = row.pop("route_id"), row.pop("number"), set(row.pop("days"))
                 row.pop("routes")
+                row.update(_per_trip(row, route_spt[route]))
                 route_data_days = route_days[route]
                 by_route.setdefault(number, []).append(
                     {
@@ -226,6 +265,7 @@ def car_stats(root: Path, group: str, window: Window) -> list[dict]:
     for c in cars:
         number, days = c.pop("number"), set(c.pop("days"))
         routes = c.pop("routes")
+        c.update(_per_trip(c, spt))
         out.append(
             {
                 "car_id": f"{group}:{number}",

@@ -51,8 +51,10 @@ def test_ttoe_separates_fast_and_slow_car(tmp_path):
     write(tmp_path, "orange", {D0: segs})
     rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
     a, b = rows["A1"], rows["B1"]
-    assert a["ttoe_sec"] < 0 < b["ttoe_sec"]
-    assert b["ttoe_sec"] - a["ttoe_sec"] == pytest.approx(10)
+    assert a["trip_time_sec"] < 0 < b["trip_time_sec"]
+    assert b["travel_time_sec"] - a["travel_time_sec"] == pytest.approx(10)
+    assert b["trip_time_sec"] == pytest.approx(b["travel_time_sec"])
+    assert b["dwell_time_sec"] is None
     assert a["car_id"] == "orange:A1"
     assert a["trips"] == 6
     assert a["steadiness_sec"] == pytest.approx(0)
@@ -141,12 +143,12 @@ def test_rail_miles_crowd_door_teammates(tmp_path):
     assert rows["4"]["crowd_load_pct"] is None
     # A->B dwells 30, 20 -> expected 25; X->Y dwells 40, 20 -> expected 30
     # car 1 deltas: +5, +10, -5 -> mean 10/3
-    assert one["door_time_sec"] == pytest.approx(10 / 3)
+    assert one["dwell_time_sec"] == pytest.approx(10 / 3)
     assert one["teammates"] == [["2", 2], ["3", 1]]
     assert one["routes"] is None
     (log,) = one["game_log"]
     assert log == {"date": D0.isoformat(), "trips": 3, "miles": pytest.approx(4.0),
-                   "ttoe_sec": pytest.approx(0), "routes": ["Orange"]}
+                   "trip_time_sec": pytest.approx(10 / 3), "routes": ["Orange"]}
 
 
 def test_window_filters_dates(tmp_path):
@@ -177,9 +179,9 @@ def test_ttoe_caps_each_segment_delta_at_300(tmp_path):
     segs += [seg(D0, "c9", ["C"], 3700)]  # 3,600 s over expected counts as 300
     write(tmp_path, "orange", {D0: segs})
     c = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))["C"]
-    assert c["ttoe_sec"] == pytest.approx(30.0)
+    assert c["travel_time_sec"] == pytest.approx(30.0)
     (log,) = c["game_log"]
-    assert log["ttoe_sec"] == pytest.approx(30.0)
+    assert log["trip_time_sec"] == pytest.approx(30.0)
 
 
 def _reference(n=20):
@@ -220,31 +222,68 @@ def test_door_time_clips_each_dwell_delta_at_30(tmp_path):
     segs += [seg(D0, f"c{i}", ["C"], 100, dwell=d) for i, d in enumerate((20.0, 120.0))]
     write(tmp_path, "orange", {D0: segs})
     c = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))["C"]
-    assert c["door_time_sec"] == pytest.approx(15.0)
+    assert c["dwell_time_sec"] == pytest.approx(15.0)
 
 
-def test_speed_vs_expected(tmp_path):
+def _trips(cars_travel, dwell_by_car=None, n=6, stops="ABCD", route="Orange", group="orange"):
+    """``n`` trips per car, each running ``stops`` as consecutive segments."""
     segs = []
-    for stop in ("A", "B", "C"):
-        nxt = chr(ord(stop) + 1)
-        segs += [seg(D0, f"r{stop}{i}", ["R"], 100, from_stop=stop, to_stop=nxt) for i in range(10)]
-        segs += [seg(D0, f"f{stop}", ["F"], 90, from_stop=stop, to_stop=nxt)]
-        segs += [seg(D0, f"s{stop}", ["S"], 110, from_stop=stop, to_stop=nxt)]
-    segs += [seg(D0, "x", ["X"], 1100)]  # 1,000 s over expected travels as 400 s
-    write(tmp_path, "orange", {D0: segs})
+    for car, travel in cars_travel.items():
+        dwell = (dwell_by_car or {}).get(car)
+        for i in range(n):
+            for a, b in zip(stops, stops[1:]):
+                segs.append(seg(D0, f"{car}{i}", [car], travel, from_stop=a, to_stop=b, dwell=dwell,
+                                route=route, group=group, distance=None if group == "bus" else 1.0))
+    return segs
+
+
+def test_trip_time_scales_by_segments_per_trip(tmp_path):
+    write(tmp_path, "orange", {D0: _trips({"X": 100, "Y": 110})})
     rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
-    assert rows["F"]["speed_vs_expected_pct"] == pytest.approx(100 * (100 / 90 - 1))  # ~ +11.1
-    assert rows["S"]["speed_vs_expected_pct"] == pytest.approx(100 * (100 / 110 - 1))  # ~ -9.1
-    assert rows["R"]["speed_vs_expected_pct"] == pytest.approx(0)
-    assert rows["X"]["speed_vs_expected_pct"] == pytest.approx(-75)
+    assert rows["Y"]["travel_time_sec"] - rows["X"]["travel_time_sec"] == pytest.approx(30)
+    assert rows["X"]["segs_per_trip"] == 3
 
 
-def test_speed_vs_expected_on_bus(tmp_path):
-    segs = [seg(D0, f"r{i}", ["R"], 100, route="1", group="bus", distance=None) for i in range(5)]
-    segs += [seg(D0, "f", ["F"], 80, route="1", group="bus", distance=None)]
+def test_trip_time_adds_clipped_dwell(tmp_path):
+    write(tmp_path, "orange", {D0: _trips({"X": 100, "Y": 100, "Z": 100}, {"X": 20.0, "Y": 120.0, "Z": 20.0})})
+    rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
+    x, y = rows["X"], rows["Y"]
+    assert y["dwell_time_sec"] - x["dwell_time_sec"] == pytest.approx(3 * 30)
+    assert y["trip_time_sec"] == pytest.approx(y["travel_time_sec"] + y["dwell_time_sec"])
+    assert y["exp_trip_sec"] == pytest.approx(3 * (100 + 20))
+
+
+def test_null_dwell_keeps_travel_delta(tmp_path):
+    write(tmp_path, "orange", {D0: _trips({"X": 100, "Y": 110})})
+    rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
+    for r in rows.values():
+        assert r["dwell_time_sec"] is None or r["dwell_time_sec"] == 0
+    assert rows["Y"]["trip_time_sec"] - rows["X"]["trip_time_sec"] == pytest.approx(10 * 3)
+
+
+def test_bus_route_uses_route_segments_per_trip(tmp_path):
+    segs = _trips({"1": 100, "2": 100}, stops="ABC", route="1", group="bus")
+    segs += _trips({"1": 100, "2": 100}, stops="ABCDE", route="2", group="bus")
     write(tmp_path, "bus", {D0: segs})
     rows = by_number(stats.car_stats(tmp_path, "bus", window(D0, D0)))
-    assert rows["F"]["speed_vs_expected_pct"] == pytest.approx(25)
+    by = {r["route"]: r for r in rows["1"]["by_route"]}
+    assert by["1"]["segs_per_trip"] == 2
+    assert by["2"]["segs_per_trip"] == 4
+
+
+def test_game_log_has_trip_time(tmp_path):
+    write(tmp_path, "orange", {D0: _trips({"X": 100, "Y": 110})})
+    row = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))["Y"]
+    log = row["game_log"][0]
+    assert "ttoe_sec" not in log
+    assert log["trip_time_sec"] == pytest.approx(row["trip_time_sec"])
+
+
+def test_old_fields_removed(tmp_path):
+    write(tmp_path, "orange", {D0: _trips({"X": 100})})
+    (row,) = stats.car_stats(tmp_path, "orange", window(D0, D0))
+    for f in ("ttoe_sec", "door_time_sec", "speed_vs_expected_pct"):
+        assert f not in row
 
 
 def test_multi_car_train_weighted_once(tmp_path):
@@ -252,9 +291,9 @@ def test_multi_car_train_weighted_once(tmp_path):
     segs = [seg(D0, "solo", ["1"], 100), seg(D0, "trio", ["2", "3", "4"], 200)]
     write(tmp_path, "orange", {D0: segs})
     rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
-    assert rows["1"]["ttoe_sec"] == pytest.approx(-50)
+    assert rows["1"]["travel_time_sec"] == pytest.approx(-50)
     for n in ("2", "3", "4"):
-        assert rows[n]["ttoe_sec"] == pytest.approx(50)
+        assert rows[n]["travel_time_sec"] == pytest.approx(50)
 
 
 def test_duckdb_spill_directory_under_root(tmp_path):
@@ -303,7 +342,7 @@ def test_bus_by_route_splits_stats_per_route(tmp_path):
     assert set(r1) == {"1", "47"}
     assert r1["1"]["trips"] == 25 and r1["1"]["qualified"] is True
     assert r1["47"]["trips"] == 5 and r1["47"]["qualified"] is False  # under ROUTE_QUALIFY_MIN_TRIPS
-    assert r1["1"]["ttoe_sec"] < 0 < r1["47"]["ttoe_sec"]
+    assert r1["1"]["travel_time_sec"] < 0 < r1["47"]["travel_time_sec"]
     # The 1 ran on both days and bus 1 only on the first; the 47 ran only on the first day.
     assert r1["1"]["games_played_pct"] == pytest.approx(50)
     assert r1["47"]["games_played_pct"] == pytest.approx(100)
