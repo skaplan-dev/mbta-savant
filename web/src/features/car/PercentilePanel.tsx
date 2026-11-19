@@ -47,7 +47,6 @@ function Section({
                 <Icon className="size-10" strokeWidth={2} />
                 <h3 className="text-lead m-0 font-bold">{title}</h3>
             </div>
-            {lead}
             <div className={`${COLS} text-ui mt-3 mb-0.5`} aria-hidden="true">
                 <div className="col-start-2 mx-2">
                     <div className="text-meta flex justify-between">
@@ -71,10 +70,12 @@ function Section({
                     </div>
                 </div>
             </div>
+            {/* The lead (TAR) sits under the scale like a first row, so its bar lines up with the rest. */}
+            {lead}
             {stats.map((s, i) => (
                 <div key={s.id} className={`${COLS} items-stretch`}>
                     <div
-                        className={`text-meta text-ink-2 flex items-center justify-end pr-2.5 text-right leading-tight ${i ? ROW_RULE : ''}`}
+                        className={`text-meta text-ink-2 flex items-center justify-end pr-2.5 text-right leading-tight ${i || lead ? ROW_RULE : ''}`}
                     >
                         <StatTerm id={s.id} />
                     </div>
@@ -83,7 +84,7 @@ function Section({
                         label={GLOSSARY[s.id].name}
                     />
                     <div
-                        className={`text-meta text-ink-2 flex items-center justify-end text-right leading-tight ${i ? ROW_RULE : ''}`}
+                        className={`text-meta text-ink-2 flex items-center justify-end text-right leading-tight ${i || lead ? ROW_RULE : ''}`}
                     >
                         {(s.brief ?? s.text)(car)}
                     </div>

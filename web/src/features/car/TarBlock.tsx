@@ -37,7 +37,7 @@ export default function TarBlock({
         parts && ok ? `${label} ${fmtTrips(v)}` : `${label} not measured`;
 
     return (
-        <div className="mt-2.5">
+        <div className="pb-2.5">
             <div className={`${COLS} items-stretch`}>
                 <div className="text-meta text-ink-2 flex items-center justify-end pr-2.5 text-right leading-tight">
                     <StatTerm id="tar" />
