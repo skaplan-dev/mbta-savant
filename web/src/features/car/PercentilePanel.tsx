@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { ArrowRight, Gauge, TrainTrack, type LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import type { Car, GroupSummary, Metric } from '../../api';
 import PanelHeader from '../../components/PanelHeader';
 import PercentileBar from '../../components/PercentileBar';
@@ -9,6 +10,7 @@ import { GLOSSARY } from '../../glossary';
 import { GROUPS, type GroupId } from '../../groups';
 import { isRanked, unrankedReason } from '../../rank';
 import { panelStats, tooCloseList, type Stat } from '../../stats';
+import TarBlock from './TarBlock';
 
 const COLS = 'grid grid-cols-[32%_minmax(0,1fr)_72px]';
 const ROW_RULE = 'border-t border-dashed border-row-rule';
@@ -30,6 +32,7 @@ function Section({
     line,
     among = false,
     first = false,
+    lead,
 }: {
     Icon: LucideIcon;
     title: string;
@@ -42,6 +45,8 @@ function Section({
     /** Buses have no line to name, so the note says "among buses". */
     among?: boolean;
     first?: boolean;
+    /** Shown above the scale, e.g. the TAR block. */
+    lead?: ReactNode;
 }) {
     const close = tooCloseList(stats, tooClose, spread, among ? 'buses' : 'cars');
 
@@ -53,6 +58,7 @@ function Section({
                 <Icon className="size-10" strokeWidth={2} />
                 <h3 className="text-lead m-0 font-bold">{title}</h3>
             </div>
+            {lead}
             <div className={`${COLS} text-ui mt-3 mb-0.5`} aria-hidden="true">
                 <div className="col-start-2 mx-2">
                     <div className="text-meta flex justify-between">
@@ -157,6 +163,7 @@ export default function PercentilePanel({
                     line={info.name}
                     among={group === 'bus'}
                     first
+                    lead={ranked ? <TarBlock car={car} summary={summary} /> : null}
                 />
                 <Section
                     Icon={TrainTrack}

@@ -86,7 +86,6 @@ describe('stats registry', () => {
     });
     it('panels keep registry order per section', () => {
         expect(panelStats('red', 'performance').map((s) => s.id)).toEqual([
-            'tar',
             'time-saved',
             'dwell-time',
             'consistency',

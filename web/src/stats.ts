@@ -39,6 +39,7 @@ export const STATS: readonly Stat[] = [
         section: 'performance',
         value: (c) => c.tar ?? null,
         text: (c) => fmtTrips(c.tar),
+        boardOnly: true,
     },
     {
         id: 'time-saved',
