@@ -5,7 +5,7 @@ import type { Car, GroupSummary } from '../../api';
 import PanelHeader from '../../components/PanelHeader';
 import PercentileBar from '../../components/PercentileBar';
 import StatTerm from '../../components/StatTerm';
-import { barPos, fmtInt, fmtNum } from '../../format';
+import { barPos, fmtNum } from '../../format';
 import { GLOSSARY } from '../../glossary';
 import { GROUPS, type GroupId } from '../../groups';
 import { isRanked, unrankedReason } from '../../rank';
@@ -163,9 +163,6 @@ export default function PercentilePanel({
                             <b className="text-ink font-medium">{car.routes}</b>
                         </span>
                     )}
-                    <span>
-                        Trips <b className="text-ink font-medium">{fmtInt(car.trips)}</b>
-                    </span>
                 </div>
                 {rankedNote && (
                     <p className="text-ink-3 text-meta mt-2.5 mb-0 text-center">{rankedNote}</p>
