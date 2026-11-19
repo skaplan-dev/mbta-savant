@@ -10,6 +10,7 @@ import {
     LEDE,
     STAT_IDS,
     type GlossaryEntry,
+    type RankingsParagraph,
     type StatId,
 } from '../../glossary';
 import { GLOSSARY_TITLE } from '../../titles';
@@ -98,12 +99,7 @@ export default function GlossaryPage() {
                 <section id="tar-calc" className="scroll-mt-5">
                     <H2>How TAR is calculated</H2>
                     <div className="text-lead max-w-[58ch] leading-[1.5]">
-                        {HOW_TAR.map((p, i) => (
-                            <p key={i} className="my-3">
-                                {p.lead && <strong>{p.lead} </strong>}
-                                {p.body}
-                            </p>
-                        ))}
+                        <Paragraphs items={HOW_TAR} />
                     </div>
                 </section>
                 {SECTIONS.map((s) => (
@@ -118,6 +114,35 @@ export default function GlossaryPage() {
                 ))}
             </main>
         </div>
+    );
+}
+
+/** Paragraphs with bold lead-ins; consecutive `item` entries become one list. */
+function Paragraphs({ items }: { items: RankingsParagraph[] }) {
+    const blocks: (RankingsParagraph | RankingsParagraph[])[] = [];
+
+    for (const p of items) {
+        const last = blocks.at(-1);
+
+        if (p.item && Array.isArray(last)) last.push(p);
+        else blocks.push(p.item ? [p] : p);
+    }
+
+    return blocks.map((b, i) =>
+        Array.isArray(b) ? (
+            <ul key={i} className="my-2 pl-5">
+                {b.map((p) => (
+                    <li key={p.lead} className="my-1">
+                        <strong>{p.lead}</strong> {p.body}
+                    </li>
+                ))}
+            </ul>
+        ) : (
+            <p key={i} className="my-3">
+                {b.lead && <strong>{b.lead} </strong>}
+                {b.body}
+            </p>
+        )
     );
 }
 

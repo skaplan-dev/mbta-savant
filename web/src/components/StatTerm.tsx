@@ -10,7 +10,7 @@ export default function StatTerm({ id }: { id: StatId }) {
 
     return (
         <InfoPopover trigger={entry.name} triggerClass={TERM}>
-            {entry.short}{' '}
+            {entry.lead}{' '}
             <Link to="/glossary" hash={id} className="text-tip-link underline">
                 More
             </Link>
