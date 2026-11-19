@@ -47,7 +47,7 @@ MIN_SPREAD = {
     "travel_time_sec": 10, "dwell_time_sec": 5, "steadiness_sec": 1.0,
     "on_time_pct": 2.0, "games_played_pct": 5.0, "iron_horse_days": 3, "tar": 100,
 }
-MIN_CARS = 5
+MIN_CARS = tar.MIN_CARS
 
 
 def _pool(cars: list[dict], metric: str) -> list[float]:

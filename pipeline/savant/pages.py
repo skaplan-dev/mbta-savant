@@ -18,11 +18,11 @@ SITE = "MBTA Savant"
 HOME_TITLE = f"{SITE} — every car, every trip"
 GLOSSARY_TITLE = f"Stat Glossary · {SITE}"
 HOME_DESCRIPTION = (
-    "Every MBTA train car and bus with a stat line: time saved per trip, on-schedule rate and more, ranked "
-    "against its line. Built nightly from the T's own arrival and departure records."
+    "Every MBTA train car and bus with a stat line: trips above replacement (TAR), time saved per trip, "
+    "on-schedule rate and more, ranked against its line. Built nightly from the T's own arrival and departure records."
 )
 GLOSSARY_DESCRIPTION = (
-    "How MBTA Savant's stats work: Time Saved, Dwell Time, On-Schedule %, Consistency, Iron Horse "
+    "How MBTA Savant's stats work: TAR (Trips Above Replacement), Time Saved, Dwell Time, On-Schedule %, Consistency, Iron Horse "
     "Streak and more, and how cars are ranked against their line."
 )
 OG_IMAGE = "og.png"  # web/public/og.png, 1200x630
@@ -79,8 +79,11 @@ def car_description(entry: dict, season: str) -> str:
     if tar is not None:
         rank = f", ahead of {pct_tar}% of them" if pct_tar is not None else ""
         scope = "the bus fleet" if group == "bus" else f"the {line}"
-        return (f"{who} was worth {tar:,} trips above replacement on {scope} {when}{rank}. "
-                "On-schedule rate, streaks and game log, updated nightly.")
+        tail = "On-schedule rate, streaks and game log, updated nightly."
+        if tar == 0:
+            return f"{who} matched a replacement-level car on {scope} {when}{rank}. {tail}"
+        side = "above" if tar > 0 else "below"
+        return f"{who} was worth {abs(tar):,} trips {side} replacement on {scope} {when}{rank}. {tail}"
     saved = -vs_typ  # travel_vs_typical_sec is time *over* the typical car; the site shows it as Time Saved
     average = "the typical bus" if group == "bus" else f"the typical {line} car"
     pct = entry.get("pct_travel")
@@ -101,15 +104,15 @@ def line_description(group: str, season: str, ranked: int) -> str:
         )
     things = "buses" if group == "bus" else "cars"
     return (
-        f"{season_label(season)} {line} leaderboard: {ranked:,} {things} ranked by Time Saved, Dwell Time, "
-        "On-Schedule %, Consistency and more. Updated nightly from MBTA data."
+        f"{season_label(season)} {line} leaderboard: {ranked:,} {things} ranked by TAR (trips above replacement), "
+        "Time Saved, Days in Service and more. Updated nightly from MBTA data."
     )
 
 
 def route_description(route: str, season: str, entry: dict) -> str:
     return (
         f"{season_label(season)} Route {route_label(route)} leaderboard: {entry['ranked_cars']:,} buses ranked "
-        f"by Time Saved and more, out of {entry['buses']:,} that ran it. Updated nightly from MBTA data."
+        f"by TAR (trips above replacement), Time Saved and more, out of {entry['buses']:,} that ran it. Updated nightly from MBTA data."
     )
 
 

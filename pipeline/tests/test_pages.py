@@ -119,3 +119,17 @@ def test_car_description_rounds_zero_saving_to_matches_typical():
 def test_car_description_leads_with_tar():
     d = pages.car_description(entry("red", "1915", tar=2403, pct_tar=99), "2026")
     assert d.startswith("Car 1915, Red Line #4 (CRRC), was worth 2,403 trips above replacement on the Red Line in 2026, ahead of 99% of them.")
+
+
+def test_car_description_tar_negative_and_zero():
+    neg = pages.car_description(entry("red", "1915", tar=-312, pct_tar=4), "2026")
+    assert "was worth 312 trips below replacement" in neg and "-" not in neg.split(".")[0].replace("Red Line #4", "")
+    zero = pages.car_description(entry("red", "1915", tar=0, pct_tar=None), "2026")
+    assert "matched a replacement-level car" in zero
+
+
+def test_descriptions_lead_with_tar():
+    assert "ranked by TAR (trips above replacement), Time Saved" in pages.line_description("red", "2026", 216)
+    r = pages.route_description("28", "2026", {"ranked_cars": 80, "buses": 120})
+    assert "by TAR (trips above replacement), Time Saved" in r
+    assert "TAR" in pages.HOME_DESCRIPTION and "TAR" in pages.GLOSSARY_DESCRIPTION

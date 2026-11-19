@@ -317,3 +317,25 @@ def test_last_seen_on_car_board_and_route_files(tmp_path):
 
 def test_tar_is_a_higher_is_better_metric():
     assert publish.METRICS["tar"] == "higher" and publish.MIN_SPREAD["tar"] == 100
+
+
+def test_tar_non_null_with_enough_ranked_cars(tmp_path):
+    root = tmp_path / "root"
+    nums = ["1400", "1401", "1402", "1403", "1404", "1405"]
+    for group, route in (("orange", "Orange"), ("bus", "1")):
+        segs = [seg(D0, f"{n}-{i}", [n], 100 + 5 * k, group, route)
+                for i in range(50) for k, n in enumerate(nums)]
+        write_day(segs, root, group, D0)
+    out = tmp_path / "out"
+    publish.publish(root, out)
+    g = load(out / "data/last30/groups/orange.json")
+    ranked = [c for c in g["cars"] if c["ranked"] and c["qualified"]]
+    assert len(ranked) >= 5
+    assert all(c["tar"] is not None and set(c["tar_parts"]) == {"field", "speed", "steady"} for c in ranked)
+    assert g["trips_per_day"] > 0 and g["tar_replacement"]["service_share"] is not None
+    assert g["tar_replacement"]["fast_sec"] is not None
+    idx = load(out / "data/last30/index.json")
+    assert any(e["tar"] is not None for e in idx)
+    rb = load(out / "data/last30/routes/1.json")
+    assert rb["tar_replacement"]["fast_sec"] is not None
+    assert any(c["tar"] is not None for c in rb["cars"])
