@@ -24,7 +24,6 @@ from savant.groups import GROUPS
 METRICS: dict[str, Literal["higher", "lower"] | None] = {
     "ttoe_sec": "lower",
     "speed_vs_expected_pct": "higher",
-    "top_speed_mph": None,
     "on_time_pct": "higher",
     "steadiness_sec": "lower",
     "door_time_sec": "lower",
@@ -84,6 +83,17 @@ def _write(path: Path, obj) -> None:
     path.write_text(json.dumps(obj, ensure_ascii=False, default=str), encoding="utf-8")
 
 
+def _write_routes(dir_: Path, boards: dict[str, dict]) -> None:
+    """routes/<route>.json (a bus line file for one route) and routes/index.json (every route, for the picker)."""
+    for route, board in boards.items():
+        _write(dir_ / f"{route}.json", board)
+    _write(
+        dir_ / "index.json",
+        [{"route": route, "buses": len(b["cars"]), "ranked_cars": sum(1 for c in b["cars"] if c["qualified"] and c["ranked"]),
+          "trips": sum(c["trips"] for c in b["cars"])} for route, b in sorted(boards.items())],
+    )
+
+
 def _fleet(cars: list[dict]) -> dict:
     fleets: dict[str, dict] = {}
     for c in cars:
@@ -98,6 +108,71 @@ def _fleet(cars: list[dict]) -> dict:
     for f in fleets.values():
         f["median"] = {m: statistics.median(vals) for m, vals in f["median"].items()}
     return fleets
+
+
+def route_boards(cars: list[dict], window: str, now: str) -> dict[str, dict]:
+    """Bus cars (with ``by_route``) -> route -> that route's board, ranked and averaged within the route.
+
+    A route board is shaped like a group file plus ``route``, and each of its cars keeps the bus's identity
+    (car_id, number, vehicle) with the per-route metrics, so the web renders it with the line leaderboard.
+    """
+    by_route: dict[str, list[dict]] = {}
+    for c in cars:
+        for r in c.get("by_route", []):
+            by_route.setdefault(r["route"], []).append(
+                {"car_id": c["car_id"], "number": c["number"], **{k: v for k, v in r.items() if k != "route"},
+                 "routes": None, "crowd_load_pct": None, "teammates": [], "vehicle": c["vehicle"]}
+            )
+    boards = {}
+    for route, rcars in by_route.items():
+        rcars = add_percentiles("bus", rcars)
+        boards[route] = {"group": "bus", "route": route, "window": window, "generated_at": now,
+                         "qualify_min_trips": stats.ROUTE_QUALIFY_MIN_TRIPS, "averages": add_vs_avg(rcars),
+                         "cars": rcars}
+    return boards
+
+
+HOME_LEADERS = 5
+
+
+def _ranked_entry(group: str, e: dict) -> bool:
+    return group not in UNRANKED_GROUPS and e["ranked"] and e["qualified"]
+
+
+def default_seasons(wins: list[stats.Window], index_by_window: dict[str, list]) -> dict[str, str]:
+    """Each group's default season: the newest year with a ranked car, else last30, else the newest window."""
+    years = sorted((w.key for w in wins if w.key.isdigit()), reverse=True)
+    fallback = "last30" if any(w.key == "last30" for w in wins) else (years[0] if years else None)
+    out = {}
+    for group in GROUPS:
+        hit = next((y for y in years
+                    if any(e["group"] == group and _ranked_entry(group, e) for e in index_by_window[y])), None)
+        if hit or fallback:
+            out[group] = hit or fallback
+    return out
+
+
+def _natural(number: str):
+    return (0, int(number), "") if number.isdigit() else (1, 0, number)
+
+
+def home_cards(seasons: dict[str, str], index_by_window: dict[str, list]) -> dict[str, dict]:
+    """Per group, in its default season: the top cars by Time Saved, or every car when none is ranked."""
+    out = {}
+    for group, season in seasons.items():
+        entries = [e for e in index_by_window[season] if e["group"] == group]
+        if not entries:
+            continue
+        leaders = sorted(
+            (e for e in entries if _ranked_entry(group, e) and e["ttoe_vs_avg_sec"] is not None),
+            key=lambda e: (e["ttoe_vs_avg_sec"], _natural(e["number"])),
+        )[:HOME_LEADERS]
+        out[group] = {
+            "season": season,
+            "leaders": leaders,
+            "cars": [] if leaders else sorted((e["number"] for e in entries), key=_natural),
+        }
+    return out
 
 
 def publish(root: Path, out: Path) -> None:
@@ -131,11 +206,14 @@ def publish(root: Path, out: Path) -> None:
             _write(
                 data / w.key / "groups" / f"{group}.json",
                 {**{k: v for k, v in summary.items() if k != "ranked_cars"},
-                 "cars": [{k: v for k, v in c.items() if k != "game_log"} for c in cars]},
+                 "cars": [{k: v for k, v in c.items() if k not in ("game_log", "by_route")} for c in cars]},
             )
             # A few hundred bytes, for pages that need the line average but not every car (the car page).
             _write(data / w.key / "groups" / f"{group}.summary.json", summary)
+            if group == "bus":
+                _write_routes(data / w.key / "routes", route_boards(cars, w.key, now))
             for c in cars:
+                c.pop("by_route", None)
                 _write(data / w.key / "cars" / group / f"{c['number']}.json", c)
                 index_by_window[w.key].append(
                     {"car_id": c["car_id"], "group": group, "number": c["number"],
@@ -147,9 +225,13 @@ def publish(root: Path, out: Path) -> None:
     for group, by_window in fleets.items():
         if by_window:
             _write(data / "fleets" / f"{group}.json", by_window)
+    seasons = default_seasons(wins, index_by_window)
+    # The home page's cards, so it needn't load every car in every window.
+    _write(data / "home.json", home_cards(seasons, index_by_window))
     _write(
         data / "meta.json",
         {"generated_at": now,
          "windows": [{"key": w.key, "start": w.start, "end": w.end} for w in wins],
-         "latest_service_date": wins[0].end if wins else None},
+         "latest_service_date": wins[0].end if wins else None,
+         "default_season": seasons},
     )

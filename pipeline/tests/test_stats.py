@@ -116,7 +116,6 @@ def test_bus_has_no_speed_or_miles(tmp_path):
     ]
     write(tmp_path, "bus", {D0: segs})
     (row,) = stats.car_stats(tmp_path, "bus", window(D0, D0))
-    assert row["top_speed_mph"] is None
     assert row["miles"] is None
     assert row["routes"] == 2
     assert row["teammates"] == []
@@ -126,9 +125,8 @@ def test_bus_has_no_speed_or_miles(tmp_path):
     assert log["routes"] == ["1", "47"]
 
 
-def test_rail_speed_miles_crowd_door_teammates(tmp_path):
+def test_rail_miles_crowd_door_teammates(tmp_path):
     segs = [
-        # 1 mile in 60 s = 60 mph; 2 miles in 60 s = 120 mph
         seg(D0, "t1", ["1", "2"], 60, distance=1.0, dwell=30.0, occ=[50.0, 10.0]),
         seg(D0, "t2", ["1", "3"], 60, distance=2.0, from_stop="X", to_stop="Y", dwell=40.0, occ=[70.0]),
         seg(D0, "t3", ["1", "2"], 60, distance=1.0, dwell=20.0, occ=None),
@@ -138,7 +136,6 @@ def test_rail_speed_miles_crowd_door_teammates(tmp_path):
     rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
     one = rows["1"]
     assert one["miles"] == pytest.approx(4.0)
-    assert one["top_speed_mph"] == pytest.approx(60 + 0.8 * 60)  # p90 of [60, 60, 120]
     assert one["crowd_load_pct"] == pytest.approx(60.0)  # only car 1's own readings
     assert rows["2"]["crowd_load_pct"] == pytest.approx(10.0)
     assert rows["4"]["crowd_load_pct"] is None
@@ -291,3 +288,29 @@ def test_bus_numbers_normalized_on_read_across_cached_segments(tmp_path):
     rows = stats.car_stats(tmp_path, "bus", window(D0, D0 + timedelta(1)))
     assert [r["number"] for r in rows] == ["952"]
     assert rows[0]["trips"] == 2
+
+
+def test_bus_by_route_splits_stats_per_route(tmp_path):
+    # Bus 1 runs the 1 fast (25 trips) and the 47 slow (5 trips); bus 2 sets the expected times.
+    d1 = D0 + timedelta(days=1)
+    segs0 = [seg(D0, f"a{i}", ["1"], 90, route="1", group="bus", distance=None) for i in range(25)]
+    segs0 += [seg(D0, f"b{i}", ["1"], 130, route="47", group="bus", distance=None) for i in range(5)]
+    segs0 += [seg(D0, f"c{i}", ["2"], 110, route=r, group="bus", distance=None) for i in range(25) for r in ("1", "47")]
+    segs1 = [seg(d1, f"d{i}", ["2"], 110, route="1", group="bus", distance=None) for i in range(3)]
+    write(tmp_path, "bus", {D0: segs0, d1: segs1})
+    rows = by_number(stats.car_stats(tmp_path, "bus", window(D0, d1)))
+    r1 = {r["route"]: r for r in rows["1"]["by_route"]}
+    assert set(r1) == {"1", "47"}
+    assert r1["1"]["trips"] == 25 and r1["1"]["qualified"] is True
+    assert r1["47"]["trips"] == 5 and r1["47"]["qualified"] is False  # under ROUTE_QUALIFY_MIN_TRIPS
+    assert r1["1"]["ttoe_sec"] < 0 < r1["47"]["ttoe_sec"]
+    # The 1 ran on both days and bus 1 only on the first; the 47 ran only on the first day.
+    assert r1["1"]["games_played_pct"] == pytest.approx(50)
+    assert r1["47"]["games_played_pct"] == pytest.approx(100)
+    assert "route_id" not in r1["1"] and "routes" not in r1["1"]
+
+
+def test_rail_has_no_by_route(tmp_path):
+    write(tmp_path, "orange", {D0: [seg(D0, "t", ["1400"], 100)]})
+    (row,) = stats.car_stats(tmp_path, "orange", window(D0, D0))
+    assert "by_route" not in row

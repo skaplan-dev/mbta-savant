@@ -115,13 +115,11 @@ def test_layout(tmp_path):
     publish.publish(tmp_path / "root", out)  # overwrite is fine
 
 
-def test_speed_vs_expected_ranked_top_speed_not():
+def test_speed_vs_expected_ranked():
     assert publish.METRICS["speed_vs_expected_pct"] == "higher"
-    assert publish.METRICS["top_speed_mph"] is None
-    cars = [car(n, 0, speed_vs_expected_pct=v, top_speed_mph=50.0) for n, v in (("1400", -2.0), ("1401", 4.0))]
+    cars = [car(n, 0, speed_vs_expected_pct=v) for n, v in (("1400", -2.0), ("1401", 4.0))]
     out = {c["number"]: c["pct"] for c in publish.add_percentiles("orange", cars)}
     assert out["1401"]["speed_vs_expected_pct"] == 100 and out["1400"]["speed_vs_expected_pct"] == 0
-    assert out["1401"]["top_speed_mph"] is None
 
 
 def _ranked(cars, group="orange"):
@@ -207,3 +205,61 @@ def test_publish_clears_stale_output(tmp_path):
     assert keep.exists()
     assert (out / "data/meta.json").exists()
 
+
+
+def test_route_boards_and_index(tmp_path):
+    out = build(tmp_path)
+    board = load(out / "data/last30/routes/1.json")
+    assert board["group"] == "bus" and board["route"] == "1" and board["window"] == "last30"
+    assert board["qualify_min_trips"] == 20
+    cars = {c["number"]: c for c in board["cars"]}
+    assert set(cars) == {"1400", "1401"}
+    assert cars["1400"]["car_id"] == "bus:1400" and cars["1400"]["vehicle"]["fleet_label"]
+    assert cars["1400"]["pct"]["ttoe_sec"] == 100 and cars["1401"]["pct"]["ttoe_sec"] == 0
+    assert cars["1400"]["routes"] is None and cars["1400"]["teammates"] == []
+    assert board["averages"]["ttoe_sec"] == 0
+    assert load(out / "data/last30/routes/index.json") == [{"route": "1", "buses": 2, "ranked_cars": 2, "trips": 100}]
+    # The per-route rows live only in the route files.
+    assert "by_route" not in load(out / "data/last30/cars/bus/1400.json")
+    assert all("by_route" not in c for c in load(out / "data/last30/groups/bus.json")["cars"])
+    assert not (out / "data/last30/routes/Orange.json").exists()
+
+
+def entry(group, number, vs, qualified=True, ranked=True):
+    return {"car_id": f"{group}:{number}", "group": group, "number": number, "fleet_label": "F",
+            "qualified": qualified, "ranked": ranked, "ttoe_sec": vs, "ttoe_vs_avg_sec": vs, "pct_ttoe": 50}
+
+
+def test_default_seasons_prefer_newest_ranked_year():
+    from savant.stats import Window
+    wins = [Window("last30", D0, D0), Window("2026", D0, D0), Window("2025", D0, D0)]
+    idx = {
+        "last30": [entry("red", "1", 0), entry("mattapan", "3087", 0)],
+        "2026": [entry("red", "1", 0, qualified=False)],
+        "2025": [entry("red", "1", 0)],
+    }
+    seasons = publish.default_seasons(wins, idx)
+    assert seasons["red"] == "2025"  # 2026 has no qualified red car
+    assert seasons["mattapan"] == "last30"  # never ranked
+    assert seasons["bus"] == "last30"  # no data at all still gets a season
+
+
+def test_home_cards_top_leaders_or_every_car():
+    idx = {"2026": [entry("red", n, vs) for n, vs in (("1", 1), ("2", -4), ("3", -1), ("5", -3), ("6", -2), ("7", -5),
+                                                    ("8", None))]
+                   + [entry("red", "4", -9, qualified=False)]
+                   + [entry("mattapan", n, -1) for n in ("3230", "3087")]}
+    cards = publish.home_cards({"red": "2026", "mattapan": "2026", "blue": "2026"}, idx)
+    assert [e["number"] for e in cards["red"]["leaders"]] == ["7", "2", "5", "6", "3"]
+    assert cards["red"]["cars"] == [] and cards["red"]["season"] == "2026"
+    assert cards["mattapan"] == {"season": "2026", "leaders": [], "cars": ["3087", "3230"]}
+    assert "blue" not in cards
+
+
+def test_meta_has_default_seasons_and_home_file(tmp_path):
+    out = build(tmp_path)
+    meta = load(out / "data/meta.json")
+    assert meta["default_season"]["orange"] == "2026" and meta["default_season"]["bus"] == "2026"
+    home = load(out / "data/home.json")
+    assert set(home) == {"orange", "bus"}
+    assert [e["number"] for e in home["orange"]["leaders"]] == ["1400", "1401"]

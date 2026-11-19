@@ -30,6 +30,9 @@ from savant.segments import segment_glob
 
 QUALIFY_MIN_TRIPS = 50
 QUALIFY_SHARE = 0.25  # of the median trip count over all cars in the group/window
+# Per-route bus boards: a bus needs this many trips on the route. Each route has a core of regulars plus many
+# buses that fill in for a trip or two, so the line-wide share-of-median rule would empty most route boards.
+ROUTE_QUALIFY_MIN_TRIPS = 20
 LAST30_DAYS = 30
 TEAMMATES = 5
 TTOE_CAP_SEC = 300
@@ -93,16 +96,18 @@ FROM (
 
 _DATA_DAYS = "SELECT DISTINCT service_date FROM read_parquet($1) WHERE service_date BETWEEN $2 AND $3 ORDER BY 1"
 
-_PER_CAR = f"""
+
+def _per(keys: str) -> str:
+    """Per-vehicle metrics grouped by ``keys``: "number" for the line, "route_id, number" for bus routes."""
+    return f"""
 WITH clipped AS (
   SELECT *, greatest(least(delta, {STEADY_CLIP_SEC}), -{STEADY_CLIP_SEC}) AS steady_delta FROM car_seg
 ),
-own AS (SELECT number, median(steady_delta) AS steady_median FROM clipped GROUP BY number)
-SELECT number,
+own AS (SELECT {keys}, median(steady_delta) AS steady_median FROM clipped GROUP BY {keys})
+SELECT {keys},
   count(DISTINCT (service_date, trip_id)) AS trips,
   avg(delta) AS ttoe_sec,
   100 * (sum(exp_travel) / nullif(sum(capped_travel), 0) - 1) AS speed_vs_expected_pct,
-  quantile_cont(distance_mi / travel_sec * 3600, 0.9) FILTER (WHERE distance_mi IS NOT NULL) AS top_speed_mph,
   avg(CASE WHEN travel_sec <= benchmark_sec THEN 100.0 ELSE 0.0 END) FILTER (WHERE benchmark_sec IS NOT NULL)
     AS on_time_pct,
   avg(abs(steady_delta - steady_median)) AS steadiness_sec,
@@ -111,8 +116,15 @@ SELECT number,
   avg(occ) AS crowd_load_pct,
   count(DISTINCT route_id) AS routes,
   list(DISTINCT service_date) AS days
-FROM clipped JOIN own USING (number) GROUP BY number ORDER BY number
+FROM clipped JOIN own USING ({keys}) GROUP BY {keys} ORDER BY {keys}
 """
+
+
+_PER_CAR = _per("number")
+_PER_ROUTE_CAR = _per("route_id, number")
+
+# A route's data days: days any bus ran it in the window, so Games Played on a route ignores days it didn't run.
+_ROUTE_DAYS = "SELECT route_id, list(DISTINCT service_date ORDER BY service_date) FROM car_seg GROUP BY route_id"
 
 _GAME_LOG = """
 SELECT number, service_date, count(DISTINCT trip_id), sum(distance_mi), avg(delta), list(DISTINCT route_id ORDER BY route_id)
@@ -164,6 +176,26 @@ def car_stats(root: Path, group: str, window: Window) -> list[dict]:
             logs.setdefault(number, []).append(
                 {"date": day, "trips": trips, "miles": None if is_bus else miles, "ttoe_sec": ttoe, "routes": routes}
             )
+        by_route: dict[str, list[dict]] = {}
+        if is_bus:
+            route_days = dict(con.execute(_ROUTE_DAYS).fetchall())
+            per_route = con.execute(_PER_ROUTE_CAR)
+            rcols = [c[0] for c in per_route.description]
+            for r in per_route.fetchall():
+                row = dict(zip(rcols, r))
+                route, number, days = row.pop("route_id"), row.pop("number"), set(row.pop("days"))
+                row.pop("routes")
+                route_data_days = route_days[route]
+                by_route.setdefault(number, []).append(
+                    {
+                        "route": route,
+                        **row,
+                        "qualified": row["trips"] >= ROUTE_QUALIFY_MIN_TRIPS,
+                        "miles": None,
+                        "games_played_pct": 100.0 * len(days) / len(route_data_days),
+                        "iron_horse_days": _iron_horse(days, route_data_days),
+                    }
+                )
         mates: dict[str, list[list]] = {}
         if not is_bus:
             for a, b, n in con.execute(_TEAMMATES).fetchall():
@@ -183,13 +215,13 @@ def car_stats(root: Path, group: str, window: Window) -> list[dict]:
                 "number": number,
                 **c,
                 "qualified": c["trips"] >= threshold,
-                "top_speed_mph": None if is_bus else c["top_speed_mph"],
                 "miles": None if is_bus else c["miles"],
                 "games_played_pct": 100.0 * len(days) / len(data_days),
                 "iron_horse_days": _iron_horse(days, data_days),
                 "teammates": mates.get(number, []),
                 "routes": routes if is_bus else None,
                 "game_log": logs.get(number, []),
+                **({"by_route": by_route.get(number, [])} if is_bus else {}),
             }
         )
     return out
