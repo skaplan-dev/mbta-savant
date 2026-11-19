@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 2 60 60">
+  <!-- The header emblem (src/components/Emblem.tsx) without its rails, cropped so it reads at 16px. -->
+  <path d="M20 8h40a8 8 0 0 1 8 8v36a6 6 0 0 1-6 6H18a6 6 0 0 1-6-6V16a8 8 0 0 1 8-8z" fill="#2c6e7c"/>
+  <rect x="19" y="15" width="42" height="22" rx="4" fill="#fff"/>
+  <path d="M40 15v22" stroke="#2c6e7c" stroke-width="4"/>
+  <rect x="12" y="41" width="56" height="4" fill="#5d929d"/>
+  <circle cx="23" cy="50" r="4.5" fill="#d62929"/>
+  <circle cx="57" cy="50" r="4.5" fill="#d62929"/>
+</svg>
