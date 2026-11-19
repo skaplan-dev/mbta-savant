@@ -47,10 +47,10 @@ def test_null_input_is_zero_part():
     assert out["tar_replacement"]["steady_adj_sec"] == q20(st)
 
 
-def test_few_cars_zero():
+def test_few_cars_have_no_tar():
     cars = [mk(i, share=s, fast=s * 10) for i, s in enumerate(SHARES[:3])]
     tar.add_tar(cars, 1500.0, 16.0)
-    assert all(c["tar"] == 0 and c["tar_parts"] == {"field": 0, "speed": 0, "steady": 0} for c in cars)
+    assert all(c["tar"] is None and c["tar_parts"] is None for c in cars)
 
 
 def test_unranked_get_none():

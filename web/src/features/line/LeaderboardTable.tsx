@@ -1,12 +1,12 @@
 import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { CarStats, GroupFile, Metric } from '../../api';
+import type { CarStats } from '../../api';
 import CarPill from '../../components/CarPill';
 import StatTerm from '../../components/StatTerm';
 import { fmtDate, fmtInt, pctColor, tint } from '../../format';
 import { GROUPS, type GroupId } from '../../groups';
-import { boardStats, tooCloseList, type Stat } from '../../stats';
+import { boardStats, type Stat } from '../../stats';
 import { firstDir, sortCars, type Sort, type SortKey, type RankedRow } from './leaderboard';
 
 const th =
@@ -111,8 +111,6 @@ export default function LeaderboardTable({
     season,
     ranked,
     cols = boardStats(group),
-    tooClose = [],
-    spread,
     scope = 'line',
 }: {
     group: GroupId;
@@ -120,10 +118,6 @@ export default function LeaderboardTable({
     ranked: CarStats[];
     /** Stat columns; the group's board stats unless a page drops some (a route board has no Routes Run). */
     cols?: readonly Stat[];
-    /** Close-race metrics on this line, named in the note above the table. */
-    tooClose?: readonly Metric[];
-    /** How bunched each stat is (group file `spread`), for the banner. */
-    spread?: GroupFile['spread'];
     /** Whether this is a whole line's board or one bus route's, for the banner's wording. */
     scope?: 'line' | 'route';
 }) {
@@ -172,18 +166,14 @@ export default function LeaderboardTable({
     const items = virtual ? virtualizer.getVirtualItems() : null;
     const rowProps = { group, season, cols };
 
-    const tooCloseText = tooCloseList(cols, tooClose, spread, group === 'bus' ? 'buses' : 'cars');
-
     const aria = (key: SortKey) =>
         sort.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none';
 
     return (
         <section className="panel" aria-label="Leaderboard">
-            {tooCloseText && (
+            {ranked.length < MIN_RANKED && (
                 <p className="text-ink-2 text-ui m-0 px-3 py-2">
-                    {ranked.length < MIN_RANKED
-                        ? `Only ${ranked.length} ranked ${group === 'bus' ? (ranked.length === 1 ? 'bus' : 'buses') : ranked.length === 1 ? 'car' : 'cars'} on this ${scope}, so percentiles are rough.`
-                        : `Close race on this ${scope}: ${tooCloseText}. Small differences move these colors a lot.`}
+                    {`Only ${ranked.length} ranked ${group === 'bus' ? (ranked.length === 1 ? 'bus' : 'buses') : ranked.length === 1 ? 'car' : 'cars'} on this ${scope}, so percentiles are rough.`}
                 </p>
             )}
             <div className="overflow-x-auto">

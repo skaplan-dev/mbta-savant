@@ -7,7 +7,8 @@ Per ranked, qualified car, three parts (field, speed, steady) are each measured 
     speed  = (fast_sec - repl_fast) * trips / trip_len_sec
     steady = (steady_adj_sec - repl_steady) * segs_per_trip * trips / trip_len_sec
 
-A missing input, or fewer than MIN_CARS cars having it, makes that part 0. Unranked or unqualified cars
+A missing input, or fewer than MIN_CARS cars having it, makes that part 0; if all three replacement values are
+missing, ``tar`` and ``tar_parts`` are None (nothing to measure against). Unranked or unqualified cars
 (and all of Mattapan) get ``tar`` and ``tar_parts`` of None.
 """
 
@@ -48,8 +49,9 @@ def add_tar(cars: list[dict], trip_len_sec: float | None, segs_per_trip: float |
     repl = {}
     for name, get in inputs.items():
         repl[name] = _repl([v for v in (get(c) for c in pool) if v is not None])
+    no_repl = all(v is None for v in repl.values())
     for c in cars:
-        if not _eligible(c):
+        if no_repl or not _eligible(c):
             c["tar"], c["tar_parts"] = None, None
             continue
         trips = c.get("trips") or 0

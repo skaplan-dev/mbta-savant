@@ -66,57 +66,21 @@ describe('PercentilePanel', () => {
             screen.getByText(/Time Saved and Dwell Time compare a car with its line’s typical car/)
         ).toBeTruthy();
     });
-    it('fades the bar of a too-close stat and says so under its section', async () => {
+    it('has no close-race note, even when the pipeline lists too-close stats', async () => {
         await renderWithRouter(
             <PercentilePanel
                 group="red"
                 season="2026"
                 car={car('1902')}
-                summary={summary('red', { too_close: ['on_time_pct'] })}
-            />
-        );
-
-        expect(screen.queryByRole('img', { name: 'On-Schedule %: not ranked' })).toBeNull();
-        expect(
-            screen.getByText(
-                'Close race on the Red Line: On-Schedule %. Small differences move these percentiles a lot.'
-            )
-        ).toBeTruthy();
-    });
-    it('says how bunched each too-close stat is', async () => {
-        await renderWithRouter(
-            <PercentilePanel
-                group="orange"
-                season="2026"
-                car={car('1400')}
-                summary={summary('orange', {
-                    too_close: ['steadiness_sec', 'on_time_pct'],
-                    spread: { steadiness_sec: 0.42, on_time_pct: 0.61 },
+                summary={summary('red', {
+                    too_close: ['on_time_pct'],
+                    spread: { on_time_pct: 0.6 },
                 })}
             />
         );
 
-        expect(
-            screen.getByText(
-                'Close race on the Orange Line: Consistency (8 in 10 cars within 0.4 s of each other), On-Schedule % (8 in 10 cars within 0.6 points). Small differences move these percentiles a lot.'
-            )
-        ).toBeTruthy();
-    });
-    it('says "among buses" for a too-close bus stat', async () => {
-        await renderWithRouter(
-            <PercentilePanel
-                group="bus"
-                season="2026"
-                car={car('1400')}
-                summary={summary('bus', { too_close: ['on_time_pct'] })}
-            />
-        );
-
-        expect(
-            screen.getByText(
-                'Close race among buses: On-Schedule %. Small differences move these percentiles a lot.'
-            )
-        ).toBeTruthy();
+        expect(screen.queryByText(/Close race/)).toBeNull();
+        expect(screen.queryByText(/Small differences move/)).toBeNull();
     });
     it('has Performance then Availability sections', async () => {
         await renderWithRouter(

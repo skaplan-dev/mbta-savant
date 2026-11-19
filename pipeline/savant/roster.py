@@ -1,6 +1,7 @@
 """Vehicle roster: car/bus number -> builder, model, propulsion, fleet, garage."""
 
 import json
+import re
 from dataclasses import dataclass
 from functools import cache
 from importlib.resources import files
@@ -44,3 +45,21 @@ def lookup(group: str, number: str) -> Vehicle | None:
                 length_ft=s["length_ft"], garage=garage,
             )
     return None
+
+
+def last_build_year(years: str) -> int | None:
+    """Last build year from a roster ``years`` string ("2024–26", "1999-2007", "2019-", "1997"); an open-ended
+    range counts as still delivering (returns 9999). None if unparseable."""
+    m = re.fullmatch(r"\s*(\d{4})\s*(?:([-–—])\s*(\d{2,4})?)?\s*", years or "")
+    if not m:
+        return None
+    start, dash, end = int(m.group(1)), m.group(2), m.group(3)
+    if not dash:
+        return start
+    if end is None:
+        return 9999
+    e = int(end)
+    if len(end) == 4:
+        return e
+    full = start // 100 * 100 + e
+    return full if full >= start else full + 100

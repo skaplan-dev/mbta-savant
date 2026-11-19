@@ -115,6 +115,9 @@ export default function BioPanel({
                         items={[
                             !!v.years && `Built: ${v.years}`,
                             v.fleet_label || 'Unknown fleet',
+                            !!car.new_delivery &&
+                                !!car.first_seen &&
+                                `In service since: ${fmtDate(car.first_seen)}`,
                             !!car.last_seen && `Last seen: ${fmtDate(car.last_seen)}`,
                         ]}
                     />

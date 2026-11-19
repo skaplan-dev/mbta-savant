@@ -94,3 +94,14 @@ def test_green_type10_on_order_series():
     v = lookup("green", "4050")
     assert v.builder == "CAF"
     assert v.fleet_key == "green-type10"
+
+
+def test_last_build_year():
+    from savant.roster import last_build_year
+    assert last_build_year("2024–26") == 2026
+    assert last_build_year("1999-2007") == 2007
+    assert last_build_year("1997") == 1997
+    assert last_build_year("2019-") == last_build_year("2019–") == 9999
+    assert last_build_year("1999–07") == 2007
+    assert last_build_year("") is None
+    assert last_build_year("n/a") is None

@@ -7,6 +7,23 @@ import { dwellSaved, fmtNum, fmtTrips, signed, timeSaved } from '../../format';
 
 type Parts = NonNullable<Car['tar_parts']>;
 
+/** Steadiness is measured only when the car, the replacement level and segments per trip are all present. */
+function steadyMeasured(car: Car, summary: GroupSummary | null | undefined): boolean {
+    return (
+        car.steady_adj_sec != null &&
+        summary?.tar_replacement?.steady_adj_sec != null &&
+        summary.segs_per_trip != null
+    );
+}
+
+function headline(tar: number): string {
+    if (Math.round(tar) === 0) return 'at replacement level';
+
+    return tar < 0
+        ? `${fmtNum(Math.abs(tar), 0)} trips below replacement`
+        : `${fmtTrips(tar)} trips above replacement`;
+}
+
 /** Everything the math block needs; null when this data file predates TAR's inputs. */
 function mathInputs(car: Car, summary: GroupSummary | null | undefined) {
     const repl = summary?.tar_replacement;
@@ -46,14 +63,15 @@ function TarMath({
     m,
     car,
     tar,
+    canSteady,
 }: {
     m: NonNullable<ReturnType<typeof mathInputs>>;
     car: Car;
     tar: number;
+    canSteady: boolean;
 }) {
     const share = m.service / m.eligible;
     const steady = car.steady_adj_sec;
-    const canSteady = steady != null && m.replSteady != null && m.segs != null;
 
     const lenMin = fmtNum(m.len / 60, 1);
     const sec = (v: number | null | undefined) => `${signed(v, 1)} s`;
@@ -84,10 +102,9 @@ function TarMath({
                     {fmtTrips(field)}
                 </li>
                 <li>
-                    <b className="text-ink font-medium">Speed:</b> ({signed(m.fast, 1)} seconds
-                    saved per trip − replacement {signed(m.replFast, 1)}) × {fmtNum(m.trips, 0)}{' '}
-                    trips ÷ {fmtNum(m.len, 0)} s ({lenMin} min) typical trip length ={' '}
-                    {fmtTrips(speed)}
+                    <b className="text-ink font-medium">Speed:</b> ({sec(m.fast)} saved per trip −
+                    replacement {sec(m.replFast)}) × {fmtNum(m.trips, 0)} trips ÷ {fmtNum(m.len, 0)}{' '}
+                    s ({lenMin} min) typical trip length = {fmtTrips(speed)}
                 </li>
                 <li>
                     <b className="text-ink font-medium">Steadiness:</b>{' '}
@@ -126,8 +143,9 @@ export default function TarBlock({
     const tar = car.tar ?? null;
     const parts: Parts | null = car.tar_parts ?? null;
     const m = tar == null ? null : mathInputs(car, summary);
-    const part = (label: string, v: number | undefined, measured = true) =>
-        parts && measured ? `${label} ${fmtTrips(v)}` : `${label} not measured`;
+    const measured = steadyMeasured(car, summary);
+    const part = (label: string, v: number | undefined, ok = true) =>
+        parts && ok ? `${label} ${fmtTrips(v)}` : `${label} not measured`;
 
     return (
         <div className="mt-2.5">
@@ -142,19 +160,15 @@ export default function TarBlock({
             </div>
             {tar != null && (
                 <>
-                    <p className="text-ink m-0 mt-1 text-center font-medium">
-                        {fmtTrips(tar)} trips above replacement
-                    </p>
+                    <p className="text-ink m-0 mt-1 text-center font-medium">{headline(tar)}</p>
                     {parts && (
                         <p className="text-meta text-ink-2 m-0 mt-1 flex flex-wrap justify-center gap-x-3 text-center">
                             <span>{part('On the field', parts.field)}</span>
                             <span>{part('Speed', parts.speed)}</span>
-                            <span>
-                                {part('Steadiness', parts.steady, car.steady_adj_sec != null)}
-                            </span>
+                            <span>{part('Steadiness', parts.steady, measured)}</span>
                         </p>
                     )}
-                    {m && <TarMath m={m} car={car} tar={tar} />}
+                    {m && <TarMath m={m} car={car} tar={tar} canSteady={measured} />}
                 </>
             )}
         </div>

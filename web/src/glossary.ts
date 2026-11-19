@@ -79,11 +79,11 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
     'days-in-service': {
         name: 'Days in Service',
         section: 'availability',
-        short: 'Share of this season’s service days on which this car ran at least one trip.',
-        lead: 'Share of this season’s service days on which this car ran at least one trip.',
+        short: 'Share of the days the line ran, counted from this car’s first day in service if it’s a new delivery, on which it ran at least 2 trips (1 on a bus).',
+        lead: 'Share of the days the line ran, counted from this car’s first day in service if it’s a new delivery, on which it ran at least 2 trips (1 on a bus).',
         better: 'higher',
         betterLabel: 'HIGHER IS BETTER',
-        calc: 'Only days when the line ran and reported data count, so a data outage doesn’t hurt anyone. A low number usually means time in the shop, or a car held as a spare.',
+        calc: 'Only days when the line ran and reported data count, so a data outage doesn’t hurt anyone. A new delivery is counted from its first day in service, so it isn’t penalized for days before it existed; older cars count every day. A day counts only if the car ran at least 2 trips (1 on a bus). A low number usually means time in the shop, or a car held as a spare.',
     },
     'iron-horse': {
         name: 'Iron Horse Streak',
@@ -92,7 +92,7 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
         lead: 'Most consecutive service days this car ran this season.',
         better: 'higher',
         betterLabel: 'HIGHER IS BETTER',
-        calc: 'Days when the whole line reported no data are skipped, so an outage doesn’t break a streak. Named for the baseball nickname for players who never miss a game.',
+        calc: 'Days when the whole line reported no data are skipped, so an outage doesn’t break a streak. On rail, a day with a single trip doesn’t count and ends the streak. Named for the baseball nickname for players who never miss a game.',
     },
     miles: {
         name: 'Miles Logged',
@@ -168,12 +168,8 @@ export const HOW_RANKINGS: RankingsParagraph[] = [
         body: 'A 95 means the car beat 95% of qualified cars on its line. Red is good and blue is not, whatever the stat.',
     },
     {
-        lead: 'Close races.',
-        body: 'When a line’s cars are within a hair of each other on a stat, small differences still move a car’s percentile a lot. Those stats are still ranked, and the page notes how close the race is: for example, “8 in 10 cars within 0.4 s of each other.” Boards with fewer than 5 ranked cars are ranked too, but their percentiles are rough.',
-    },
-    {
         lead: 'Qualifying.',
-        body: 'A car needs enough trips in the season to be ranked: at least 50, and at least a quarter of what a typical car on its line ran. Cars below that still get a page, just without percentile bubbles.',
+        body: 'A car needs enough trips in the season to be ranked: at least 50, and at least a quarter of what a typical car on its line ran. Cars below that still get a page, just without percentile bubbles. On a board with fewer than 5 ranked cars, percentiles are rough.',
     },
     {
         lead: 'Married pairs.',
@@ -212,11 +208,11 @@ export const HOW_TAR: RankingsParagraph[] = [
     },
     {
         lead: 'Where the conversion rates come from.',
-        body: 'Trips per day is the median, over ranked cars on the line, of each car’s trips ÷ days in service. Typical trip length is the median trip in the season, from first departure to last arrival. Segments per trip is the line’s average. Bus route boards use the same recipe with that route’s own numbers, among buses on that route.',
+        body: 'Trips per day is the median, over ranked cars on the line, of each car’s trips ÷ days in service. Typical trip length is the median trip in the season, from first departure to last arrival. Segments per trip is the line’s median. Bus route boards use the same recipe with that route’s own numbers, among buses on that route. A bus’s car page shows its TAR among all buses, while route boards show TAR among that route’s buses, so the two can differ.',
     },
     {
         lead: 'New cars.',
-        body: 'Eligible days are the days the line reported data, counted only from the car’s first service day on. A car that joined the fleet mid-season is not penalized for days before it existed. A service day is a day the car ran at least 2 trips on rail (1 on a bus), so a car that only rolled out of the yard for one trip does not count.',
+        body: 'Eligible days are the days the line reported data. For a new delivery (a fleet still being built when the car first ran), they are counted only from the car’s first service day on, so a car that joined mid-season is not penalized for days before it existed. Older cars count every data day. A service day is a day the car ran at least 2 trips on rail (1 on a bus), so a car that only rolled out of the yard for one trip does not count.',
     },
     {
         lead: 'Why On-Schedule % is left out.',

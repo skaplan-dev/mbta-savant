@@ -306,7 +306,11 @@ def test_meta_has_default_seasons_and_home_file(tmp_path):
     assert meta["default_season"]["orange"] == "2026" and meta["default_season"]["bus"] == "2026"
     home = load(out / "data/home.json")
     assert set(home) == {"orange", "bus"}
-    assert [e["number"] for e in home["orange"]["leaders"]] == ["1400", "1401"]
+    # two cars: no replacement level, so no TAR and no leaders; every car is listed instead
+    assert home["orange"]["leaders"] == [] and home["orange"]["cars"] == ["1400", "1401"]
+    orange = load(out / "data/last30/cars/orange/1400.json")
+    assert orange["tar"] is None and orange["tar_parts"] is None
+    assert orange["new_delivery"] is True  # roster: 2018-25, first seen 2026
 
 
 def test_last_seen_on_car_board_and_route_files(tmp_path):

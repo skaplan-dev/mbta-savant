@@ -9,7 +9,7 @@ import {
     savedPct,
     timeSaved,
 } from './format';
-import { GLOSSARY, type StatId } from './glossary';
+import type { StatId } from './glossary';
 import { GROUPS, type GroupId, type Mode } from './groups';
 
 // The ranked stats, shared by the car page's percentile panel and the line leaderboard.
@@ -125,47 +125,6 @@ export const BOARD_ORDER: StatId[] = [
     'miles',
     'routes-run',
 ];
-
-const SPREAD_UNIT: Partial<Record<Metric, (w: number) => string>> = {
-    tar: (w) => `${fmtInt(w)} trip${Math.round(w) === 1 ? '' : 's'}`,
-    travel_time_sec: (w) => `${fmtNum(w, 1)} s`,
-    dwell_time_sec: (w) => `${fmtNum(w, 1)} s`,
-    steadiness_sec: (w) => `${fmtNum(w, 1)} s`,
-    on_time_pct: (w) => `${fmtNum(w, 1)} points`,
-    games_played_pct: (w) => `${fmtNum(w, 1)} points`,
-    iron_horse_days: (w) => `${fmtInt(w)} day${Math.round(w) === 1 ? '' : 's'}`,
-};
-
-/**
- * The too-close stats among `stats`, named and, where the spread is known, with how bunched they are:
- * "Consistency (8 in 10 cars within 0.4 s of each other), On-Schedule % (8 in 10 cars within 0.6 points)".
- * The spread is the 10th-to-90th-percentile gap, hence "8 in 10".
- */
-export function tooCloseList(
-    stats: readonly Stat[],
-    tooClose: readonly Metric[],
-    spread: Partial<Record<Metric, number | null>> | undefined,
-    noun: string
-): string {
-    // "of each other" once, on the first stat that gives a spread.
-    let explained = false;
-
-    return stats
-        .filter((s) => tooClose.includes(s.pct))
-        .map((s) => {
-            const w = spread?.[s.pct];
-            const unit = SPREAD_UNIT[s.pct];
-            const name = GLOSSARY[s.id].name;
-
-            if (w == null || !unit) return name;
-            const tail = explained ? '' : ' of each other';
-
-            explained = true;
-
-            return `${name} (8 in 10 ${noun} within ${unit(w)}${tail})`;
-        })
-        .join(', ');
-}
 
 export const boardStats = (group: GroupId): Stat[] =>
     BOARD_ORDER.flatMap((id) => forGroup(group).filter((s) => s.id === id));

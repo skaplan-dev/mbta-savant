@@ -162,7 +162,7 @@ def route_boards(cars: list[dict], window: str, now: str) -> dict[str, dict]:
         for r in c.get("by_route", []):
             by_route.setdefault(r["route"], []).append(
                 {"car_id": c["car_id"], "number": c["number"], "last_seen": c.get("last_seen"),
-                 "first_seen": c.get("first_seen"),
+                 "first_seen": c.get("first_seen"), "new_delivery": c.get("new_delivery"),
                  **{k: v for k, v in r.items() if k != "route"},
                  "routes": None, "crowd_load_pct": None, "teammates": [], "vehicle": c["vehicle"]}
             )
@@ -237,16 +237,19 @@ def publish(root: Path, out: Path) -> None:
     wins = stats.windows(root)
     fleets: dict[str, dict] = {g: {} for g in GROUPS}
     index_by_window: dict[str, list] = {w.key: [] for w in wins}
-    seen = {group: stats.last_seen(root, group) for group in GROUPS}
-    firsts = {group: stats.first_seen(root, group) for group in GROUPS}
+    firsts, seen, delivered = {}, {}, {}
+    for group in GROUPS:
+        firsts[group], seen[group] = stats.first_last_seen(root, group)
+        delivered[group] = stats.new_deliveries(firsts[group], group)
     for w in wins:
         for group in GROUPS:
-            cars = stats.car_stats(root, group, w, firsts[group])
+            cars = stats.car_stats(root, group, w, delivered[group])
             if not cars:
                 continue
             for c in cars:
                 c["last_seen"] = seen[group].get(c["number"])
                 c["first_seen"] = firsts[group].get(c["number"])
+                c["new_delivery"] = c["number"] in delivered[group]
                 if group == "bus":
                     c["crowd_load_pct"] = None
                 v = roster.lookup(group, c["number"])

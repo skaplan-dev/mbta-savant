@@ -22,6 +22,18 @@ describe('leaderboard', () => {
             )
         ).toEqual(['3', '2', '1', '4']);
     });
+    it('breaks a TAR tie by Time Saved before car number', () => {
+        const t = (n: string, saved: number | null) =>
+            carStats(n, {
+                tar: 10,
+                travel_vs_typical_sec: saved == null ? null : -saved,
+                pct: { tar: 50 },
+            });
+
+        expect(
+            rankCars([t('1', 2), t('2', 9), t('3', null), t('4', 9)]).map((c) => c.number)
+        ).toEqual(['2', '4', '1', '3']);
+    });
     it('sorts a stat by displayed value in either direction, nulls last', () => {
         const ranked = rankCars(cars);
         const asc = sortCars(ranked, { key: 'consistency', dir: 'asc' }, 'red');

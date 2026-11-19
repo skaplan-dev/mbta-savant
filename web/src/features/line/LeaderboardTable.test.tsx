@@ -97,45 +97,11 @@ describe('LeaderboardTable', () => {
         height.mockRestore();
     });
 
-    it('explains too-close columns above the table', async () => {
-        await renderWithRouter(
-            <LeaderboardTable
-                group="red"
-                season="2026"
-                ranked={five}
-                tooClose={['on_time_pct', 'dwell_time_sec']}
-            />
-        );
-        expect(
-            await screen.findByText(
-                'Close race on this line: Dwell Time, On-Schedule %. Small differences move these colors a lot.'
-            )
-        ).toBeTruthy();
-    });
-
-    it('says how bunched each too-close column is', async () => {
-        await renderWithRouter(
-            <LeaderboardTable
-                group="bus"
-                season="2026"
-                ranked={five}
-                tooClose={['iron_horse_days', 'dwell_time_sec']}
-                spread={{ iron_horse_days: 2.4, dwell_time_sec: null }}
-            />
-        );
-        expect(
-            await screen.findByText(
-                'Close race on this line: Iron Horse Streak (8 in 10 buses within 2 days of each other), Dwell Time. Small differences move these colors a lot.'
-            )
-        ).toBeTruthy();
-    });
-
-    it('shows no banner when nothing is too close', async () => {
-        await renderWithRouter(
-            <LeaderboardTable group="red" season="2026" ranked={[carStats('1')]} tooClose={[]} />
-        );
+    it('shows no close-race banner on a full board', async () => {
+        await renderWithRouter(<LeaderboardTable group="red" season="2026" ranked={five} />);
         await screen.findByRole('table');
         expect(screen.queryByText(/Close race/)).toBeNull();
+        expect(screen.queryByText(/percentiles are rough/)).toBeNull();
     });
 
     it('defaults to TAR descending', async () => {
@@ -159,7 +125,7 @@ describe('LeaderboardTable', () => {
 
     it('orders columns TAR first and Last Seen last', async () => {
         await renderWithRouter(
-            <LeaderboardTable group="red" season="2026" ranked={[carStats('1')]} tooClose={[]} />
+            <LeaderboardTable group="red" season="2026" ranked={[carStats('1')]} />
         );
         await screen.findByRole('table');
         const heads = [...document.querySelectorAll('thead th')].map((h) => h.textContent);
@@ -173,49 +139,13 @@ describe('LeaderboardTable', () => {
         expect(heads.at(-1)).toContain('Last Seen');
     });
 
-    it('names only real columns in the too-close banner', async () => {
-        await renderWithRouter(
-            <LeaderboardTable
-                group="bus"
-                season="2026"
-                ranked={five}
-                cols={routeBoardStats()}
-                tooClose={['routes', 'on_time_pct']}
-            />
-        );
-        expect(
-            await screen.findByText(
-                'Close race on this line: On-Schedule %. Small differences move these colors a lot.'
-            )
-        ).toBeTruthy();
-    });
-
-    it('says "on this route" on a route board with enough ranked buses', async () => {
-        await renderWithRouter(
-            <LeaderboardTable
-                group="bus"
-                season="2026"
-                ranked={five}
-                cols={routeBoardStats()}
-                tooClose={['on_time_pct']}
-                scope="route"
-            />
-        );
-        expect(
-            await screen.findByText(
-                'Close race on this route: On-Schedule %. Small differences move these colors a lot.'
-            )
-        ).toBeTruthy();
-    });
-
-    it('does not claim a tie when a route board has too few ranked buses', async () => {
+    it('shows the small-board note, and no close-race text, on a route board with few ranked buses', async () => {
         await renderWithRouter(
             <LeaderboardTable
                 group="bus"
                 season="2026"
                 ranked={five.slice(0, 3)}
                 cols={routeBoardStats()}
-                tooClose={['on_time_pct', 'travel_time_sec']}
                 scope="route"
             />
         );

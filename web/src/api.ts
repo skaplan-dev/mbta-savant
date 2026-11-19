@@ -111,6 +111,8 @@ export interface CarStats {
     tar_parts?: { field: number; speed: number; steady: number } | null;
     /** Earliest service date ever (ISO). */
     first_seen?: string | null;
+    /** True when first_seen limits eligible_days (the car's fleet was still being delivered). */
+    new_delivery?: boolean | null;
     /** Data days in the window on or after first_seen. */
     eligible_days?: number | null;
     /** Days in the window the car ran enough trips to count. */

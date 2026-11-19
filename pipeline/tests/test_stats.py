@@ -430,6 +430,49 @@ def test_first_seen_limits_eligible_days(tmp_path):
     assert n["games_played_pct"] == pytest.approx(50.0)
 
 
+def test_zero_eligible_days_gives_no_games_played_pct(tmp_path):
+    days = [D0 + timedelta(days=i) for i in range(2)]
+    write(tmp_path, "orange", {d: two_trips(d, ["N"]) for d in days})
+    late = {"N": (days[-1] + timedelta(days=5)).isoformat()}  # first service after the window
+    (row,) = stats.car_stats(tmp_path, "orange", window(days[0], days[-1]), first_seen=late)
+    assert row["eligible_days"] == 0
+    assert row["games_played_pct"] is None
+
+
+def test_first_last_seen_in_one_scan(tmp_path):
+    d1 = D0 + timedelta(days=1)
+    write(tmp_path, "orange", {D0: [seg(D0, "x", ["A1"], 100)], d1: two_trips(d1, ["A1"])})
+    first, last = stats.first_last_seen(tmp_path, "orange")
+    assert first == {"A1": d1.isoformat()}  # D0 was a 1-trip day
+    assert last == {"A1": d1.isoformat()}
+    assert stats.first_last_seen(tmp_path, "blue") == ({}, {})
+
+
+def test_new_deliveries_only_for_fleets_still_arriving():
+    first = {
+        "1400": "2025-06-01",  # Orange 1400-1551, built 2018-25: still arriving in 2025
+        "1000": "2025-06-01",  # an old bus (2008), absent at the start of our data
+        "4200": "2025-09-01",  # bus 4200s, built 2024-26
+        "9999": "2025-06-01",  # not on the roster
+    }
+    assert stats.new_deliveries({k: first[k] for k in ("1400",)}, "orange") == {"1400": "2025-06-01"}
+    assert stats.new_deliveries(first, "bus") == {"4200": "2025-09-01"}
+
+
+def test_old_fleet_first_seen_not_applied_but_new_fleet_is(tmp_path):
+    days = [D0 + timedelta(days=i) for i in range(4)]
+    by_day = {d: two_trips(d, ["OLD"]) for d in days}
+    for d in days[2:]:
+        by_day[d] += two_trips(d, ["N"], from_stop="C")
+    write(tmp_path, "orange", by_day)
+    first = {"OLD": days[2].isoformat(), "N": days[2].isoformat()}
+    # fake the roster: N is a new delivery, OLD an old fleet
+    delivered = {k: v for k, v in first.items() if k == "N"}
+    rows = by_number(stats.car_stats(tmp_path, "orange", window(days[0], days[-1]), first_seen=delivered))
+    assert rows["OLD"]["eligible_days"] == 4
+    assert rows["N"]["eligible_days"] == 2
+
+
 def test_first_seen_normalizes_bus_numbers_and_empty(tmp_path):
     write(tmp_path, "bus", {D0: [seg(D0, "t", ["0952"], 100, route="1", group="bus")]})
     assert stats.first_seen(tmp_path, "bus") == {"952": D0.isoformat()}

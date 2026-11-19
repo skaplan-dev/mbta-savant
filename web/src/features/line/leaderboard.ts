@@ -2,6 +2,7 @@ import type { CarStats, GroupFile } from '../../api';
 import { byNumber, compareNullsLast } from '../../compare';
 import type { StatId } from '../../glossary';
 import type { GroupId } from '../../groups';
+import { timeSaved } from '../../format';
 import { unrankedReason } from '../../rank';
 import { boardStats } from '../../stats';
 
@@ -48,6 +49,7 @@ export function rankCars(cars: readonly CarStats[]): CarStats[] {
         (a, b) =>
             compareNullsLast(a.pct.tar, b.pct.tar, 'desc') ||
             compareNullsLast(a.tar ?? null, b.tar ?? null, 'desc') ||
+            compareNullsLast(timeSaved(a), timeSaved(b), 'desc') ||
             byNumber(a, b)
     );
 }

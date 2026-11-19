@@ -121,11 +121,10 @@ describe('TarBlock', () => {
         const n2 = (str: string, re: RegExp) =>
             Number((re.exec(str)?.[1] ?? 'NaN').replace(/,/g, '').replace('−', '-'));
 
-        expect(sp).toContain('(+15.0 seconds saved per trip − replacement +5.0)');
-        expect(sp).not.toContain('s seconds');
+        expect(sp).toContain('(+15.0 s saved per trip − replacement +5.0 s)');
 
-        const fast = n2(sp, /\(([+−][\d.]+) seconds/);
-        const rf = n2(sp, /replacement ([+−][\d.]+)\)/);
+        const fast = n2(sp, /\(([+−][\d.]+) s saved/);
+        const rf = n2(sp, /replacement ([+−][\d.]+) s\)/);
         const trips = n2(sp, /× ([\d,]+) trips/);
         const len = n2(sp, /÷ ([\d,]+) s/);
         const speedShown = n2(sp, /= ([+−]?[\d,]+)$/);
@@ -185,5 +184,36 @@ describe('TarBlock', () => {
 
         expect(screen.getByText('+1,414 trips above replacement')).toBeTruthy();
         expect(screen.queryByText('Show the math')).toBeNull();
+    });
+    it('says "below" with the absolute value for a negative TAR, and "at replacement" for 0', async () => {
+        await renderWithRouter(
+            <TarBlock
+                car={tarCar({ tar: -451, tar_parts: { field: -451, speed: 0, steady: 0 } })}
+                summary={summary()}
+            />
+        );
+        expect(screen.getByText('451 trips below replacement')).toBeTruthy();
+
+        cleanup();
+        await renderWithRouter(
+            <TarBlock
+                car={tarCar({ tar: 0, tar_parts: { field: 0, speed: 0, steady: 0 } })}
+                summary={summary()}
+            />
+        );
+        expect(screen.getByText('at replacement level')).toBeTruthy();
+    });
+    it('uses one measured rule for the steadiness chip and the math', async () => {
+        const noRepl = summary({
+            tar_replacement: { service_share: 0.2, fast_sec: 5, steady_adj_sec: null },
+        });
+
+        await renderWithRouter(<TarBlock car={tarCar()} summary={noRepl} />);
+        fireEvent.click(screen.getByText('Show the math'));
+
+        expect(screen.getByText('Steadiness not measured')).toBeTruthy();
+        expect(
+            screen.getByText(/Steadiness:/, { selector: 'b' }).parentElement?.textContent
+        ).toContain('not measured');
     });
 });

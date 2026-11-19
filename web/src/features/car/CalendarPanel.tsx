@@ -9,7 +9,7 @@ import { dayText, monthSummaries } from './calendar';
 import { LastThirtyGrid, YearGrid, type DayLookup } from './CalendarGrids';
 
 const HELP =
-    'Each square is a service day, colored by Time Saved that day: red = faster than the line’s typical car, blue = slower.';
+    'Each square is a day the car ran trips, colored by Time Saved that day: red = faster than the line’s typical car, blue = slower.';
 
 const HELP_BUTTON =
     "text-brand hover:bg-wash relative grid size-8 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 before:absolute before:-inset-2 before:content-['']";

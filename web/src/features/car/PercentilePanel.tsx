@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { ArrowRight, Gauge, TrainTrack, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import type { Car, GroupSummary, Metric } from '../../api';
+import type { Car, GroupSummary } from '../../api';
 import PanelHeader from '../../components/PanelHeader';
 import PercentileBar from '../../components/PercentileBar';
 import StatTerm from '../../components/StatTerm';
@@ -9,7 +9,7 @@ import { barPos, fmtInt, fmtNum } from '../../format';
 import { GLOSSARY } from '../../glossary';
 import { GROUPS, type GroupId } from '../../groups';
 import { isRanked, unrankedReason } from '../../rank';
-import { panelStats, tooCloseList, type Stat } from '../../stats';
+import { panelStats, type Stat } from '../../stats';
 import { COLS } from './shared';
 import TarBlock from './TarBlock';
 
@@ -27,10 +27,6 @@ function Section({
     stats,
     car,
     ranked,
-    tooClose,
-    spread,
-    line,
-    among = false,
     first = false,
     lead,
 }: {
@@ -39,17 +35,10 @@ function Section({
     stats: Stat[];
     car: Car;
     ranked: boolean;
-    tooClose: readonly Metric[];
-    spread: GroupSummary['spread'];
-    line: string;
-    /** Buses have no line to name, so the note says "among buses". */
-    among?: boolean;
     first?: boolean;
     /** Shown above the scale, e.g. the TAR block. */
     lead?: ReactNode;
 }) {
-    const close = tooCloseList(stats, tooClose, spread, among ? 'buses' : 'cars');
-
     return (
         <>
             <div
@@ -100,12 +89,6 @@ function Section({
                     </div>
                 </div>
             ))}
-            {ranked && close && (
-                <p className="text-ink-3 text-meta mt-2.5 mb-0 text-center">
-                    Close race {among ? 'among buses' : `on the ${line}`}: {close}. Small
-                    differences move these percentiles a lot.
-                </p>
-            )}
         </>
     );
 }
@@ -123,8 +106,6 @@ export default function PercentilePanel({
 }) {
     const info = GROUPS[group];
     const ranked = isRanked(group, car);
-    const tooClose = summary?.too_close ?? [];
-    const spread = summary?.spread;
     const rankedCount = summary?.ranked_cars;
 
     const rankedNote =
@@ -158,10 +139,6 @@ export default function PercentilePanel({
                     stats={panelStats(group, 'performance')}
                     car={car}
                     ranked={ranked}
-                    tooClose={tooClose}
-                    spread={spread}
-                    line={info.name}
-                    among={group === 'bus'}
                     first
                     lead={ranked ? <TarBlock car={car} summary={summary} /> : null}
                 />
@@ -171,10 +148,6 @@ export default function PercentilePanel({
                     stats={panelStats(group, 'availability')}
                     car={car}
                     ranked={ranked}
-                    tooClose={tooClose}
-                    spread={spread}
-                    line={info.name}
-                    among={group === 'bus'}
                 />
                 <div className="text-ink-2 text-ui mt-[18px] flex flex-wrap justify-center gap-x-[22px] gap-y-1">
                     {car.crowd_load_pct != null && (

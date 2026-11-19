@@ -20,7 +20,8 @@ median.
 Games Played and Iron Horse are counted over the group's *data days* (window days on which the group
 has any segment), so a feed outage neither lowers a car's games played nor breaks its streak. A car's
 service day counts only if it ran at least ``MIN_DAY_TRIPS`` trips that day (2 on rail, 1 on bus), and
-Games Played's denominator starts at the car's ``first_seen`` (its earliest qualifying service day ever).
+Games Played's denominator starts at the car's ``first_seen`` (its earliest qualifying service day ever) when
+``car_stats`` is given one for it (publish passes only still-being-delivered fleets; see ``new_deliveries``).
 
 ``steady_adj_sec`` is steadiness relative to the same segments: each car-run's deviation from the car's own
 median, minus the mean deviation of every car-run on the same (route, direction, from, to, hour bucket,
@@ -36,6 +37,7 @@ from pathlib import Path
 
 import duckdb
 
+from savant import roster
 from savant.segments import segment_glob
 
 QUALIFY_MIN_TRIPS = 50
@@ -174,7 +176,8 @@ WITH clipped AS (
 dev AS (
   SELECT *, abs(steady_delta - median(steady_delta) OVER (PARTITION BY number)) AS dev FROM clipped
 )
-SELECT *, avg(dev) OVER (PARTITION BY route_id, direction, from_stop, to_stop, hour_bucket, day_type) AS typical_dev
+SELECT number, route_id, key_runs, dev,
+  avg(dev) OVER (PARTITION BY route_id, direction, from_stop, to_stop, hour_bucket, day_type) AS typical_dev
 FROM dev
 """
 
@@ -188,31 +191,20 @@ FROM car_dev GROUP BY {keys}
 """
 
 
-# Median trip duration: first departure to last arrival, per trip, before cars are unnest.
-_TRIP_LEN = """
-SELECT median(d) FROM (
-  SELECT max(epoch(CAST(dep_time AS TIMESTAMPTZ)) + travel_sec) - min(epoch(CAST(dep_time AS TIMESTAMPTZ))) AS d
+# Per trip, before cars are unnest (a multi-car train is one trip): segment count, and duration (first
+# departure to last arrival). The window's medians feed segs_per_trip and trip_len_sec.
+_TRIP_MEDIANS = """
+SELECT median(n), median(d) FROM (
+  SELECT count(*) AS n,
+    max(epoch(CAST(dep_time AS TIMESTAMPTZ)) + travel_sec) - min(epoch(CAST(dep_time AS TIMESTAMPTZ))) AS d
   FROM read_parquet($1) WHERE service_date BETWEEN $2 AND $3 GROUP BY service_date, trip_id
 )
 """
-_TRIP_LEN_ROUTE = """
-SELECT route_id, median(d) FROM (
-  SELECT route_id,
+_TRIP_MEDIANS_ROUTE = """
+SELECT route_id, median(n), median(d) FROM (
+  SELECT route_id, count(*) AS n,
     max(epoch(CAST(dep_time AS TIMESTAMPTZ)) + travel_sec) - min(epoch(CAST(dep_time AS TIMESTAMPTZ))) AS d
   FROM read_parquet($1) WHERE service_date BETWEEN $2 AND $3 GROUP BY route_id, service_date, trip_id
-) GROUP BY route_id
-"""
-
-# Median segments per trip, counted before cars are unnest so a multi-car train is one trip.
-_SEGS_PER_TRIP = """
-SELECT median(n) FROM (
-  SELECT count(*) AS n FROM read_parquet($1) WHERE service_date BETWEEN $2 AND $3 GROUP BY service_date, trip_id
-)
-"""
-_SEGS_PER_TRIP_ROUTE = """
-SELECT route_id, median(n) FROM (
-  SELECT route_id, count(*) AS n FROM read_parquet($1) WHERE service_date BETWEEN $2 AND $3
-  GROUP BY route_id, service_date, trip_id
 ) GROUP BY route_id
 """
 
@@ -241,42 +233,49 @@ ORDER BY a.number, n DESC, b.number
 """
 
 
-_LAST_SEEN = """
-SELECT number, max(service_date) FROM (
-  SELECT service_date, unnest(list_transform(cars, lambda c: __NUMBER__)) AS number FROM read_parquet($1)
+_SEEN = """
+SELECT number, min(service_date) FILTER (WHERE n >= $2), max(service_date) FROM (
+  SELECT number, service_date, count(DISTINCT trip_id) AS n FROM (
+    SELECT service_date, trip_id, unnest(list_transform(cars, lambda c: __NUMBER__)) AS number FROM read_parquet($1)
+  ) GROUP BY number, service_date
 ) GROUP BY number
 """
 
 
-def last_seen(root: Path, group: str) -> dict[str, str]:
-    """Each vehicle's latest service date across every segment on disk, not just one window."""
+def first_last_seen(root: Path, group: str) -> tuple[dict[str, str], dict[str, str]]:
+    """One scan of every segment on disk -> (first, last): each vehicle's earliest *service* date (>= MIN_DAY_TRIPS
+    trips that day) and its latest date with any segment."""
     if not any((Path(root) / "segments" / group).glob("*/*.parquet")):
-        return {}
-    number = "coalesce(CAST(TRY_CAST(c AS BIGINT) AS VARCHAR), c)" if group == "bus" else "c"
-    with duckdb.connect() as con:
-        rows = con.execute(_LAST_SEEN.replace("__NUMBER__", number), [segment_glob(root, group)]).fetchall()
-    return {n: str(d) for n, d in rows}
-
-
-_FIRST_SEEN = """
-SELECT number, min(service_date) FROM (
-  SELECT number, service_date, count(DISTINCT trip_id) AS n FROM (
-    SELECT service_date, trip_id, unnest(list_transform(cars, lambda c: __NUMBER__)) AS number FROM read_parquet($1)
-  ) GROUP BY number, service_date
-) WHERE n >= $2 GROUP BY number
-"""
-
-
-def first_seen(root: Path, group: str) -> dict[str, str]:
-    """Each vehicle's earliest *service* date (>= MIN_DAY_TRIPS trips that day) across every segment on disk."""
-    if not any((Path(root) / "segments" / group).glob("*/*.parquet")):
-        return {}
+        return {}, {}
     number = "coalesce(CAST(TRY_CAST(c AS BIGINT) AS VARCHAR), c)" if group == "bus" else "c"
     with duckdb.connect() as con:
         rows = con.execute(
-            _FIRST_SEEN.replace("__NUMBER__", number), [segment_glob(root, group), min_day_trips(group)]
+            _SEEN.replace("__NUMBER__", number), [segment_glob(root, group), min_day_trips(group)]
         ).fetchall()
-    return {n: str(d) for n, d in rows}
+    return {n: str(f) for n, f, _ in rows if f is not None}, {n: str(la) for n, _, la in rows}
+
+
+def first_seen(root: Path, group: str) -> dict[str, str]:
+    return first_last_seen(root, group)[0]
+
+
+def last_seen(root: Path, group: str) -> dict[str, str]:
+    return first_last_seen(root, group)[1]
+
+
+def new_deliveries(first: dict[str, str], group: str) -> dict[str, str]:
+    """The ``first_seen`` entries for vehicles still being delivered when first seen (roster last build year >=
+    first-seen year - 1). Old fleets absent at the start of our data, and vehicles missing from the roster, are
+    left out, so ``car_stats`` counts all data days for them."""
+    out = {}
+    for number, day in first.items():
+        v = roster.lookup(group, number)
+        if v is None:
+            continue
+        last = roster.last_build_year(v.years)
+        if last is None or last >= int(day[:4]) - 1:
+            out[number] = day
+    return out
 
 
 def _iron_horse(car_days: set[str], data_days: list[str]) -> int:
@@ -312,10 +311,8 @@ def car_stats(
     try:
         args = [segment_glob(root, group), window.start.isoformat(), window.end.isoformat()]
         data_days = [r[0] for r in con.execute(_DATA_DAYS, args).fetchall()]
-        spt = con.execute(_SEGS_PER_TRIP, args).fetchone()[0]
-        route_spt = dict(con.execute(_SEGS_PER_TRIP_ROUTE, args).fetchall()) if is_bus else {}
-        trip_len = con.execute(_TRIP_LEN, args).fetchone()[0]
-        route_trip_len = dict(con.execute(_TRIP_LEN_ROUTE, args).fetchall()) if is_bus else {}
+        spt, trip_len = con.execute(_TRIP_MEDIANS, args).fetchone()
+        route_med = {r: (n, d) for r, n, d in con.execute(_TRIP_MEDIANS_ROUTE, args).fetchall()} if is_bus else {}
         con.execute(_CAR_SEG.replace("__NUMBER__", _BUS_NUMBER if is_bus else "cars[i]"), args)
         con.execute(_CAR_DEV)
         adj = dict(con.execute(_adj("number")).fetchall())
@@ -338,7 +335,7 @@ def car_stats(
                 row = dict(zip(rcols, r))
                 route, number, days = row.pop("route_id"), row.pop("number"), set(row.pop("days"))
                 row.pop("routes")
-                row.update(_per_trip(row, route_spt[route]))
+                row.update(_per_trip(row, route_med[route][0]))
                 route_data_days = route_days[route]
                 eligible = _eligible(route_data_days, first_seen.get(number))
                 by_route.setdefault(number, []).append(
@@ -349,10 +346,10 @@ def car_stats(
                         "miles": None,
                         "service_days": len(days),
                         "eligible_days": len(eligible),
-                        "games_played_pct": 100.0 * len(days) / len(eligible) if eligible else 0.0,
+                        "games_played_pct": 100.0 * len(days) / len(eligible) if eligible else None,
                         "iron_horse_days": _iron_horse(days, route_data_days),
                         "steady_adj_sec": route_adj.get((route, number)),
-                        "trip_len_sec": route_trip_len.get(route),
+                        "trip_len_sec": route_med[route][1],
                     }
                 )
         mates: dict[str, list[list]] = {}
@@ -379,7 +376,7 @@ def car_stats(
                 "miles": None if is_bus else c["miles"],
                 "service_days": len(days),
                 "eligible_days": len(eligible),
-                "games_played_pct": 100.0 * len(days) / len(eligible) if eligible else 0.0,
+                "games_played_pct": 100.0 * len(days) / len(eligible) if eligible else None,
                 "iron_horse_days": _iron_horse(days, data_days),
                 "steady_adj_sec": adj.get(number),
                 "trip_len_sec": trip_len,
