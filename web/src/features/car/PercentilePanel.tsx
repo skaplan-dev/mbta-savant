@@ -90,7 +90,7 @@ function Section({
                         <StatTerm id={s.id} />
                     </div>
                     <PercentileBar
-                        pct={ranked && !tooClose.includes(s.pct) ? car.pct[s.pct] : null}
+                        pct={ranked ? car.pct[s.pct] : null}
                         label={GLOSSARY[s.id].name}
                     />
                     <div
@@ -102,8 +102,8 @@ function Section({
             ))}
             {ranked && close && (
                 <p className="text-ink-3 text-meta mt-2.5 mb-0 text-center">
-                    Too close to call {among ? 'among buses' : `on the ${line}`}, so these aren’t
-                    ranked: {close}.
+                    Close race {among ? 'among buses' : `on the ${line}`}: {close}. Small
+                    differences move these percentiles a lot.
                 </p>
             )}
         </>

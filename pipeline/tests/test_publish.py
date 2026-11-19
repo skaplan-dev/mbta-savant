@@ -179,7 +179,8 @@ def test_too_close_marks_flat_metric():
     out = publish.add_percentiles("orange", cars)
     close = publish.too_close(out)
     assert "on_time_pct" in close and "games_played_pct" not in close
-    assert all(c["pct"]["on_time_pct"] is None for c in out)
+    # A close race is still ranked: the site only notes how bunched the cars are.
+    assert all(c["pct"]["on_time_pct"] is not None for c in out)
     assert all(c["pct"]["games_played_pct"] is not None for c in out)
 
 

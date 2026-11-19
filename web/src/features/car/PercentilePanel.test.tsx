@@ -76,10 +76,10 @@ describe('PercentilePanel', () => {
             />
         );
 
-        expect(screen.getByRole('img', { name: 'On-Schedule %: not ranked' })).toBeTruthy();
+        expect(screen.queryByRole('img', { name: 'On-Schedule %: not ranked' })).toBeNull();
         expect(
             screen.getByText(
-                'Too close to call on the Red Line, so these aren’t ranked: On-Schedule %.'
+                'Close race on the Red Line: On-Schedule %. Small differences move these percentiles a lot.'
             )
         ).toBeTruthy();
     });
@@ -98,7 +98,7 @@ describe('PercentilePanel', () => {
 
         expect(
             screen.getByText(
-                'Too close to call on the Orange Line, so these aren’t ranked: Consistency (8 in 10 cars within 0.4 s of each other), On-Schedule % (8 in 10 cars within 0.6 points).'
+                'Close race on the Orange Line: Consistency (8 in 10 cars within 0.4 s of each other), On-Schedule % (8 in 10 cars within 0.6 points). Small differences move these percentiles a lot.'
             )
         ).toBeTruthy();
     });
@@ -114,7 +114,7 @@ describe('PercentilePanel', () => {
 
         expect(
             screen.getByText(
-                'Too close to call among buses, so these aren’t ranked: On-Schedule %.'
+                'Close race among buses: On-Schedule %. Small differences move these percentiles a lot.'
             )
         ).toBeTruthy();
     });

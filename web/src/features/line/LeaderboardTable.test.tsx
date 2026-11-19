@@ -108,7 +108,7 @@ describe('LeaderboardTable', () => {
         );
         expect(
             await screen.findByText(
-                'Too close to call on this line, so shown without colors: Dwell Time, On-Schedule %.'
+                'Close race on this line: Dwell Time, On-Schedule %. Small differences move these colors a lot.'
             )
         ).toBeTruthy();
     });
@@ -125,7 +125,7 @@ describe('LeaderboardTable', () => {
         );
         expect(
             await screen.findByText(
-                'Too close to call on this line, so shown without colors: Iron Horse Streak (8 in 10 buses within 2 days of each other), Dwell Time.'
+                'Close race on this line: Iron Horse Streak (8 in 10 buses within 2 days of each other), Dwell Time. Small differences move these colors a lot.'
             )
         ).toBeTruthy();
     });
@@ -135,7 +135,7 @@ describe('LeaderboardTable', () => {
             <LeaderboardTable group="red" season="2026" ranked={[carStats('1')]} tooClose={[]} />
         );
         await screen.findByRole('table');
-        expect(screen.queryByText(/Too close to call/)).toBeNull();
+        expect(screen.queryByText(/Close race/)).toBeNull();
     });
 
     it('defaults to TAR descending', async () => {
@@ -185,7 +185,7 @@ describe('LeaderboardTable', () => {
         );
         expect(
             await screen.findByText(
-                'Too close to call on this line, so shown without colors: On-Schedule %.'
+                'Close race on this line: On-Schedule %. Small differences move these colors a lot.'
             )
         ).toBeTruthy();
     });
@@ -203,7 +203,7 @@ describe('LeaderboardTable', () => {
         );
         expect(
             await screen.findByText(
-                'Too close to call on this route, so shown without colors: On-Schedule %.'
+                'Close race on this route: On-Schedule %. Small differences move these colors a lot.'
             )
         ).toBeTruthy();
     });
@@ -220,10 +220,8 @@ describe('LeaderboardTable', () => {
             />
         );
         expect(
-            await screen.findByText(
-                'Too few ranked buses on this route for percentiles; values are shown without colors.'
-            )
+            await screen.findByText('Only 3 ranked buses on this route, so percentiles are rough.')
         ).toBeTruthy();
-        expect(screen.queryByText(/Too close to call/)).toBeNull();
+        expect(screen.queryByText(/Close race/)).toBeNull();
     });
 });

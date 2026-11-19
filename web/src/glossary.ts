@@ -168,8 +168,8 @@ export const HOW_RANKINGS: RankingsParagraph[] = [
         body: 'A 95 means the car beat 95% of qualified cars on its line. Red is good and blue is not, whatever the stat.',
     },
     {
-        lead: 'Too close to call.',
-        body: 'When a line’s cars are within a hair of each other on a stat, a percentile would only exaggerate tiny differences. Those stats are shown without percentiles and marked too close to call. Boards with fewer than 5 ranked cars get no percentiles either.',
+        lead: 'Close races.',
+        body: 'When a line’s cars are within a hair of each other on a stat, small differences still move a car’s percentile a lot. Those stats are still ranked, and the page notes how close the race is: for example, “8 in 10 cars within 0.4 s of each other.” Boards with fewer than 5 ranked cars are ranked too, but their percentiles are rough.',
     },
     {
         lead: 'Qualifying.',

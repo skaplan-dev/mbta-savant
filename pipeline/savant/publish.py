@@ -10,8 +10,9 @@ Travel and dwell time are also shown against the group's typical car (``travel_v
 median over qualified, ranked cars. These are display-only; percentiles stay on the absolute fields
 (centering does not change rank).
 
-A ranked metric is "too close to call" in a group when the p90 - p10 spread of its value over qualified
-ranked cars is below MIN_SPREAD, or fewer than MIN_CARS such cars have it. Its percentiles are None.
+A ranked metric is a "close race" (``too_close``) in a group when the p90 - p10 spread of its value over
+qualified ranked cars is below MIN_SPREAD, or fewer than MIN_CARS such cars have it. It is still ranked; the
+site just notes how bunched the cars are.
 """
 
 import json
@@ -86,9 +87,8 @@ def add_percentiles(group: str, cars: list[dict]) -> list[dict]:
     mark_ranked(group, out)
     if group in UNRANKED_GROUPS:
         return out
-    close = set(too_close(out))
     for metric, direction in METRICS.items():
-        if direction is None or metric in close:
+        if direction is None:
             continue
         ranked = [c for c in out if c["ranked"] and c.get("qualified") and c.get(metric) is not None]
         n = len(ranked)

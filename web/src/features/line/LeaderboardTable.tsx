@@ -120,7 +120,7 @@ export default function LeaderboardTable({
     ranked: CarStats[];
     /** Stat columns; the group's board stats unless a page drops some (a route board has no Routes Run). */
     cols?: readonly Stat[];
-    /** Metrics too close to call on this line; their cells are untinted. */
+    /** Close-race metrics on this line, named in the note above the table. */
     tooClose?: readonly Metric[];
     /** How bunched each stat is (group file `spread`), for the banner. */
     spread?: GroupFile['spread'];
@@ -182,8 +182,8 @@ export default function LeaderboardTable({
             {tooCloseText && (
                 <p className="text-ink-2 text-ui m-0 px-3 py-2">
                     {ranked.length < MIN_RANKED
-                        ? `Too few ranked ${group === 'bus' ? 'buses' : 'cars'} on this ${scope} for percentiles; values are shown without colors.`
-                        : `Too close to call on this ${scope}, so shown without colors: ${tooCloseText}.`}
+                        ? `Only ${ranked.length} ranked ${group === 'bus' ? (ranked.length === 1 ? 'bus' : 'buses') : ranked.length === 1 ? 'car' : 'cars'} on this ${scope}, so percentiles are rough.`
+                        : `Close race on this ${scope}: ${tooCloseText}. Small differences move these colors a lot.`}
                 </p>
             )}
             <div className="overflow-x-auto">

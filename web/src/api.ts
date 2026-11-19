@@ -158,7 +158,7 @@ export interface GroupFile extends TarConstants {
     segs_per_trip?: number | null;
     /** The typical car's (median of ranked cars) absolute values. */
     typical?: Partial<Record<'travel_time_sec' | 'dwell_time_sec', number | null>>;
-    /** Stats where the line's cars are too close together to show percentiles. */
+    /** Stats where the line's cars are bunched together (still ranked; the site notes it). */
     too_close?: Metric[];
     /** Gap between the 10th- and 90th-percentile ranked cars, per stat that can be too close (null: too few cars). */
     spread?: Partial<Record<Metric, number | null>>;
