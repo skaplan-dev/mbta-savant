@@ -72,7 +72,12 @@ function LineView({
             {group === 'bus' && <RoutePicker season={season} />}
             {fleets.length > 0 && <FleetStrip fleets={fleets} />}
             {ranked.length > 0 && (
-                <LeaderboardTable group={group} season={season} ranked={ranked} />
+                <LeaderboardTable
+                    group={group}
+                    season={season}
+                    ranked={ranked}
+                    tooClose={file.too_close}
+                />
             )}
             {unranked.length > 0 && <NotRanked group={group} season={season} rows={unranked} />}
         </main>

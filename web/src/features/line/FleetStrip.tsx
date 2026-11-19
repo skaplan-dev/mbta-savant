@@ -1,5 +1,5 @@
 import type { FleetSummary } from '../../api';
-import { fmtPace, fmtSaved, pace, timeSaved } from '../../format';
+import { fmtNum, fmtSaved, timeSaved } from '../../format';
 
 export default function FleetStrip({ fleets }: { fleets: FleetSummary[] }) {
     return (
@@ -23,11 +23,13 @@ export default function FleetStrip({ fleets }: { fleets: FleetSummary[] }) {
                         <div className="text-ui mt-1.5 flex gap-4">
                             <span>
                                 <b className="font-medium">{fmtSaved(timeSaved(f.median))}</b>{' '}
-                                <span className="text-ink-3 text-ui">saved</span>
+                                <span className="text-ink-3 text-ui">saved/trip</span>
                             </span>
                             <span>
-                                <b className="font-medium">{fmtPace(pace(f.median))}</b>{' '}
-                                <span className="text-ink-3 text-ui">pace</span>
+                                <b className="font-medium">
+                                    {fmtNum(f.median.games_played_pct, 0, '%')}
+                                </b>{' '}
+                                <span className="text-ink-3 text-ui">in service</span>
                             </span>
                         </div>
                     </li>

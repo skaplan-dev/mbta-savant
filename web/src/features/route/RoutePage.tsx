@@ -85,7 +85,13 @@ function RouteView({
                 </Link>
             </p>
             {ranked.length > 0 && (
-                <LeaderboardTable group="bus" season={season} ranked={ranked} cols={COLS} />
+                <LeaderboardTable
+                    group="bus"
+                    season={season}
+                    ranked={ranked}
+                    cols={COLS}
+                    tooClose={file.too_close}
+                />
             )}
             {unranked.length > 0 && <NotRanked group="bus" season={season} rows={unranked} />}
         </main>

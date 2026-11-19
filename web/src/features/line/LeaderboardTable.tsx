@@ -1,12 +1,13 @@
 import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { CarStats } from '../../api';
+import type { CarStats, Metric } from '../../api';
 import CarPill from '../../components/CarPill';
 import StatTerm from '../../components/StatTerm';
 import { fmtDate, fmtInt, pctColor, tint } from '../../format';
 import { GROUPS, type GroupId } from '../../groups';
-import { boardStats, type Stat } from '../../stats';
+import { GLOSSARY } from '../../glossary';
+import { boardStats, STATS, type Stat } from '../../stats';
 import { firstDir, sortCars, type Sort, type SortKey, type RankedRow } from './leaderboard';
 
 const th =
@@ -109,12 +110,15 @@ export default function LeaderboardTable({
     season,
     ranked,
     cols = boardStats(group),
+    tooClose = [],
 }: {
     group: GroupId;
     season: string;
     ranked: CarStats[];
     /** Stat columns; the group's board stats unless a page drops some (a route board has no Routes Run). */
     cols?: readonly Stat[];
+    /** Metrics too close to call on this line; their cells are untinted. */
+    tooClose?: readonly Metric[];
 }) {
     const [sort, setSort] = useState<Sort>({ key: 'time-saved', dir: 'desc' });
     const rows = useMemo(() => sortCars(ranked, sort, group), [ranked, sort, group]);
@@ -161,11 +165,21 @@ export default function LeaderboardTable({
     const items = virtual ? virtualizer.getVirtualItems() : null;
     const rowProps = { group, season, cols };
 
+    const tooCloseNames = tooClose
+        .flatMap((m) => STATS.filter((s) => s.pct === m))
+        .map((s) => GLOSSARY[s.id].name);
+
     const aria = (key: SortKey) =>
         sort.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none';
 
     return (
         <section className="panel" aria-label="Leaderboard">
+            {tooCloseNames.length > 0 && (
+                <p className="text-ink-2 text-ui m-0 px-3 py-2">
+                    Too close to call on this line: {tooCloseNames.join(', ')}. Shown without
+                    colors.
+                </p>
+            )}
             <div className="overflow-x-auto">
                 <table className="text-ui w-full border-collapse">
                     <thead>

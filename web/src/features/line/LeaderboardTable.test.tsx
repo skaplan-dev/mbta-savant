@@ -23,8 +23,8 @@ describe('LeaderboardTable', () => {
                 group="red"
                 season="2026"
                 ranked={[
-                    carStats('1', { ttoe_vs_avg_sec: 1 }),
-                    carStats('2', { ttoe_vs_avg_sec: -2 }),
+                    carStats('1', { trip_vs_typical_sec: 1 }),
+                    carStats('2', { trip_vs_typical_sec: -2 }),
                 ]}
             />
         );
@@ -79,5 +79,45 @@ describe('LeaderboardTable', () => {
         expect(bodyRows()).toBeGreaterThan(10);
         expect(bodyRows()).toBeLessThan(100);
         height.mockRestore();
+    });
+
+    it('explains too-close columns above the table', async () => {
+        await renderWithRouter(
+            <LeaderboardTable
+                group="red"
+                season="2026"
+                ranked={[carStats('1')]}
+                tooClose={['on_time_pct', 'dwell_time_sec']}
+            />
+        );
+        expect(
+            await screen.findByText(
+                'Too close to call on this line: On-Schedule %, Dwell Time. Shown without colors.'
+            )
+        ).toBeTruthy();
+    });
+
+    it('shows no banner when nothing is too close', async () => {
+        await renderWithRouter(
+            <LeaderboardTable group="red" season="2026" ranked={[carStats('1')]} tooClose={[]} />
+        );
+        await screen.findByRole('table');
+        expect(screen.queryByText(/Too close to call/)).toBeNull();
+    });
+
+    it('orders columns Time Saved first and Last Seen last', async () => {
+        await renderWithRouter(
+            <LeaderboardTable group="red" season="2026" ranked={[carStats('1')]} tooClose={[]} />
+        );
+        await screen.findByRole('table');
+        const heads = [...document.querySelectorAll('thead th')].map((h) => h.textContent);
+
+        expect(heads.slice(4, 8).map((h) => h?.replace(/\s/g, ''))).toEqual([
+            'TimeSaved',
+            'DaysinService',
+            'IronHorseStreak',
+            'TravelTime',
+        ]);
+        expect(heads.at(-1)).toContain('Last Seen');
     });
 });

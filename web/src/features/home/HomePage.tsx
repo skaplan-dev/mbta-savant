@@ -105,9 +105,9 @@ function LeaderCard({
                                 <span
                                     className="rounded px-2 py-0.5 font-medium"
                                     style={
-                                        e.pct_ttoe == null
+                                        e.pct_trip == null
                                             ? undefined
-                                            : { background: tint(pctColor(e.pct_ttoe)) }
+                                            : { background: tint(pctColor(e.pct_trip)) }
                                     }
                                 >
                                     {fmtSaved(timeSaved(e))}
