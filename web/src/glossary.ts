@@ -100,7 +100,7 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
         lead: 'Distance carried in passenger service this season.',
         better: 'higher',
         betterLabel: 'HIGHER IS BETTER',
-        calc: 'Station-to-station distances added up over every stretch the car ran. Rail only for now, because bus stop-to-stop distances aren’t in the data yet.',
+        calc: 'Station-to-station distances added up over every stretch the car ran. Rail only for now.',
     },
     crowding: {
         name: 'Avg Crowding',
