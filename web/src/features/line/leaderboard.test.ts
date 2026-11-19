@@ -43,7 +43,7 @@ describe('leaderboard', () => {
 
         expect(red.ranked.map((c) => c.number)).toEqual(['1']);
         expect(red.unranked).toHaveLength(1);
-        expect(red.unranked[0].reason).toContain('870');
+        expect(red.unranked[0].reason).toBe('Not enough trips');
         expect(
             splitCars('mattapan', groupFile([carStats('9')], { group: 'mattapan' })).unranked[0]
                 .reason

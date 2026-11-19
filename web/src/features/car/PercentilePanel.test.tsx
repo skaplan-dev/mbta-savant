@@ -40,7 +40,7 @@ describe('PercentilePanel', () => {
 
         expect(title()).toBe('2026 Red Line Stats');
 
-        const why = screen.getByText(/Not enough trips this season to be ranked \(needs 870\)/);
+        const why = screen.getByText(/Not enough trips/);
         const firstGroup = screen.getByRole('heading', { name: 'Performance' });
 
         expect(

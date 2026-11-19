@@ -32,7 +32,7 @@ export function splitCars(group: GroupId, file: GroupFile): LineCars {
     const unranked: UnrankedCar[] = [];
 
     for (const car of file.cars) {
-        const reason = unrankedReason(group, car, file.qualify_min_trips);
+        const reason = unrankedReason(group, car);
 
         if (!reason) ranked.push(car);
         else if (car.trips > 0) unranked.push({ car, reason });

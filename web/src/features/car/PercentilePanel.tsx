@@ -107,7 +107,7 @@ export default function PercentilePanel({
 
     // Why there are no bubbles is the first thing to say, so it goes above the numbers. A line that is
     // never ranked has no average to compare against, which is why those rows are dashes.
-    const reason = ranked ? null : unrankedReason(group, car, summary?.qualify_min_trips);
+    const reason = ranked ? null : unrankedReason(group, car);
 
     const unrankedNote =
         reason && !info.ranked
