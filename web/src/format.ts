@@ -62,21 +62,34 @@ export function signed(v: number | null | undefined, digits = 1, unit = ''): str
     return `${isZero ? '' : v > 0 ? '+' : '−'}${body}${unit}`;
 }
 
-export const fmtSaved = (v: number | null | undefined) => signed(v, 1, ' s');
+/** Time Saved and its parts: whole seconds per trip. */
+export const fmtSaved = (v: number | null | undefined) => signed(v, 0, ' s');
+
+export const fmtSavedPct = (v: number | null | undefined) => signed(v, 1, '%');
 
 export const pctOf = (part: number, total: number) => Math.round((part / total) * 100);
 
 // Accept fleet medians as well as cars, so every surface derives these the same way.
-type VsAverage = Partial<Pick<CarStats, 'ttoe_vs_avg_sec' | 'speed_vs_avg_pct'>>;
+type VsTypical = Partial<
+    Pick<
+        CarStats,
+        | 'trip_vs_typical_sec'
+        | 'travel_vs_typical_sec'
+        | 'dwell_vs_typical_sec'
+        | 'trip_vs_typical_pct'
+    >
+>;
 
-// Seconds saved per stop vs the line's average car (positive = faster).
-export const timeSaved = ({ ttoe_vs_avg_sec: v }: VsAverage): number | null =>
-    v == null ? null : -v;
+const negate = (v: number | null | undefined): number | null => (v == null ? null : -v);
 
-// Percent quicker than the line's average car on the same stretches (positive = faster).
-export const pace = ({ speed_vs_avg_pct: v }: VsAverage): number | null => v ?? null;
+// Per trip vs the line's typical car; the data is centered with positive = slower, so these flip it (positive = faster).
+export const timeSaved = (c: VsTypical) => negate(c.trip_vs_typical_sec);
 
-export const fmtPace = (v: number | null | undefined) => signed(v, 1, '%');
+export const travelSaved = (c: VsTypical) => negate(c.travel_vs_typical_sec);
+
+export const dwellSaved = (c: VsTypical) => negate(c.dwell_vs_typical_sec);
+
+export const savedPct = (c: VsTypical) => negate(c.trip_vs_typical_pct);
 
 /** "Nov 18, 2026" from an ISO service date; a missing date is a bare dash. */
 export const fmtDate = (iso: string | null | undefined): string =>
@@ -87,16 +100,6 @@ export const fmtDate = (iso: string | null | undefined): string =>
               year: 'numeric',
           })
         : '–';
-
-export function doorLabel(sec: number | null | undefined): string {
-    if (sec == null) return '–';
-
-    const tenths = Math.round(sec * 10) / 10;
-
-    if (tenths === 0) return 'typical';
-
-    return `${Math.abs(tenths).toFixed(1)} s ${tenths < 0 ? 'quick' : 'slow'}`;
-}
 
 export function ordinal(n: number): string {
     const r100 = n % 100;

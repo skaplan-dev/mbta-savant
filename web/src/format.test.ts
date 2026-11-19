@@ -1,21 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import {
-    doorLabel,
     fmtNum,
     ordinal,
     barEdge,
     EDGE_MIX,
     fmtDate,
-    fmtPace,
-    pace,
+    fmtSaved,
+    fmtSavedPct,
+    travelSaved,
+    dwellSaved,
+    savedPct,
     pctColor,
     pctInk,
     signed,
     timeSaved,
 } from './format';
 import { GROUPS, isGroup } from './groups';
-import { panelStats } from './stats';
-import { car } from './test/fixtures';
+import { boardStats, panelStats, STATS } from './stats';
+import { GLOSSARY, STAT_IDS } from './glossary';
+import { car, carStats } from './test/fixtures';
 import { contrast, hex, mix, rgbOf, WHITE } from './test/contrast';
 
 describe('signed', () => {
@@ -31,30 +34,88 @@ describe('signed', () => {
 });
 
 describe('car stats', () => {
-    it('pace is speed_vs_avg_pct, shown as a signed percent', () => {
-        expect(pace({ speed_vs_avg_pct: 2.54 })).toBe(2.54);
-        expect(pace({ speed_vs_avg_pct: null })).toBeNull();
-        expect(pace({})).toBeNull();
-        expect(fmtPace(2.54)).toBe('+2.5%');
-        expect(fmtPace(-1.26)).toBe('−1.3%');
+    it('fmtSaved is whole seconds, signed', () => {
+        expect(fmtSaved(31.6)).toBe('+32 s');
+        expect(fmtSaved(-4.6)).toBe('−5 s');
+        expect(fmtSaved(-0.4)).toBe('0 s');
+        expect(fmtSaved(null)).toBe('–');
+    });
+    it('fmtSavedPct is one decimal', () => {
+        expect(fmtSavedPct(1.84)).toBe('+1.8%');
+        expect(fmtSavedPct(-1.26)).toBe('−1.3%');
+    });
+    it('saved values negate the centered fields', () => {
+        expect(timeSaved({ trip_vs_typical_sec: -32 })).toBe(32);
+        expect(travelSaved({ travel_vs_typical_sec: 4 })).toBe(-4);
+        expect(dwellSaved({ dwell_vs_typical_sec: -3 })).toBe(3);
+        expect(savedPct({ trip_vs_typical_pct: -1.8 })).toBe(1.8);
+        expect(timeSaved({})).toBeNull();
+        expect(travelSaved({})).toBeNull();
+        expect(dwellSaved({ dwell_vs_typical_sec: null })).toBeNull();
+        expect(savedPct({})).toBeNull();
     });
     it('fmtDate', () => {
         expect(fmtDate('2026-11-18')).toBe('Nov 18, 2026');
         expect(fmtDate(null)).toBe('–');
     });
-    it('timeSaved negates ttoe_vs_avg_sec', () => {
-        expect(timeSaved({ ttoe_vs_avg_sec: -2.9 })).toBe(2.9);
+});
+
+describe('stats registry', () => {
+    it('orders the red board', () => {
+        expect(boardStats('red').map((s) => s.id)).toEqual([
+            'time-saved',
+            'days-in-service',
+            'iron-horse',
+            'travel-time',
+            'dwell-time',
+            'consistency',
+            'on-schedule',
+            'miles',
+        ]);
     });
-    it('doorLabel', () => {
-        expect(doorLabel(-2)).toBe('2.0 s quick');
-        expect(doorLabel(0.84)).toBe('0.8 s slow');
-        expect(doorLabel(0.04)).toBe('typical');
+    it('orders the bus board', () => {
+        expect(
+            boardStats('bus')
+                .map((s) => s.id)
+                .at(-1)
+        ).toBe('routes-run');
+    });
+    it('panels keep registry order per section', () => {
+        expect(panelStats('red', 'performance').map((s) => s.id)).toEqual([
+            'time-saved',
+            'travel-time',
+            'dwell-time',
+            'consistency',
+            'on-schedule',
+        ]);
+        expect(panelStats('red', 'availability').map((s) => s.id)).toEqual([
+            'days-in-service',
+            'iron-horse',
+            'miles',
+        ]);
+    });
+    it('renders a dash for timing stats without data', () => {
+        const c = carStats('1', {});
+        for (const id of ['time-saved', 'travel-time', 'dwell-time']) {
+            expect(STATS.find((s) => s.id === id)?.text(c)).toBe('–');
+        }
+    });
+    it('time saved shows seconds and percent on the board, seconds in the panel', () => {
+        const c = carStats('1', { trip_vs_typical_sec: -32, trip_vs_typical_pct: -1.84 });
+        const s = STATS.find((x) => x.id === 'time-saved');
+        expect(s?.text(c)).toBe('+32 s · +1.8%');
+        expect(s?.brief?.(c)).toBe('+32 s');
+    });
+    it('glossary matches the registry', () => {
+        expect(STAT_IDS).not.toContain('pace-plus');
+        expect(GLOSSARY['dwell-time'].name).toBe('Dwell Time');
+        expect(GLOSSARY['last-seen'].section).toBe('availability');
     });
 });
 
 describe('units', () => {
     const miles = (n: number) =>
-        panelStats('red', 'workload')
+        panelStats('red', 'availability')
             .find((s) => s.id === 'miles')
             ?.brief?.(car('1900', { miles: n }));
 

@@ -25,9 +25,9 @@ const SECTIONS: { key: Section; title: string; toc: string; icon?: ReactNode }[]
         icon: <Gauge className="size-[34px]" strokeWidth={1.75} />,
     },
     {
-        key: 'workload',
-        title: 'Workload',
-        toc: 'WORKLOAD',
+        key: 'availability',
+        title: 'Availability',
+        toc: 'AVAILABILITY',
         icon: <TrainTrack className="size-[34px]" strokeWidth={1.75} />,
     },
     { key: 'fun', title: 'Fun facts (not ranked)', toc: 'FUN FACTS' },

@@ -1,11 +1,11 @@
 import type { GroupId } from './groups';
 
 export type Metric =
-    | 'ttoe_sec'
-    | 'speed_vs_expected_pct'
+    | 'trip_time_sec'
+    | 'travel_time_sec'
+    | 'dwell_time_sec'
     | 'on_time_pct'
     | 'steadiness_sec'
-    | 'door_time_sec'
     | 'games_played_pct'
     | 'iron_horse_days'
     | 'miles'
@@ -44,9 +44,9 @@ export interface IndexEntry {
     fleet_label: string;
     qualified: boolean;
     ranked: boolean;
-    ttoe_sec: number | null;
-    ttoe_vs_avg_sec: number | null;
-    pct_ttoe: number | null;
+    /** Seconds per trip against the line's typical car (positive = slower). */
+    trip_vs_typical_sec: number | null;
+    pct_trip: number | null;
 }
 
 export interface Vehicle {
@@ -70,16 +70,18 @@ export interface CarStats {
     trips: number;
     qualified: boolean;
     ranked: boolean;
-    ttoe_sec: number | null;
-    speed_vs_expected_pct: number | null;
-    // ttoe_sec / speed_vs_expected_pct / door_time_sec minus the group's average (qualified, ranked) car; display-only.
-    ttoe_vs_avg_sec: number | null;
-    speed_vs_avg_pct: number | null;
-    // Optional until every published data file has it (the site can deploy before the nightly rebuild).
-    door_vs_avg_sec?: number | null;
+    // Per-trip timing, optional until every published data file has it (the site can deploy before the nightly rebuild).
+    trip_time_sec?: number | null;
+    travel_time_sec?: number | null;
+    dwell_time_sec?: number | null;
+    exp_trip_sec?: number | null;
+    // Centered on the line's typical car (median of ranked cars): positive = slower; the UI negates for "saved".
+    trip_vs_typical_sec?: number | null;
+    travel_vs_typical_sec?: number | null;
+    dwell_vs_typical_sec?: number | null;
+    trip_vs_typical_pct?: number | null;
     on_time_pct: number | null;
     steadiness_sec: number | null;
-    door_time_sec: number | null;
     games_played_pct: number | null;
     iron_horse_days: number | null;
     miles: number | null;
@@ -97,7 +99,7 @@ export interface GameLogEntry {
     date: string;
     trips: number;
     miles: number | null;
-    ttoe_sec: number | null;
+    trip_time_sec: number | null;
     routes: string[];
 }
 
@@ -113,7 +115,9 @@ export interface GroupSummary {
     qualify_min_trips: number;
     /** Qualified, roster-listed cars the percentiles are among. */
     ranked_cars: number;
-    averages: GroupFile['averages'];
+    segs_per_trip: number | null;
+    typical: GroupFile['typical'];
+    too_close: Metric[];
 }
 
 export interface GroupFile {
@@ -121,7 +125,12 @@ export interface GroupFile {
     window: string;
     generated_at: string;
     qualify_min_trips: number;
-    averages: { ttoe_sec: number | null; speed_vs_expected_pct: number | null };
+    /** Average segments per trip on the line. */
+    segs_per_trip: number | null;
+    /** The typical car's (median of ranked cars) absolute values. */
+    typical: Partial<Record<'trip_time_sec' | 'travel_time_sec' | 'dwell_time_sec', number | null>>;
+    /** Stats where the line's cars are too close together to show percentiles. */
+    too_close: Metric[];
     cars: CarStats[];
 }
 
@@ -141,9 +150,7 @@ export interface RouteIndexEntry {
 export interface FleetSummary {
     fleet_label: string;
     cars: number;
-    median: Partial<
-        Record<Metric | 'ttoe_vs_avg_sec' | 'speed_vs_avg_pct' | 'door_vs_avg_sec', number | null>
-    >;
+    median: Partial<Record<Metric | 'trip_vs_typical_sec', number | null>>;
 }
 
 // window -> fleet key -> summary

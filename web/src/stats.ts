@@ -1,5 +1,14 @@
 import type { CarStats, Metric } from './api';
-import { doorLabel, fmtInt, fmtNum, fmtPace, fmtSaved, pace, timeSaved } from './format';
+import {
+    dwellSaved,
+    fmtInt,
+    fmtNum,
+    fmtSaved,
+    fmtSavedPct,
+    savedPct,
+    timeSaved,
+    travelSaved,
+} from './format';
 import type { StatId } from './glossary';
 import { GROUPS, type GroupId, type Mode } from './groups';
 
@@ -9,7 +18,7 @@ export interface Stat {
     id: StatId;
     /** Percentile key in `CarStats.pct`. */
     pct: Metric;
-    section: 'performance' | 'workload';
+    section: 'performance' | 'availability';
     /** Numeric value that the leaderboard cell displays, so sorting matches what is shown. */
     value: (c: CarStats) => number | null;
     text: (c: CarStats) => string;
@@ -26,25 +35,29 @@ export interface Stat {
 export const STATS: readonly Stat[] = [
     {
         id: 'time-saved',
-        pct: 'ttoe_sec',
+        pct: 'trip_time_sec',
         section: 'performance',
         value: timeSaved,
-        text: (c) => fmtSaved(timeSaved(c)),
+        text: (c) => {
+            const v = timeSaved(c);
+
+            return v == null ? '–' : `${fmtSaved(v)} · ${fmtSavedPct(savedPct(c))}`;
+        },
+        brief: (c) => fmtSaved(timeSaved(c)),
     },
     {
-        id: 'pace-plus',
-        pct: 'speed_vs_expected_pct',
+        id: 'travel-time',
+        pct: 'travel_time_sec',
         section: 'performance',
-        value: pace,
-        text: (c) => fmtPace(pace(c)),
+        value: travelSaved,
+        text: (c) => fmtSaved(travelSaved(c)),
     },
     {
-        id: 'on-schedule',
-        pct: 'on_time_pct',
+        id: 'dwell-time',
+        pct: 'dwell_time_sec',
         section: 'performance',
-        value: (c) => c.on_time_pct,
-        text: (c) => fmtNum(c.on_time_pct, 1, '%'),
-        brief: (c) => fmtNum(c.on_time_pct, 1),
+        value: dwellSaved,
+        text: (c) => fmtSaved(dwellSaved(c)),
     },
     {
         id: 'consistency',
@@ -55,32 +68,31 @@ export const STATS: readonly Stat[] = [
         lowerBetter: true,
     },
     {
-        id: 'door-time',
-        pct: 'door_time_sec',
+        id: 'on-schedule',
+        pct: 'on_time_pct',
         section: 'performance',
-        // Against the line's average car, like Time Saved; ranking uses the absolute value.
-        value: (c) => c.door_vs_avg_sec ?? null,
-        text: (c) => doorLabel(c.door_vs_avg_sec),
-        lowerBetter: true,
+        value: (c) => c.on_time_pct,
+        text: (c) => fmtNum(c.on_time_pct, 1, '%'),
+        brief: (c) => fmtNum(c.on_time_pct, 1),
     },
     {
         id: 'days-in-service',
         pct: 'games_played_pct',
-        section: 'workload',
+        section: 'availability',
         value: (c) => c.games_played_pct,
         text: (c) => fmtNum(c.games_played_pct, 0, '%'),
     },
     {
         id: 'iron-horse',
         pct: 'iron_horse_days',
-        section: 'workload',
+        section: 'availability',
         value: (c) => c.iron_horse_days,
         text: (c) => fmtNum(c.iron_horse_days, 0, ' d'),
     },
     {
         id: 'miles',
         pct: 'miles',
-        section: 'workload',
+        section: 'availability',
         value: (c) => c.miles,
         text: (c) => fmtInt(c.miles),
         brief: (c) =>
@@ -90,7 +102,7 @@ export const STATS: readonly Stat[] = [
     {
         id: 'routes-run',
         pct: 'routes',
-        section: 'workload',
+        section: 'availability',
         value: (c) => c.routes,
         text: (c) => fmtInt(c.routes),
         mode: 'bus',
@@ -100,7 +112,21 @@ export const STATS: readonly Stat[] = [
 
 const forGroup = (group: GroupId) => STATS.filter((s) => !s.mode || s.mode === GROUPS[group].mode);
 
-export const boardStats = (group: GroupId): Stat[] => forGroup(group);
+// Leaderboard column order; the car page's panels use registry order instead.
+const BOARD_ORDER: StatId[] = [
+    'time-saved',
+    'days-in-service',
+    'iron-horse',
+    'travel-time',
+    'dwell-time',
+    'consistency',
+    'on-schedule',
+    'miles',
+    'routes-run',
+];
+
+export const boardStats = (group: GroupId): Stat[] =>
+    BOARD_ORDER.flatMap((id) => forGroup(group).filter((s) => s.id === id));
 
 export const panelStats = (group: GroupId, section: Stat['section']): Stat[] =>
     forGroup(group).filter((s) => s.section === section && !s.boardOnly);

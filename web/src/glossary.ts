@@ -2,10 +2,10 @@
 
 export type StatId =
     | 'time-saved'
-    | 'pace-plus'
+    | 'travel-time'
+    | 'dwell-time'
     | 'on-schedule'
     | 'consistency'
-    | 'door-time'
     | 'days-in-service'
     | 'iron-horse'
     | 'miles'
@@ -16,7 +16,7 @@ export type StatId =
 
 export interface GlossaryEntry {
     name: string;
-    section: 'performance' | 'workload' | 'fun';
+    section: 'performance' | 'availability' | 'fun';
     short: string;
     lead: string;
     better: 'higher' | 'lower' | 'none';
@@ -30,22 +30,33 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
     'time-saved': {
         name: 'Time Saved',
         section: 'performance',
-        short: 'Seconds of travel time this car saves between each pair of stops, compared with the line’s average car on the same segments at the same times. Dwell time at stops is not included.',
-        lead: 'Seconds of travel time this car saves between each pair of stops, compared with the line’s average car.',
+        short: 'Seconds this car saves on a typical trip, compared with the line’s typical car on the same segments at the same times. It adds up travel time and dwell time.',
+        lead: 'Seconds this car saves per trip, compared with the line’s typical car (the median ranked car).',
         better: 'higher',
         betterLabel: 'HIGHER IS BETTER',
-        calc: 'Travel time runs from leaving one stop to arriving at the next, so it covers time moving, not time at the platform (that’s Door Time). For every segment the car runs, we compare its travel time with the median for that segment, direction, hour and day type, counting any delay past five minutes as five minutes. We average those differences over the season and show the result relative to the line’s average car (the mean of all ranked cars).',
-        example: '+2.9 s means about 3 seconds less travel time per segment than the average car',
+        calc: 'Time Saved is Travel Time plus Dwell Time. Travel time runs from leaving one stop to arriving at the next; dwell time runs from arriving at a stop to leaving it. For every segment the car runs, we compare its travel time with the median for that segment, direction, hour and day type, and do the same for dwell at each stop, counting any delay past five minutes as five minutes (30 seconds for dwell). We total those differences over a typical trip and show the result relative to the line’s typical car (the median ranked car). The percentage is the same difference as a share of the trip’s expected time.',
+        example:
+            '+32 s · +1.8% means about 32 seconds less time per trip than the typical car, 1.8% of the trip',
     },
-    'pace-plus': {
-        name: 'Pace',
+    'travel-time': {
+        name: 'Travel Time',
         section: 'performance',
-        short: 'How much faster this car’s travel times between stops are than the line’s average car, as a percentage. Dwell time at stops is not included.',
-        lead: 'How much faster this car’s travel times between stops are than the line’s average car, as a percentage.',
+        short: 'Seconds of travel time this car saves per trip compared with the line’s typical car on the same segments at the same times. A part of Time Saved.',
+        lead: 'Seconds of travel time this car saves per trip, compared with the line’s typical car.',
         better: 'higher',
         betterLabel: 'HIGHER IS BETTER',
-        calc: 'Total expected travel time over every segment the car ran, divided by its actual travel time, shown relative to the line’s average car. It measures the same travel times as Time Saved: Time Saved is the average difference per segment in seconds, while Pace is the overall difference as a percentage, so long segments count for more.',
-        example: '+3.2% means travel times about 3% shorter than the average car’s',
+        calc: 'Travel time runs from leaving one stop to arriving at the next, so it covers time moving, not time at the platform (that’s Dwell Time). For every segment the car runs, we compare its travel time with the median for that segment, direction, hour and day type, counting any delay past five minutes as five minutes. We total those differences over a typical trip and show the result relative to the line’s typical car (the median ranked car).',
+        example: '+20 s means about 20 seconds less travel time per trip than the typical car',
+    },
+    'dwell-time': {
+        name: 'Dwell Time',
+        section: 'performance',
+        short: 'Seconds of dwell time this car saves per trip compared with the line’s typical car at the same stops and times. A part of Time Saved.',
+        lead: 'Seconds of dwell time this car saves per trip, compared with the line’s typical car at the same stops and times.',
+        better: 'higher',
+        betterLabel: 'HIGHER IS BETTER',
+        calc: 'Dwell time runs from arriving at a stop to leaving it. At each stop, we compare the car’s dwell with the median dwell there for the same direction, hour and day type, counting anything past 30 seconds as 30. We total those differences over a typical trip and show the result relative to the line’s typical car (the median ranked car). Dwell depends on crowds and operators as much as on the car, so take it with a grain of salt.',
+        example: '+12 s means about 12 seconds less dwell per trip than the typical car',
     },
     'on-schedule': {
         name: 'On-Schedule %',
@@ -65,19 +76,9 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
         betterLabel: 'SMALLER SPREAD IS BETTER',
         calc: 'Each segment’s travel time is first compared with the median for that segment, direction, hour and day type. We then average how far each of those differences sits from the car’s own typical difference, counting anything past a minute as a minute. A car that is always a little slow scores well here; only variation counts.',
     },
-    'door-time': {
-        name: 'Door Time',
-        section: 'performance',
-        short: 'Dwell time at stops compared with the line’s average car, at the same stops and times. Travel time between stops is not included.',
-        lead: 'Dwell time at stops compared with the line’s average car, at the same stops and times.',
-        better: 'lower',
-        betterLabel: 'SHORTER IS BETTER',
-        calc: 'Dwell time runs from arriving at a stop to leaving it. At each stop, we compare the car’s dwell with the median dwell there for the same direction, hour and day type, counting anything past 30 seconds as 30. We average those differences and show the result relative to the line’s average car. Dwell depends on crowds and operators as much as on the car, so take it as a fun stat, not a verdict.',
-        example: '“0.8 s quick” means about 0.8 seconds less dwell per stop than the average car',
-    },
     'days-in-service': {
         name: 'Days in Service',
-        section: 'workload',
+        section: 'availability',
         short: 'Share of this season’s service days on which this car ran at least one trip.',
         lead: 'Share of this season’s service days on which this car ran at least one trip.',
         better: 'higher',
@@ -86,7 +87,7 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
     },
     'iron-horse': {
         name: 'Iron Horse Streak',
-        section: 'workload',
+        section: 'availability',
         short: 'Most consecutive service days this car ran this season.',
         lead: 'Most consecutive service days this car ran this season.',
         better: 'higher',
@@ -95,7 +96,7 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
     },
     miles: {
         name: 'Miles Logged',
-        section: 'workload',
+        section: 'availability',
         short: 'Revenue miles this season: distance run in passenger service.',
         lead: 'Revenue miles this season: distance run in passenger service.',
         better: 'higher',
@@ -122,7 +123,7 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
     },
     'routes-run': {
         name: 'Routes Run',
-        section: 'workload',
+        section: 'availability',
         short: 'How many different routes a bus ran this season. The utility players of the fleet.',
         lead: 'How many different routes a bus ran this season. The utility players of the fleet.',
         better: 'higher',
@@ -131,7 +132,7 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
     },
     'last-seen': {
         name: 'Last Seen',
-        section: 'workload',
+        section: 'availability',
         short: 'The most recent service day this car ran a trip, in any season.',
         lead: 'The most recent service day this car ran a trip.',
         better: 'none',
@@ -165,6 +166,10 @@ export const HOW_RANKINGS: RankingsParagraph[] = [
         lead: '',
         scale: true,
         body: 'A 95 means the car beat 95% of qualified cars on its line. Red is good and blue is not, whatever the stat.',
+    },
+    {
+        lead: 'Too close to call.',
+        body: 'When a line’s cars are within a hair of each other on a stat, a percentile would only exaggerate tiny differences. Those stats are shown without percentiles and marked too close to call.',
     },
     {
         lead: 'Qualifying.',
