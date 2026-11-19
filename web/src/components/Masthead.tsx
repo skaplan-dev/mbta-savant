@@ -25,10 +25,7 @@ export default function Masthead() {
                             <b className="text-ink mr-2 font-bold tracking-normal">MBTA</b>savant
                         </span>
                         <span className="text-ink-2 text-ui mt-1.5 block font-light">
-                            every car, every trip &middot;{' '}
-                            <strong className="text-ink font-medium">
-                                a TransitMatters Labs project
-                            </strong>
+                            every car, every trip
                         </span>
                     </span>
                 </Link>
