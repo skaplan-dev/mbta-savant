@@ -114,3 +114,8 @@ def test_car_description_rounds_zero_saving_to_matches_typical():
         assert "-0" not in d and "loses" not in d and "saves" not in d
     assert "saves 1 s of travel time per trip" in pages.car_description({**base, "travel_vs_typical_sec": -0.6}, "2026")
     assert "loses 2 s of travel time per trip" in pages.car_description({**base, "travel_vs_typical_sec": 1.6}, "2026")
+
+
+def test_car_description_leads_with_tar():
+    d = pages.car_description(entry("red", "1915", tar=2403, pct_tar=99), "2026")
+    assert d.startswith("Car 1915, Red Line #4 (CRRC), was worth 2,403 trips above replacement on the Red Line in 2026, ahead of 99% of them.")

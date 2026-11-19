@@ -75,6 +75,12 @@ def car_description(entry: dict, season: str) -> str:
             if group != "bus"
             else f"{who.rstrip(',')}: trips, routes and day-by-day game log {when}. Updated nightly from MBTA data."
         )
+    tar, pct_tar = entry.get("tar"), entry.get("pct_tar")
+    if tar is not None:
+        rank = f", ahead of {pct_tar}% of them" if pct_tar is not None else ""
+        scope = "the bus fleet" if group == "bus" else f"the {line}"
+        return (f"{who} was worth {tar:,} trips above replacement on {scope} {when}{rank}. "
+                "On-schedule rate, streaks and game log, updated nightly.")
     saved = -vs_typ  # travel_vs_typical_sec is time *over* the typical car; the site shows it as Time Saved
     average = "the typical bus" if group == "bus" else f"the typical {line} car"
     pct = entry.get("pct_travel")

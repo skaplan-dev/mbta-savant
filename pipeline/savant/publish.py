@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
-from savant import roster, stats
+from savant import roster, stats, tar
 from savant.groups import GROUPS
 
 METRICS: dict[str, Literal["higher", "lower"] | None] = {
@@ -33,6 +33,7 @@ METRICS: dict[str, Literal["higher", "lower"] | None] = {
     "iron_horse_days": "higher",
     "miles": "higher",
     "routes": "higher",
+    "tar": "higher",
     "crowd_load_pct": None,
 }
 UNRANKED_GROUPS = {"mattapan"}
@@ -44,7 +45,7 @@ VS_TYPICAL = {
 # Smallest p90 - p10 spread at which a metric can separate cars at all.
 MIN_SPREAD = {
     "travel_time_sec": 10, "dwell_time_sec": 5, "steadiness_sec": 1.0,
-    "on_time_pct": 2.0, "games_played_pct": 5.0, "iron_horse_days": 3,
+    "on_time_pct": 2.0, "games_played_pct": 5.0, "iron_horse_days": 3, "tar": 100,
 }
 MIN_CARS = 5
 
@@ -74,12 +75,15 @@ def too_close(cars: list[dict]) -> list[str]:
     return [m for m, width in spread(cars).items() if width is None or width < MIN_SPREAD[m]]
 
 
+def mark_ranked(group: str, cars: list[dict]) -> None:
+    """Set each car's ``ranked`` flag in place (roster-listed, and not in an unranked group)."""
+    for c in cars:
+        c["ranked"] = group not in UNRANKED_GROUPS and roster.lookup(group, c["number"]) is not None
+
+
 def add_percentiles(group: str, cars: list[dict]) -> list[dict]:
-    out = [
-        {**c, "pct": {m: None for m in METRICS},
-         "ranked": group not in UNRANKED_GROUPS and roster.lookup(group, c["number"]) is not None}
-        for c in cars
-    ]
+    out = [{**c, "pct": {m: None for m in METRICS}} for c in cars]
+    mark_ranked(group, out)
     if group in UNRANKED_GROUPS:
         return out
     close = set(too_close(out))
@@ -158,18 +162,25 @@ def route_boards(cars: list[dict], window: str, now: str) -> dict[str, dict]:
         for r in c.get("by_route", []):
             by_route.setdefault(r["route"], []).append(
                 {"car_id": c["car_id"], "number": c["number"], "last_seen": c.get("last_seen"),
+                 "first_seen": c.get("first_seen"),
                  **{k: v for k, v in r.items() if k != "route"},
                  "routes": None, "crowd_load_pct": None, "teammates": [], "vehicle": c["vehicle"]}
             )
     boards = {}
     for route, rcars in by_route.items():
         segs = rcars[0].get("segs_per_trip") if rcars else None
+        trip_len = rcars[0].get("trip_len_sec") if rcars else None
+        mark_ranked("bus", rcars)
+        typical = add_vs_typical(rcars)
+        consts = tar.add_tar(rcars, trip_len, segs)
         for c in rcars:
             c.pop("segs_per_trip", None)
+            c.pop("trip_len_sec", None)
         rcars = add_percentiles("bus", rcars)
         boards[route] = {"group": "bus", "route": route, "window": window, "generated_at": now,
                          "qualify_min_trips": stats.ROUTE_QUALIFY_MIN_TRIPS, "segs_per_trip": segs,
-                         "typical": add_vs_typical(rcars), "too_close": too_close(rcars), "spread": spread(rcars),
+                         "trip_len_sec": trip_len, **consts,
+                         "typical": typical, "too_close": too_close(rcars), "spread": spread(rcars),
                          "cars": rcars}
     return boards
 
@@ -199,15 +210,15 @@ def _natural(number: str):
 
 
 def home_cards(seasons: dict[str, str], index_by_window: dict[str, list]) -> dict[str, dict]:
-    """Per group, in its default season: the top cars by Time Saved, or every car when none is ranked."""
+    """Per group, in its default season: the top cars by TAR, or every car when none is ranked."""
     out = {}
     for group, season in seasons.items():
         entries = [e for e in index_by_window[season] if e["group"] == group]
         if not entries:
             continue
         leaders = sorted(
-            (e for e in entries if _ranked_entry(group, e) and e["travel_vs_typical_sec"] is not None),
-            key=lambda e: (e["travel_vs_typical_sec"], _natural(e["number"])),
+            (e for e in entries if _ranked_entry(group, e) and e.get("tar") is not None),
+            key=lambda e: (-e["tar"], _natural(e["number"])),
         )[:HOME_LEADERS]
         out[group] = {
             "season": season,
@@ -227,13 +238,15 @@ def publish(root: Path, out: Path) -> None:
     fleets: dict[str, dict] = {g: {} for g in GROUPS}
     index_by_window: dict[str, list] = {w.key: [] for w in wins}
     seen = {group: stats.last_seen(root, group) for group in GROUPS}
+    firsts = {group: stats.first_seen(root, group) for group in GROUPS}
     for w in wins:
         for group in GROUPS:
-            cars = stats.car_stats(root, group, w)
+            cars = stats.car_stats(root, group, w, firsts[group])
             if not cars:
                 continue
             for c in cars:
                 c["last_seen"] = seen[group].get(c["number"])
+                c["first_seen"] = firsts[group].get(c["number"])
                 if group == "bus":
                     c["crowd_load_pct"] = None
                 v = roster.lookup(group, c["number"])
@@ -241,15 +254,20 @@ def publish(root: Path, out: Path) -> None:
                     {k: getattr(v, k) for k in v.__dataclass_fields__} if v else {"fleet_label": "Unknown fleet"}
                 )
                 c["vehicle"].setdefault("fleet_key", "unknown")
-            cars = add_percentiles(group, cars)
+            mark_ranked(group, cars)
             segs_per_trip = cars[0].get("segs_per_trip")
+            trip_len_sec = cars[0].get("trip_len_sec")
+            typical = add_vs_typical(cars)
+            consts = tar.add_tar(cars, trip_len_sec, segs_per_trip)
             for c in cars:
                 c.pop("segs_per_trip", None)
-            typical = add_vs_typical(cars)
+                c.pop("trip_len_sec", None)
+            cars = add_percentiles(group, cars)
             summary = {"group": group, "window": w.key, "generated_at": now,
                        "qualify_min_trips": stats.qualify_threshold([c["trips"] for c in cars]),
                        "ranked_cars": sum(1 for c in cars if c["qualified"] and c["ranked"]),
-                       "segs_per_trip": segs_per_trip, "typical": typical, "too_close": too_close(cars),
+                       "segs_per_trip": segs_per_trip, "trip_len_sec": trip_len_sec, **consts,
+                       "typical": typical, "too_close": too_close(cars),
                        "spread": spread(cars)}
             _write(
                 data / w.key / "groups" / f"{group}.json",
@@ -266,7 +284,8 @@ def publish(root: Path, out: Path) -> None:
                 index_by_window[w.key].append(
                     {"car_id": c["car_id"], "group": group, "number": c["number"],
                      "fleet_label": c["vehicle"]["fleet_label"], "qualified": c["qualified"], "ranked": c["ranked"],
-                     "travel_vs_typical_sec": c["travel_vs_typical_sec"], "pct_travel": c["pct"]["travel_time_sec"]}
+                     "travel_vs_typical_sec": c["travel_vs_typical_sec"], "pct_travel": c["pct"]["travel_time_sec"],
+                     "tar": c["tar"], "pct_tar": c["pct"]["tar"]}
                 )
             fleets[group][w.key] = _fleet(cars)
         _write(data / w.key / "index.json", index_by_window[w.key])

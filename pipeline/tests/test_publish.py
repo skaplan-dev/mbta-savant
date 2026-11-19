@@ -102,6 +102,8 @@ def test_bus_and_orange_1400_are_separate_files(tmp_path):
     assert "game_log" in orange and bus["crowd_load_pct"] is None
     assert orange["travel_vs_typical_sec"] is not None and "ttoe_sec" not in orange
     assert "segs_per_trip" not in orange
+    assert "trip_len_sec" not in orange and "trips_per_day" not in orange
+    assert {"first_seen", "eligible_days", "service_days", "steady_adj_sec", "tar", "tar_parts"} <= set(orange)
 
 
 def test_layout(tmp_path):
@@ -109,9 +111,16 @@ def test_layout(tmp_path):
     g = load(out / "data/last30/groups/orange.json")
     assert g["group"] == "orange" and g["window"] == "last30" and "generated_at" in g
     assert all("game_log" not in c for c in g["cars"])
+    assert {"trip_len_sec", "trips_per_day", "tar_replacement", "segs_per_trip"} <= set(g)
+    assert set(g["tar_replacement"]) == {"service_share", "fast_sec", "steady_adj_sec"}
+    assert all("trip_len_sec" not in c for c in g["cars"])
+    summ = load(out / "data/last30/groups/orange.summary.json")
+    assert {"trip_len_sec", "trips_per_day", "tar_replacement"} <= set(summ)
+    rb = load(out / "data/last30/routes/1.json")
+    assert {"trip_len_sec", "trips_per_day", "tar_replacement", "segs_per_trip"} <= set(rb)
     idx = load(out / "data/last30/index.json")
     assert {r["car_id"] for r in idx} == {"orange:1400", "orange:1401", "bus:1400", "bus:1401"}
-    assert set(idx[0]) == {"car_id", "group", "number", "fleet_label", "qualified", "ranked", "travel_vs_typical_sec", "pct_travel"}
+    assert set(idx[0]) == {"car_id", "group", "number", "fleet_label", "qualified", "ranked", "travel_vs_typical_sec", "pct_travel", "tar", "pct_tar"}
     meta = load(out / "data/meta.json")
     assert meta["latest_service_date"] == "2026-03-02"
     assert [w["key"] for w in meta["windows"]] == ["last30", "2026"]
@@ -214,7 +223,7 @@ def test_group_summary_is_the_small_version_of_the_group_file(tmp_path):
     g = load(out / "data/last30/groups/orange.json")
     sm = load(out / "data/last30/groups/orange.summary.json")
     assert set(sm) == {"group", "window", "generated_at", "qualify_min_trips", "ranked_cars", "segs_per_trip",
-                       "typical", "too_close", "spread"}
+                       "typical", "too_close", "spread", "trip_len_sec", "trips_per_day", "tar_replacement"}
     assert sm["group"] == "orange" and sm["window"] == "last30"
     assert sm["typical"] == g["typical"] and sm["qualify_min_trips"] == g["qualify_min_trips"]
     assert sm["too_close"] == g["too_close"] and sm["segs_per_trip"] == g["segs_per_trip"]
@@ -260,7 +269,8 @@ def test_route_boards_and_index(tmp_path):
 
 def entry(group, number, vs, qualified=True, ranked=True):
     return {"car_id": f"{group}:{number}", "group": group, "number": number, "fleet_label": "F",
-            "qualified": qualified, "ranked": ranked, "travel_vs_typical_sec": vs, "pct_travel": 50}
+            "qualified": qualified, "ranked": ranked, "travel_vs_typical_sec": vs, "pct_travel": 50,
+            "tar": None if vs is None else -vs * 10, "pct_tar": 50}
 
 
 def test_default_seasons_prefer_newest_ranked_year():
@@ -303,3 +313,7 @@ def test_last_seen_on_car_board_and_route_files(tmp_path):
     assert load(out / "data/last30/cars/orange/1400.json")["last_seen"] == "2026-03-02"
     assert all(c["last_seen"] == "2026-03-02" for c in load(out / "data/last30/groups/bus.json")["cars"])
     assert all(c["last_seen"] == "2026-03-02" for c in load(out / "data/last30/routes/1.json")["cars"])
+
+
+def test_tar_is_a_higher_is_better_metric():
+    assert publish.METRICS["tar"] == "higher" and publish.MIN_SPREAD["tar"] == 100
