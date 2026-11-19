@@ -36,9 +36,10 @@ function CarLoader({ group, number }: { group: GroupId; number: string }) {
 function CarView({ group, number, data }: { group: GroupId; number: string; data: CarData }) {
     const { meta, files, season, car } = data;
     const { tab = 'log' } = route.useSearch();
-    // The line averages only color the calendar and game log, so the page doesn't wait for them.
+    // The line's typical car only colors the calendar and game log, so the page doesn't wait for them.
     const { data: summary } = useQuery(groupSummaryQuery(season, group));
-    const avg = summary?.averages.ttoe_sec ?? null;
+    const typical = summary?.typical.trip_time_sec ?? null;
+    const segs = summary?.segs_per_trip ?? null;
 
     useDocumentTitle(carTitle(group, number));
 
@@ -70,7 +71,8 @@ function CarView({ group, number, data }: { group: GroupId; number: string; data
                             key={season}
                             season={season}
                             car={car}
-                            avg={avg}
+                            typical={typical}
+                            segs={segs}
                             window={meta.windows.find((w) => w.key === season)}
                             latest={meta.latest_service_date}
                         />
@@ -83,7 +85,16 @@ function CarView({ group, number, data }: { group: GroupId; number: string; data
                     </section>
                 )}
             </div>
-            {car && <CarTabs group={group} season={season} car={car} avg={avg} tab={tab} />}
+            {car && (
+                <CarTabs
+                    group={group}
+                    season={season}
+                    car={car}
+                    typical={typical}
+                    segs={segs}
+                    tab={tab}
+                />
+            )}
         </main>
     );
 }

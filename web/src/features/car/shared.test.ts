@@ -9,8 +9,8 @@ describe('car helpers', () => {
     });
     it('counts route days', () => {
         const log = [
-            { date: 'a', trips: 1, miles: null, ttoe_sec: null, routes: ['28', '39'] },
-            { date: 'b', trips: 1, miles: null, ttoe_sec: null, routes: ['39'] },
+            { date: 'a', trips: 1, miles: null, trip_time_sec: null, routes: ['28', '39'] },
+            { date: 'b', trips: 1, miles: null, trip_time_sec: null, routes: ['39'] },
         ];
 
         expect(routeCounts({ game_log: log })).toEqual([

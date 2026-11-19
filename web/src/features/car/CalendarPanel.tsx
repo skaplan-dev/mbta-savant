@@ -8,7 +8,7 @@ import { dayText, monthSummaries, savedShort } from './calendar';
 import { LastThirtyGrid, YearGrid, type DayLookup } from './CalendarGrids';
 
 const HELP =
-    'Each square is a service day, colored by Time Saved that day: red = faster than the line’s average car, blue = slower.';
+    'Each square is a service day, colored by Time Saved that day: red = faster than the line’s typical car, blue = slower.';
 
 const HELP_BUTTON =
     "text-brand hover:bg-wash relative grid size-8 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 before:absolute before:-inset-2 before:content-['']";
@@ -23,19 +23,26 @@ const rowHead = 'text-brand pr-1.5 text-left text-ui whitespace-nowrap';
 export default function CalendarPanel({
     season,
     car,
-    avg,
+    typical,
+    segs,
     window,
     latest,
 }: {
     season: string;
     car: Car;
-    /** The line's average ttoe_sec for this window (group file `averages.ttoe_sec`). */
-    avg: number | null;
+    /** The line's typical car's trip_time_sec for this window (group file `typical`). */
+    typical: number | null;
+    /** Segments per trip on the line (group file `segs_per_trip`). */
+    segs: number | null;
     window: WindowInfo | undefined;
     latest: string | null;
 }) {
     const [picked, setPicked] = useState<string | null>(null);
-    const lookup: DayLookup = { days: new Map(car.game_log.map((g) => [g.date, g])), avg };
+    const lookup: DayLookup = {
+        days: new Map(car.game_log.map((g) => [g.date, g])),
+        typical,
+        segs,
+    };
     const summary = monthSummaries(car.game_log, SUMMARY_MONTHS);
 
     // In a table under 352px wide only the newest seven months fit; under 320px, six.
@@ -69,7 +76,7 @@ export default function CalendarPanel({
             {/* Hover titles don't exist on touch, so a tapped day reads out here. */}
             <p role="status" className="text-ink-2 text-ui m-0 min-h-[1.3em] px-4 text-center">
                 {picked
-                    ? dayText(picked, lookup.days.get(picked), avg)
+                    ? dayText(picked, lookup.days.get(picked), typical)
                     : 'Select a day for its details.'}
             </p>
             <div className="px-4 pt-1 pb-1.5">
@@ -122,12 +129,12 @@ export default function CalendarPanel({
                                 ))}
                             </tr>
                             <tr>
-                                <td className={`${rowHead} italic`}>SAVED/STOP</td>
+                                <td className={`${rowHead} italic`}>SAVED/TRIP</td>
                                 {summary.map((m, i) => (
                                     <td key={m.key} className={`${td} ${drop(i)}`}>
-                                        {m.ttoe == null || avg == null
+                                        {m.trip == null || typical == null
                                             ? '–'
-                                            : savedShort(avg - m.ttoe)}
+                                            : savedShort(typical - m.trip)}
                                     </td>
                                 ))}
                             </tr>

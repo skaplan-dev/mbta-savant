@@ -80,31 +80,43 @@ export function savedShort(v: number): string {
     return signed(v, Math.abs(v) >= 9.95 ? 0 : 1);
 }
 
-/** 0-100 score for a day (faster than the line average → high/red). */
-export function dayScore(ttoe: number | null | undefined, avg: number | null | undefined): number {
-    if (ttoe == null || avg == null) return 50;
+/** 0-100 score for a day (faster than the line's typical car → high/red), per segment of a trip. */
+export function dayScore(
+    tripSec: number | null | undefined,
+    typical: number | null | undefined,
+    segs: number | null | undefined
+): number {
+    if (tripSec == null || typical == null || !segs) return 50;
 
-    return 50 - (ttoe - avg) * 6;
+    return 50 - ((tripSec - typical) / segs) * 6;
 }
 
 /**
  * A calendar cell's fill and the color of its day number: a day that ran is on the percentile scale
  * (black or white numbers, whichever reads); one that did not is the neutral track.
  */
-export function dayColors(day: GameLogEntry | undefined, avg: number | null) {
+export function dayColors(
+    day: GameLogEntry | undefined,
+    typical: number | null,
+    segs: number | null
+) {
     if (!day) return { fill: 'var(--color-track)', ink: 'var(--color-ink-2)' };
-    const score = dayScore(day.ttoe_sec, avg);
+    const score = dayScore(day.trip_time_sec, typical, segs);
 
     return { fill: pctColor(score), ink: pctInk(score) };
 }
 
 /** What a calendar day says, for its hover title and the tap readout. */
-export function dayText(date: string, day: GameLogEntry | undefined, avg: number | null): string {
+export function dayText(
+    date: string,
+    day: GameLogEntry | undefined,
+    typical: number | null
+): string {
     if (!day) return `${date} · did not run`;
 
     const saved =
-        day.ttoe_sec != null && avg != null
-            ? ` · ${fmtSaved(avg - day.ttoe_sec)} saved per stop`
+        day.trip_time_sec != null && typical != null
+            ? ` · ${fmtSaved(typical - day.trip_time_sec)} saved per trip`
             : '';
 
     return `${date} · ${day.trips} trips${saved}`;
@@ -115,8 +127,8 @@ export interface MonthSummary {
     label: string; // "Apr"
     days: number;
     tripsPerDay: number;
-    /** Mean ttoe over days with a value, or null. */
-    ttoe: number | null;
+    /** Mean trip time over days with a value, or null. */
+    trip: number | null;
 }
 
 /** Per-month rollup of the game log, oldest first, keeping the last `limit` months. */
@@ -135,7 +147,7 @@ export function monthSummaries(log: readonly GameLogEntry[], limit = 11): MonthS
         .sort(([a], [b]) => a.localeCompare(b))
         .slice(-limit)
         .map(([key, days]) => {
-            const vals = days.map((g) => g.ttoe_sec).filter((v): v is number => v != null);
+            const vals = days.map((g) => g.trip_time_sec).filter((v): v is number => v != null);
             const label = MONTHS[Number(key.slice(5)) - 1];
 
             return {
@@ -143,7 +155,7 @@ export function monthSummaries(log: readonly GameLogEntry[], limit = 11): MonthS
                 label: label[0] + label.slice(1).toLowerCase(),
                 days: days.length,
                 tripsPerDay: Math.round(days.reduce((t, g) => t + g.trips, 0) / days.length),
-                ttoe: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null,
+                trip: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null,
             };
         });
 }

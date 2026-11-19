@@ -6,14 +6,17 @@ const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 /** How each grid looks up and describes a day. */
 export interface DayLookup {
     days: ReadonlyMap<string, GameLogEntry>;
-    /** The line's average ttoe_sec for the window. */
-    avg: number | null;
+    /** The line's typical car's trip_time_sec for the window. */
+    typical: number | null;
+    /** Segments per trip on the line. */
+    segs: number | null;
 }
 
-const colors = ({ days, avg }: DayLookup, date: string) => dayColors(days.get(date), avg);
+const colors = ({ days, typical, segs }: DayLookup, date: string) =>
+    dayColors(days.get(date), typical, segs);
 
-function DayTitle({ lookup: { days, avg }, day }: { lookup: DayLookup; day: CalDay }) {
-    return <title>{dayText(day.date, days.get(day.date), avg)}</title>;
+function DayTitle({ lookup: { days, typical }, day }: { lookup: DayLookup; day: CalDay }) {
+    return <title>{dayText(day.date, days.get(day.date), typical)}</title>;
 }
 
 /** Which day the readout shows, and how a cell reports a tap. */

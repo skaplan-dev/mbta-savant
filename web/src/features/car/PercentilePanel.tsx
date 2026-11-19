@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { ArrowRight, Gauge, TrainTrack, type LucideIcon } from 'lucide-react';
-import type { Car, GroupSummary } from '../../api';
+import type { Car, GroupSummary, Metric } from '../../api';
 import PanelHeader from '../../components/PanelHeader';
 import PercentileBar from '../../components/PercentileBar';
 import StatTerm from '../../components/StatTerm';
@@ -25,6 +25,8 @@ function Section({
     stats,
     car,
     ranked,
+    tooClose,
+    line,
     first = false,
 }: {
     Icon: LucideIcon;
@@ -32,8 +34,12 @@ function Section({
     stats: Stat[];
     car: Car;
     ranked: boolean;
+    tooClose: readonly Metric[];
+    line: string;
     first?: boolean;
 }) {
+    const close = stats.filter((s) => tooClose.includes(s.pct));
+
     return (
         <>
             <div
@@ -73,7 +79,7 @@ function Section({
                         <StatTerm id={s.id} />
                     </div>
                     <PercentileBar
-                        pct={ranked ? car.pct[s.pct] : null}
+                        pct={ranked && !tooClose.includes(s.pct) ? car.pct[s.pct] : null}
                         label={GLOSSARY[s.id].name}
                     />
                     <div
@@ -83,6 +89,13 @@ function Section({
                     </div>
                 </div>
             ))}
+            {ranked && close.length > 0 && (
+                <p className="text-ink-3 text-meta mt-2.5 mb-0 text-center">
+                    Too close to call on the {line}:{' '}
+                    {close.map((s) => GLOSSARY[s.id].name).join(', ')}. Cars are within a hair of
+                    each other, so these aren’t ranked.
+                </p>
+            )}
         </>
     );
 }
@@ -100,18 +113,19 @@ export default function PercentilePanel({
 }) {
     const info = GROUPS[group];
     const ranked = isRanked(group, car);
+    const tooClose = summary?.too_close ?? [];
     const rankedCount = summary?.ranked_cars;
 
     const rankedNote =
         ranked && rankedCount ? `Ranked against ${rankedCount} qualified ${info.pool}.` : null;
 
     // Why there are no bubbles is the first thing to say, so it goes above the numbers. A line that is
-    // never ranked has no average to compare against, which is why those rows are dashes.
+    // never ranked has no typical car to compare against, which is why those rows are dashes.
     const reason = ranked ? null : unrankedReason(group, car);
 
     const unrankedNote =
         reason && !info.ranked
-            ? `${reason} Time Saved, Pace and Door Time compare a car with its line’s average, so they aren’t shown.`
+            ? `${reason} Time Saved, Travel Time and Dwell Time compare a car with its line’s typical car, so they aren’t shown.`
             : reason;
 
     return (
@@ -133,14 +147,18 @@ export default function PercentilePanel({
                     stats={panelStats(group, 'performance')}
                     car={car}
                     ranked={ranked}
+                    tooClose={tooClose}
+                    line={info.name}
                     first
                 />
                 <Section
                     Icon={TrainTrack}
-                    title="Workload"
-                    stats={panelStats(group, 'workload')}
+                    title="Availability"
+                    stats={panelStats(group, 'availability')}
                     car={car}
                     ranked={ranked}
+                    tooClose={tooClose}
+                    line={info.name}
                 />
                 <div className="text-ink-2 text-ui mt-[18px] flex flex-wrap justify-center gap-x-[22px] gap-y-1">
                     {car.crowd_load_pct != null && (

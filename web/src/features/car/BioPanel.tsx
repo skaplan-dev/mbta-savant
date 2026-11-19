@@ -162,7 +162,7 @@ function SeasonTable({ files, group }: { files: CarFile[]; group: GroupId }) {
                         <th className={th}>Season</th>
                         <th className={th}>Trips</th>
                         {showMiles && <th className={`${th} ${NARROW_HIDE}`}>Miles</th>}
-                        <th className={th}>Saved/stop</th>
+                        <th className={th}>Saved/trip</th>
                         <th className={th}>On-Sched</th>
                         <th className={`${th} leading-tight whitespace-normal!`}>Streak</th>
                     </tr>

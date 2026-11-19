@@ -21,13 +21,15 @@ export default function CarTabs({
     group,
     season,
     car,
-    avg,
+    typical,
+    segs,
     tab,
 }: {
     group: GroupId;
     season: string;
     car: Car;
-    avg: number | null;
+    typical: number | null;
+    segs: number | null;
     tab: TabId;
 }) {
     const navigate = route.useNavigate();
@@ -66,7 +68,7 @@ export default function CarTabs({
             </TabList>
             <TabPanels>
                 <TabPanel className="overflow-x-auto">
-                    <GameLog car={car} avg={avg} group={group} />
+                    <GameLog car={car} typical={typical} segs={segs} group={group} />
                 </TabPanel>
                 <TabPanel className="overflow-x-auto">
                     <PartnerTable car={car} group={group} season={season} />
@@ -76,7 +78,17 @@ export default function CarTabs({
     );
 }
 
-function GameLog({ car, avg, group }: { car: Car; avg: number | null; group: GroupId }) {
+function GameLog({
+    car,
+    typical,
+    segs,
+    group,
+}: {
+    car: Car;
+    typical: number | null;
+    segs: number | null;
+    group: GroupId;
+}) {
     const [all, setAll] = useState(false);
     const { showMiles, placesLabel } = GROUPS[group];
     const rows = [...car.game_log].reverse();
@@ -93,13 +105,16 @@ function GameLog({ car, avg, group }: { car: Car; avg: number | null; group: Gro
                         <th className={th}>Date</th>
                         <th className={th}>Trips</th>
                         {showMiles && <th className={`${th} max-sm:hidden`}>Miles</th>}
-                        <th className={th}>Time Saved / stop</th>
+                        <th className={th}>Time Saved / trip</th>
                         <th className={`${th} max-sm:hidden`}>{placesLabel}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {shown.map((g) => {
-                        const saved = g.ttoe_sec != null && avg != null ? avg - g.ttoe_sec : null;
+                        const saved =
+                            g.trip_time_sec != null && typical != null
+                                ? typical - g.trip_time_sec
+                                : null;
 
                         return (
                             <tr key={g.date} className="hover:[&>td]:bg-wash">
@@ -121,11 +136,15 @@ function GameLog({ car, avg, group }: { car: Car; avg: number | null; group: Gro
                                             background:
                                                 saved == null
                                                     ? 'var(--color-average)'
-                                                    : pctColor(dayScore(g.ttoe_sec, avg)),
+                                                    : pctColor(
+                                                          dayScore(g.trip_time_sec, typical, segs)
+                                                      ),
                                             color:
                                                 saved == null
                                                     ? '#000'
-                                                    : pctInk(dayScore(g.ttoe_sec, avg)),
+                                                    : pctInk(
+                                                          dayScore(g.trip_time_sec, typical, segs)
+                                                      ),
                                         }}
                                     >
                                         {fmtSaved(saved)}

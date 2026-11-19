@@ -13,7 +13,9 @@ const summary = (group: GroupSummary['group'], o: Partial<GroupSummary> = {}): G
     generated_at: '',
     qualify_min_trips: 870,
     ranked_cars: 216,
-    averages: { ttoe_sec: 0, speed_vs_expected_pct: 0 },
+    segs_per_trip: 16,
+    typical: {},
+    too_close: [],
     ...o,
 });
 
@@ -61,7 +63,35 @@ describe('PercentilePanel', () => {
         expect(title()).toBe('Last 30 Days Mattapan Line Stats');
         expect(screen.getByText(/Mattapan cars aren’t ranked\./)).toBeTruthy();
         expect(
-            screen.getByText(/Time Saved, Pace and Door Time compare a car with its line’s average/)
+            screen.getByText(
+                /Time Saved, Travel Time and Dwell Time compare a car with its line’s typical car/
+            )
         ).toBeTruthy();
+    });
+    it('fades the bar of a too-close stat and says so under its section', async () => {
+        await renderWithRouter(
+            <PercentilePanel
+                group="red"
+                season="2026"
+                car={car('1902')}
+                summary={summary('red', { too_close: ['on_time_pct'] })}
+            />
+        );
+
+        expect(screen.getByRole('img', { name: 'On-Schedule %: not ranked' })).toBeTruthy();
+        expect(
+            screen.getByText(
+                'Too close to call on the Red Line: On-Schedule %. Cars are within a hair of each other, so these aren’t ranked.'
+            )
+        ).toBeTruthy();
+    });
+    it('has Performance then Availability sections', async () => {
+        await renderWithRouter(
+            <PercentilePanel group="red" season="2026" car={car('1902')} summary={summary('red')} />
+        );
+
+        const names = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+
+        expect(names).toEqual(['Performance', 'Availability']);
     });
 });

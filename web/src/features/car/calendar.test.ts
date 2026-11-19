@@ -52,19 +52,22 @@ describe('weekGrid', () => {
 
 describe('dayScore and monthSummaries', () => {
     it('scores faster days higher', () => {
-        expect(dayScore(5, 8)).toBe(68);
-        expect(dayScore(null, 8)).toBe(50);
+        expect(dayScore(100, 100, 16)).toBe(50);
+        expect(dayScore(84, 100, 16)).toBe(56);
+        expect(dayScore(null, 100, 16)).toBe(50);
+        expect(dayScore(100, null, 16)).toBe(50);
+        expect(dayScore(100, 100, null)).toBe(50);
     });
-    it('rolls up months, ignoring null ttoe', () => {
+    it('rolls up months, ignoring null trip time', () => {
         const s = monthSummaries([
-            { date: '2026-04-01', trips: 10, miles: null, ttoe_sec: 4, routes: [] },
-            { date: '2026-04-02', trips: 21, miles: null, ttoe_sec: null, routes: [] },
-            { date: '2026-05-01', trips: 5, miles: null, ttoe_sec: 2, routes: [] },
+            { date: '2026-04-01', trips: 10, miles: null, trip_time_sec: 4, routes: [] },
+            { date: '2026-04-02', trips: 21, miles: null, trip_time_sec: null, routes: [] },
+            { date: '2026-05-01', trips: 5, miles: null, trip_time_sec: 2, routes: [] },
         ]);
 
         expect(s).toEqual([
-            { key: '2026-04', label: 'Apr', days: 2, tripsPerDay: 16, ttoe: 4 },
-            { key: '2026-05', label: 'May', days: 1, tripsPerDay: 5, ttoe: 2 },
+            { key: '2026-04', label: 'Apr', days: 2, tripsPerDay: 16, trip: 4 },
+            { key: '2026-05', label: 'May', days: 1, tripsPerDay: 5, trip: 2 },
         ]);
     });
 });
@@ -79,32 +82,32 @@ describe('savedShort', () => {
 });
 
 describe('dayColors', () => {
-    const day = (ttoe_sec: number | null) => ({
+    const day = (trip_time_sec: number | null) => ({
         date: '2026-03-02',
         trips: 20,
         miles: 100,
-        ttoe_sec,
+        trip_time_sec,
         routes: ['Red'],
     });
 
     it('keeps a day number readable (4.5:1) on every fill the calendar can draw', () => {
-        const avg = 100;
+        const typical = 100;
 
         for (let saved = -30; saved <= 30; saved += 0.5) {
-            const { fill, ink } = dayColors(day(avg - saved), avg);
+            const { fill, ink } = dayColors(day(typical - saved), typical, 1);
             const text = ink === '#fff' ? WHITE : [0, 0, 0];
 
             expect(contrast(text, rgbOf(fill)), `${saved} s saved`).toBeGreaterThanOrEqual(4.5);
         }
     });
     it('falls back to the neutral middle when the line average is unknown', () => {
-        const { fill, ink } = dayColors(day(95), null);
+        const { fill, ink } = dayColors(day(95), null, 16);
 
         expect(fill).toBe('rgb(200,200,200)');
         expect(ink).toBe('#000');
     });
     it('draws a day that did not run in the track color, with a number that still reads', () => {
-        const { fill, ink } = dayColors(undefined, 100);
+        const { fill, ink } = dayColors(undefined, 100, 16);
 
         expect(fill).toBe('var(--color-track)');
         // --color-track and --color-ink-2
@@ -114,16 +117,16 @@ describe('dayColors', () => {
 });
 
 describe('dayText', () => {
-    const day = { date: '2026-03-02', trips: 20, miles: 100, ttoe_sec: 97, routes: ['Red'] };
+    const day = { date: '2026-03-02', trips: 20, miles: 100, trip_time_sec: 84, routes: ['Red'] };
 
     it('says what happened on a day that ran', () => {
         expect(dayText('2026-03-02', day, 100)).toBe(
-            '2026-03-02 · 20 trips · +3.0 s saved per stop'
+            '2026-03-02 · 20 trips · +16 s saved per trip'
         );
     });
     it('leaves out the time when there is nothing to compare it with', () => {
         expect(dayText('2026-03-02', day, null)).toBe('2026-03-02 · 20 trips');
-        expect(dayText('2026-03-02', { ...day, ttoe_sec: null }, 100)).toBe(
+        expect(dayText('2026-03-02', { ...day, trip_time_sec: null }, 100)).toBe(
             '2026-03-02 · 20 trips'
         );
     });

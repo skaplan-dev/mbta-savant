@@ -5,14 +5,15 @@ import CalendarPanel from './CalendarPanel';
 
 afterEach(cleanup);
 
-const RAN = { date: '2026-03-02', trips: 20, miles: 100, ttoe_sec: 97, routes: ['Red'] };
+const RAN = { date: '2026-03-02', trips: 20, miles: 100, trip_time_sec: 84, routes: ['Red'] };
 
 function setup() {
     return render(
         <CalendarPanel
             season="2026"
             car={car('1902', { game_log: [RAN] })}
-            avg={100}
+            typical={100}
+            segs={1}
             window={{ key: '2026', start: '2026-01-01', end: '2026-12-31' }}
             latest="2026-03-31"
         />
@@ -39,7 +40,7 @@ describe('CalendarPanel day readout', () => {
         fireEvent.click(cell('2026-03-02'));
 
         expect(screen.getByRole('status').textContent).toBe(
-            '2026-03-02 · 20 trips · +3.0 s saved per stop'
+            '2026-03-02 · 20 trips · +16 s saved per trip'
         );
     });
     it('says when a tapped day did not run, and follows the latest tap', () => {
