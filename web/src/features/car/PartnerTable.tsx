@@ -31,7 +31,7 @@ export default function PartnerTable({
           }))
         : routeCounts(car).map((r) => ({
               key: r.route,
-              label: <RoutePill route={r.route} />,
+              label: <RoutePill route={r.route} season={season} />,
               count: r.days,
           }));
 

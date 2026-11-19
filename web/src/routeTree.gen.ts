@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GlossaryRouteImport } from './routes/glossary'
 import { Route as LineGroupRouteImport } from './routes/line.$group'
+import { Route as RouteRouteRouteImport } from './routes/route.$route'
 import { Route as CarGroupNumberRouteImport } from './routes/car.$group.$number'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,6 +30,11 @@ const LineGroupRoute = LineGroupRouteImport.update({
   path: '/line/$group',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RouteRouteRoute = RouteRouteRouteImport.update({
+  id: '/route/$route',
+  path: '/route/$route',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CarGroupNumberRoute = CarGroupNumberRouteImport.update({
   id: '/car/$group/$number',
   path: '/car/$group/$number',
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/glossary': typeof GlossaryRoute
   '/line/$group': typeof LineGroupRoute
+  '/route/$route': typeof RouteRouteRoute
   '/car/$group/$number': typeof CarGroupNumberRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/glossary': typeof GlossaryRoute
   '/line/$group': typeof LineGroupRoute
+  '/route/$route': typeof RouteRouteRoute
   '/car/$group/$number': typeof CarGroupNumberRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,30 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/glossary': typeof GlossaryRoute
   '/line/$group': typeof LineGroupRoute
+  '/route/$route': typeof RouteRouteRoute
   '/car/$group/$number': typeof CarGroupNumberRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/glossary' | '/line/$group' | '/car/$group/$number'
+  fullPaths:
+    '/' | '/glossary' | '/line/$group' | '/route/$route' | '/car/$group/$number'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/glossary' | '/line/$group' | '/car/$group/$number'
-  id: '__root__' | '/' | '/glossary' | '/line/$group' | '/car/$group/$number'
+  to:
+    '/' | '/glossary' | '/line/$group' | '/route/$route' | '/car/$group/$number'
+  id:
+    | '__root__'
+    | '/'
+    | '/glossary'
+    | '/line/$group'
+    | '/route/$route'
+    | '/car/$group/$number'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   GlossaryRoute: typeof GlossaryRoute
   LineGroupRoute: typeof LineGroupRoute
+  RouteRouteRoute: typeof RouteRouteRoute
   CarGroupNumberRoute: typeof CarGroupNumberRoute
 }
 
@@ -92,6 +110,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LineGroupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/route/$route': {
+      id: '/route/$route'
+      path: '/route/$route'
+      fullPath: '/route/$route'
+      preLoaderRoute: typeof RouteRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/car/$group/$number': {
       id: '/car/$group/$number'
       path: '/car/$group/$number'
@@ -106,6 +131,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   GlossaryRoute: GlossaryRoute,
   LineGroupRoute: LineGroupRoute,
+  RouteRouteRoute: RouteRouteRoute,
   CarGroupNumberRoute: CarGroupNumberRoute,
 }
 export const routeTree = rootRouteImport

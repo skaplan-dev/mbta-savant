@@ -9,7 +9,6 @@ export type StatId =
     | 'days-in-service'
     | 'iron-horse'
     | 'miles'
-    | 'cruise-speed'
     | 'crowding'
     | 'coupled-with'
     | 'routes-run';
@@ -102,15 +101,6 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
         better: 'higher',
         betterLabel: 'HIGHER IS BETTER',
         calc: 'Station-to-station distances added up over every stretch the car ran. Rail only for now, because bus stop-to-stop distances aren’t in the data yet.',
-    },
-    'cruise-speed': {
-        name: 'Cruise Speed',
-        section: 'fun',
-        short: 'A fast-but-typical speed between stations (90th percentile). Mostly reflects the track, so it isn’t ranked.',
-        lead: 'A fast-but-typical speed between stations: the 90th percentile of the car’s speeds between stations.',
-        better: 'none',
-        betterLabel: 'NOT RANKED',
-        calc: 'This mostly reflects the line’s longest, fastest stretches, which every car on the line runs, so it says more about the track than the car.',
     },
     crowding: {
         name: 'Avg Crowding',

@@ -2,6 +2,7 @@ import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react';
 import { getRouteApi } from '@tanstack/react-router';
 import { useState } from 'react';
 import type { Car } from '../../api';
+import { routeLabel } from '../../busRoutes';
 import { fmtInt, fmtSaved, pctColor, pctInk } from '../../format';
 import { GROUPS, type GroupId } from '../../groups';
 import { dayScore } from './calendar';
@@ -130,7 +131,9 @@ function GameLog({ car, avg, group }: { car: Car; avg: number | null; group: Gro
                                         {fmtSaved(saved)}
                                     </span>
                                 </td>
-                                <td className={`${td} max-sm:hidden`}>{g.routes.join(', ')}</td>
+                                <td className={`${td} max-sm:hidden`}>
+                                    {g.routes.map(routeLabel).join(', ')}
+                                </td>
                             </tr>
                         );
                     })}

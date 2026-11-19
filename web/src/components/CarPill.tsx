@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { routeLabel } from '../busRoutes';
 import { GROUPS, type GroupId } from '../groups';
 
 const PILL = 'inline-block rounded-full text-center font-medium';
@@ -32,7 +33,14 @@ export default function CarPill({
     );
 }
 
-/** A bus route name in a bus-yellow pill (not a link). */
-export const RoutePill = ({ route }: { route: string }) => (
-    <span className={`${PILL} bg-line-bus text-ink ${SIZES.sm}`}>{route}</span>
+/** A bus route in a bus-yellow pill, linking to the route's leaderboard for `season`. */
+export const RoutePill = ({ route, season }: { route: string; season?: string }) => (
+    <Link
+        to="/route/$route"
+        params={{ route }}
+        search={{ season }}
+        className={`${PILL} bg-line-bus text-ink no-underline hover:brightness-105 ${SIZES.sm}`}
+    >
+        {routeLabel(route)}
+    </Link>
 );

@@ -1,43 +1,25 @@
+import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ArrowRight } from 'lucide-react';
-import { useMemo } from 'react';
-import type { IndexEntry } from '../../api';
+import type { HomeCard } from '../../api';
 import CarPill from '../../components/CarPill';
 import DateBox from '../../components/DateBox';
 import Loading from '../../components/Loading';
 import Search from '../../components/Search';
 import SectionHeading from '../../components/SectionHeading';
 import { useDocumentTitle } from '../../components/useDocumentTitle';
-import { byNumber } from '../../compare';
 import { fmtSaved, pctColor, timeSaved, tint } from '../../format';
 import { GROUP_IDS, GROUPS, type GroupId } from '../../groups';
-import { useAllIndexes } from '../../queries';
-import { lineSeason, UNRANKED_LINE_NOTE } from '../../rank';
+import { homeQuery, useMeta } from '../../queries';
+import { UNRANKED_LINE_NOTE } from '../../rank';
 import { seasonLabel } from '../../seasons';
 import { HOME_TITLE } from '../../titles';
-import { topLeaders } from './leaders';
-
-interface LineCard {
-    group: GroupId;
-    season: string;
-    entries: IndexEntry[];
-}
 
 export default function HomePage() {
     useDocumentTitle(HOME_TITLE);
-    const { meta, windows, indexes, loading } = useAllIndexes();
-
-    // Each card uses its line's default season, the same rule as the leaderboard it links to.
-    const cards = useMemo(
-        (): LineCard[] =>
-            GROUP_IDS.map((group) => {
-                const season = lineSeason(group, undefined, windows, indexes);
-                const entries = (indexes.get(season) ?? []).filter((e) => e.group === group);
-
-                return { group, season, entries };
-            }),
-        [windows, indexes]
-    );
+    const { data: meta } = useMeta();
+    // Each card is in its line's default season, the same one the leaderboard it links to opens on.
+    const home = useQuery(homeQuery);
 
     return (
         <main>
@@ -63,13 +45,15 @@ export default function HomePage() {
                         top 5 by Time Saved
                     </span>
                 </SectionHeading>
-                {loading ? (
+                {home.isPending ? (
                     <Loading inline />
                 ) : (
                     <div className="grid grid-cols-1 gap-4 min-[761px]:grid-cols-2 min-[1180px]:grid-cols-3">
-                        {cards.map((c) => (
-                            <LeaderCard key={c.group} {...c} />
-                        ))}
+                        {GROUP_IDS.map((group) => {
+                            const card = home.data?.[group];
+
+                            return card && <LeaderCard key={group} group={group} card={card} />;
+                        })}
                     </div>
                 )}
             </section>
@@ -77,9 +61,14 @@ export default function HomePage() {
     );
 }
 
-function LeaderCard({ group, season, entries }: LineCard) {
+function LeaderCard({
+    group,
+    card: { season, leaders, cars },
+}: {
+    group: GroupId;
+    card: HomeCard;
+}) {
     const g = GROUPS[group];
-    const leaders = topLeaders(entries);
 
     return (
         <section className="panel flex flex-col" aria-label={`${g.name} leaders`}>
@@ -133,11 +122,11 @@ function LeaderCard({ group, season, entries }: LineCard) {
                             {g.ranked ? 'No qualified cars yet.' : UNRANKED_LINE_NOTE}
                         </p>
                         <div className="flex flex-wrap gap-2">
-                            {[...entries].sort(byNumber).map((e) => (
+                            {cars.map((number) => (
                                 <CarPill
-                                    key={e.car_id}
+                                    key={number}
                                     group={group}
-                                    number={e.number}
+                                    number={number}
                                     season={season}
                                 />
                             ))}

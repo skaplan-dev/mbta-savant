@@ -1,3 +1,4 @@
+import { routeLabel } from './busRoutes';
 import { GROUPS, type GroupId } from './groups';
 import { seasonLabel } from './seasons';
 
@@ -18,3 +19,6 @@ export function carTitle(group: GroupId, number: string) {
 
 export const lineTitle = (season: string, group: GroupId) =>
     `${seasonLabel(season)} ${GROUPS[group].name} Leaderboard · ${SITE}`;
+
+export const routeTitle = (season: string, route: string) =>
+    `${seasonLabel(season)} Route ${routeLabel(route)} Leaderboard · ${SITE}`;

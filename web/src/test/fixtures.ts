@@ -5,7 +5,6 @@ import type { Car, CarStats, GroupFile, IndexEntry, Pct } from '../api';
 const pct = (o: Partial<Pct> = {}): Pct => ({
     ttoe_sec: 50,
     speed_vs_expected_pct: 50,
-    top_speed_mph: null,
     on_time_pct: 50,
     steadiness_sec: 50,
     door_time_sec: 50,
@@ -44,7 +43,6 @@ export const carStats = (
     ttoe_vs_avg_sec: 0,
     speed_vs_avg_pct: 0,
     door_vs_avg_sec: 0,
-    top_speed_mph: null,
     on_time_pct: 90,
     steadiness_sec: 10,
     door_time_sec: 0,

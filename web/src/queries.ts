@@ -11,9 +11,13 @@ import {
     fetchFleets,
     fetchGroup,
     fetchGroupSummary,
+    fetchHome,
     fetchIndex,
     fetchMeta,
+    fetchRoute,
+    fetchRouteIndex,
     type IndexEntry,
+    type RouteIndexEntry,
 } from './api';
 import type { GroupId } from './groups';
 import { orderWindows } from './seasons';
@@ -21,6 +25,8 @@ import { orderWindows } from './seasons';
 // Every fetcher resolves null for a missing file, so "missing" is data, not an error.
 
 export const metaQuery = queryOptions({ queryKey: ['meta'], queryFn: fetchMeta });
+
+export const homeQuery = queryOptions({ queryKey: ['home'], queryFn: fetchHome });
 
 export const indexQuery = (window: string) =>
     queryOptions({ queryKey: ['index', window], queryFn: () => fetchIndex(window) });
@@ -46,6 +52,16 @@ export const carQuery = (window: string, group: GroupId, number: string) =>
 
 export const fleetsQuery = (group: GroupId) =>
     queryOptions({ queryKey: ['fleets', group], queryFn: () => fetchFleets(group) });
+
+/** Disabled until `window` is known. */
+export const routeQuery = (window: string | undefined, route: string) =>
+    queryOptions({
+        queryKey: ['route', window, route],
+        queryFn: window ? () => fetchRoute(window, route) : skipToken,
+    });
+
+export const routeIndexQuery = (window: string) =>
+    queryOptions({ queryKey: ['route-index', window], queryFn: () => fetchRouteIndex(window) });
 
 export const useMeta = () => useQuery(metaQuery);
 
@@ -90,4 +106,20 @@ export function useAllIndexes(enabled = true) {
         // Pending while meta or any window's index is still loading (never for a disabled, empty query).
         loading: meta.isPending || (enabled && pending),
     };
+}
+
+export type RouteIndexes = ReadonlyMap<string, RouteIndexEntry[] | null | undefined>;
+
+/** Every window's bus route list (a few KB each); `failed` holds the queries that errored, for a retry. */
+export function useRouteIndexes(windows: string[]) {
+    const combine = useCallback(
+        (results: UseQueryResult<RouteIndexEntry[] | null>[]) => ({
+            indexes: new Map(windows.map((w, i) => [w, results[i]?.data])),
+            pending: results.some((r) => r.isPending),
+            failed: results.filter((r) => r.isError),
+        }),
+        [windows]
+    );
+
+    return useQueries({ queries: windows.map(routeIndexQuery), combine });
 }

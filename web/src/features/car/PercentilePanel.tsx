@@ -143,14 +143,6 @@ export default function PercentilePanel({
                     ranked={ranked}
                 />
                 <div className="text-ink-2 text-ui mt-[18px] flex flex-wrap justify-center gap-x-[22px] gap-y-1">
-                    {info.mode === 'rail' && car.top_speed_mph != null && (
-                        <span>
-                            <StatTerm id="cruise-speed" />{' '}
-                            <b className="text-ink font-medium">
-                                {fmtNum(car.top_speed_mph, 1)} mph
-                            </b>
-                        </span>
-                    )}
                     {car.crowd_load_pct != null && (
                         <span>
                             <StatTerm id="crowding" />{' '}

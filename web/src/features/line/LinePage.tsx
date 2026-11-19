@@ -14,6 +14,7 @@ import FleetStrip from './FleetStrip';
 import LeaderboardTable from './LeaderboardTable';
 import { splitCars } from './leaderboard';
 import NotRanked from './NotRanked';
+import RoutePicker from '../route/RoutePicker';
 import { useLineData, type LineData } from './useLineData';
 
 const route = getRouteApi('/line/$group');
@@ -65,9 +66,10 @@ function LineView({
             </h1>
             <p className="text-ink-2 text-ui md:text-lead mt-1.5 mb-6">
                 {GROUPS[group].ranked
-                    ? `${fmtInt(ranked.length)} ranked cars. Click a column to sort; cars need ${fmtInt(file.qualify_min_trips)} trips to qualify.`
+                    ? `${fmtInt(ranked.length)} ranked cars. Cars need ${fmtInt(file.qualify_min_trips)} trips to qualify.`
                     : UNRANKED_LINE_NOTE}
             </p>
+            {group === 'bus' && <RoutePicker season={season} />}
             {fleets.length > 0 && <FleetStrip fleets={fleets} />}
             {ranked.length > 0 && (
                 <LeaderboardTable group={group} season={season} ranked={ranked} />

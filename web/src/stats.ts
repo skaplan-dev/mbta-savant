@@ -104,3 +104,6 @@ export const boardStats = (group: GroupId): Stat[] => forGroup(group);
 
 export const panelStats = (group: GroupId, section: Stat['section']): Stat[] =>
     forGroup(group).filter((s) => s.section === section && !s.boardOnly);
+
+/** A route board's columns: the bus board without Routes Run, which is always one route there. */
+export const routeBoardStats = (): Stat[] => boardStats('bus').filter((s) => s.id !== 'routes-run');

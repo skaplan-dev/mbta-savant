@@ -3,7 +3,6 @@ import type { GroupId } from './groups';
 export type Metric =
     | 'ttoe_sec'
     | 'speed_vs_expected_pct'
-    | 'top_speed_mph'
     | 'on_time_pct'
     | 'steadiness_sec'
     | 'door_time_sec'
@@ -23,7 +22,20 @@ export interface Meta {
     generated_at: string;
     windows: WindowInfo[];
     latest_service_date: string | null;
+    /** Each line's season when the URL names none. Optional until every published meta.json has it. */
+    default_season?: Partial<Record<GroupId, string>>;
 }
+
+/** One line's card on the home page (home.json), in that line's default season. */
+export interface HomeCard {
+    season: string;
+    /** Top cars by Time Saved, best first. */
+    leaders: IndexEntry[];
+    /** Every car's number, only when none is ranked (Mattapan). */
+    cars: string[];
+}
+
+export type HomeFile = Partial<Record<GroupId, HomeCard>>;
 
 export interface IndexEntry {
     car_id: string;
@@ -65,8 +77,6 @@ export interface CarStats {
     speed_vs_avg_pct: number | null;
     // Optional until every published data file has it (the site can deploy before the nightly rebuild).
     door_vs_avg_sec?: number | null;
-    // Shown as a fun fact; never ranked, so its pct is always null.
-    top_speed_mph: number | null;
     on_time_pct: number | null;
     steadiness_sec: number | null;
     door_time_sec: number | null;
@@ -113,6 +123,19 @@ export interface GroupFile {
     cars: CarStats[];
 }
 
+/** One bus route's board (routes/<route>.json): the bus line file, ranked among buses on that route. */
+export interface RouteFile extends GroupFile {
+    route: string;
+}
+
+/** routes/index.json: every route that ran in a window. */
+export interface RouteIndexEntry {
+    route: string;
+    buses: number;
+    ranked_cars: number;
+    trips: number;
+}
+
 export interface FleetSummary {
     fleet_label: string;
     cars: number;
@@ -138,6 +161,8 @@ async function getJson<T>(path: string): Promise<T | null> {
 
 export const fetchMeta = () => getJson<Meta>('/data/meta.json');
 
+export const fetchHome = () => getJson<HomeFile>('/data/home.json');
+
 export const fetchIndex = (window: string) => getJson<IndexEntry[]>(`/data/${window}/index.json`);
 
 export const fetchGroup = (window: string, group: GroupId) =>
@@ -150,3 +175,9 @@ export const fetchCar = (window: string, group: GroupId, number: string) =>
     getJson<Car>(`/data/${window}/cars/${group}/${number}.json`);
 
 export const fetchFleets = (group: GroupId) => getJson<FleetsFile>(`/data/fleets/${group}.json`);
+
+export const fetchRoute = (window: string, route: string) =>
+    getJson<RouteFile>(`/data/${window}/routes/${encodeURIComponent(route)}.json`);
+
+export const fetchRouteIndex = (window: string) =>
+    getJson<RouteIndexEntry[]>(`/data/${window}/routes/index.json`);
