@@ -86,6 +86,8 @@ export interface CarStats {
     // Count of distinct routes served in the window; buses only (rail is null). Per-day route lists are in game_log[].routes.
     routes: number | null;
     crowd_load_pct: number | null;
+    /** Latest service date in any window (ISO). Optional until every published data file has it. */
+    last_seen?: string | null;
     teammates: [string, number][];
     vehicle: Vehicle;
     pct: Pct;

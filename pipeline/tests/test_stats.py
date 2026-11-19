@@ -314,3 +314,18 @@ def test_rail_has_no_by_route(tmp_path):
     write(tmp_path, "orange", {D0: [seg(D0, "t", ["1400"], 100)]})
     (row,) = stats.car_stats(tmp_path, "orange", window(D0, D0))
     assert "by_route" not in row
+
+
+def test_last_seen_spans_all_data_not_one_window(tmp_path):
+    later = D0 + timedelta(days=400)
+    write(tmp_path, "orange", {D0: [seg(D0, "a", ["A1", "B1"], 100)], later: [seg(later, "b", ["A1"], 100)]})
+    assert stats.last_seen(tmp_path, "orange") == {"A1": later.isoformat(), "B1": D0.isoformat()}
+
+
+def test_last_seen_normalizes_bus_numbers(tmp_path):
+    write(tmp_path, "bus", {D0: [seg(D0, "a", ["0952"], 100, group="bus", route="1")]})
+    assert stats.last_seen(tmp_path, "bus") == {"952": D0.isoformat()}
+
+
+def test_last_seen_empty_group(tmp_path):
+    assert stats.last_seen(tmp_path, "blue") == {}

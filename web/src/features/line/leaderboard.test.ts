@@ -30,6 +30,15 @@ describe('leaderboard', () => {
             ['3', 2],
         ]);
     });
+    it('sorts by last seen, most recent first, never-seen last', () => {
+        const seen = rankCars([
+            carStats('1', { last_seen: '2026-01-05' }),
+            carStats('2', { last_seen: null }),
+            carStats('3', { last_seen: '2026-11-18' }),
+        ]);
+        const rows = sortCars(seen, { key: 'last-seen', dir: firstDir('last-seen', 'red') }, 'red');
+        expect(rows.map((r) => r.car.number)).toEqual(['3', '1', '2']);
+    });
     it('first click is best-first', () => {
         expect(firstDir('consistency', 'red')).toBe('asc');
         expect(firstDir('time-saved', 'red')).toBe('desc');

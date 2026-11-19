@@ -2,7 +2,7 @@ import type { Car } from '../../api';
 import LineDot from '../../components/LineDot';
 import StatTerm from '../../components/StatTerm';
 import { commonsUrl, fleetPhoto, photoSrc, type FleetPhoto } from '../../fleetPhotos';
-import { fmtInt, fmtNum, fmtSaved, timeSaved } from '../../format';
+import { fmtDate, fmtInt, fmtNum, fmtSaved, timeSaved } from '../../format';
 import { GROUPS, type GroupId } from '../../groups';
 import { isYearKey } from '../../seasons';
 import CarArt from './CarArt';
@@ -112,7 +112,11 @@ export default function BioPanel({
                 )}
                 <p className="text-ui my-[3px]">
                     <Specs
-                        items={[!!v.years && `Built: ${v.years}`, v.fleet_label || 'Unknown fleet']}
+                        items={[
+                            !!v.years && `Built: ${v.years}`,
+                            v.fleet_label || 'Unknown fleet',
+                            !!car.last_seen && `Last seen: ${fmtDate(car.last_seen)}`,
+                        ]}
                     />
                 </p>
             </div>

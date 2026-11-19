@@ -1,5 +1,5 @@
 import type { CarStats, Metric } from './api';
-import { doorLabel, fmtInt, fmtNum, fmtSaved, pacePlus, timeSaved } from './format';
+import { doorLabel, fmtInt, fmtNum, fmtPace, fmtSaved, pace, timeSaved } from './format';
 import type { StatId } from './glossary';
 import { GROUPS, type GroupId, type Mode } from './groups';
 
@@ -35,8 +35,8 @@ export const STATS: readonly Stat[] = [
         id: 'pace-plus',
         pct: 'speed_vs_expected_pct',
         section: 'performance',
-        value: pacePlus,
-        text: (c) => fmtInt(pacePlus(c)),
+        value: pace,
+        text: (c) => fmtPace(pace(c)),
     },
     {
         id: 'on-schedule',

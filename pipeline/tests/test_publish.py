@@ -263,3 +263,10 @@ def test_meta_has_default_seasons_and_home_file(tmp_path):
     home = load(out / "data/home.json")
     assert set(home) == {"orange", "bus"}
     assert [e["number"] for e in home["orange"]["leaders"]] == ["1400", "1401"]
+
+
+def test_last_seen_on_car_board_and_route_files(tmp_path):
+    out = build(tmp_path)
+    assert load(out / "data/last30/cars/orange/1400.json")["last_seen"] == "2026-03-02"
+    assert all(c["last_seen"] == "2026-03-02" for c in load(out / "data/last30/groups/bus.json")["cars"])
+    assert all(c["last_seen"] == "2026-03-02" for c in load(out / "data/last30/routes/1.json")["cars"])

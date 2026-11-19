@@ -22,7 +22,7 @@ HOME_DESCRIPTION = (
     "against its line. Built nightly from the T's own arrival and departure records."
 )
 GLOSSARY_DESCRIPTION = (
-    "How MBTA Savant's stats work: Time Saved, Pace+, On-Schedule %, Consistency, Door Time, Iron Horse "
+    "How MBTA Savant's stats work: Time Saved, Pace, On-Schedule %, Consistency, Door Time, Iron Horse "
     "Streak and more, and how cars are ranked against their line."
 )
 OG_IMAGE = "og.png"  # web/public/og.png, 1200x630
@@ -92,7 +92,7 @@ def line_description(group: str, season: str, ranked: int) -> str:
         )
     things = "buses" if group == "bus" else "cars"
     return (
-        f"{season_label(season)} {line} leaderboard: {ranked:,} {things} ranked by Time Saved, Pace+, "
+        f"{season_label(season)} {line} leaderboard: {ranked:,} {things} ranked by Time Saved, Pace, "
         "On-Schedule %, Consistency and more. Updated nightly from MBTA data."
     )
 

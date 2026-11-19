@@ -120,7 +120,8 @@ def route_boards(cars: list[dict], window: str, now: str) -> dict[str, dict]:
     for c in cars:
         for r in c.get("by_route", []):
             by_route.setdefault(r["route"], []).append(
-                {"car_id": c["car_id"], "number": c["number"], **{k: v for k, v in r.items() if k != "route"},
+                {"car_id": c["car_id"], "number": c["number"], "last_seen": c.get("last_seen"),
+                 **{k: v for k, v in r.items() if k != "route"},
                  "routes": None, "crowd_load_pct": None, "teammates": [], "vehicle": c["vehicle"]}
             )
     boards = {}
@@ -184,12 +185,14 @@ def publish(root: Path, out: Path) -> None:
     wins = stats.windows(root)
     fleets: dict[str, dict] = {g: {} for g in GROUPS}
     index_by_window: dict[str, list] = {w.key: [] for w in wins}
+    seen = {group: stats.last_seen(root, group) for group in GROUPS}
     for w in wins:
         for group in GROUPS:
             cars = stats.car_stats(root, group, w)
             if not cars:
                 continue
             for c in cars:
+                c["last_seen"] = seen[group].get(c["number"])
                 if group == "bus":
                     c["crowd_load_pct"] = None
                 v = roster.lookup(group, c["number"])

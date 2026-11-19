@@ -60,6 +60,8 @@ export function firstDir(key: SortKey, group: GroupId): SortDir {
     return boardStats(group).find((c) => c.id === key)?.lowerBetter ? 'asc' : 'desc';
 }
 
+const seenAt = (c: CarStats) => (c.last_seen ? Date.parse(c.last_seen) : null);
+
 export interface RankedRow {
     car: CarStats;
     rank: number;
@@ -81,6 +83,8 @@ export function sortCars(ranked: readonly CarStats[], sort: Sort, group: GroupId
                 return sign * x.car.vehicle.fleet_label.localeCompare(y.car.vehicle.fleet_label);
             case 'trips':
                 return sign * (x.car.trips - y.car.trips);
+            case 'last-seen':
+                return compareNullsLast(seenAt(x.car), seenAt(y.car), sort.dir);
             default:
                 return col ? compareNullsLast(col.value(x.car), col.value(y.car), sort.dir) : 0;
         }

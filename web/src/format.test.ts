@@ -5,7 +5,9 @@ import {
     ordinal,
     barEdge,
     EDGE_MIX,
-    pacePlus,
+    fmtDate,
+    fmtPace,
+    pace,
     pctColor,
     pctInk,
     signed,
@@ -29,10 +31,16 @@ describe('signed', () => {
 });
 
 describe('car stats', () => {
-    it('pacePlus rounds 100 + speed_vs_avg_pct', () => {
-        expect(pacePlus({ speed_vs_avg_pct: 2.5 })).toBe(103);
-        expect(pacePlus({ speed_vs_avg_pct: null })).toBeNull();
-        expect(pacePlus({})).toBeNull();
+    it('pace is speed_vs_avg_pct, shown as a signed percent', () => {
+        expect(pace({ speed_vs_avg_pct: 2.54 })).toBe(2.54);
+        expect(pace({ speed_vs_avg_pct: null })).toBeNull();
+        expect(pace({})).toBeNull();
+        expect(fmtPace(2.54)).toBe('+2.5%');
+        expect(fmtPace(-1.26)).toBe('−1.3%');
+    });
+    it('fmtDate', () => {
+        expect(fmtDate('2026-11-18')).toBe('Nov 18, 2026');
+        expect(fmtDate(null)).toBe('–');
     });
     it('timeSaved negates ttoe_vs_avg_sec', () => {
         expect(timeSaved({ ttoe_vs_avg_sec: -2.9 })).toBe(2.9);

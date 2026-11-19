@@ -142,6 +142,23 @@ ORDER BY a.number, n DESC, b.number
 """
 
 
+_LAST_SEEN = """
+SELECT number, max(service_date) FROM (
+  SELECT service_date, unnest(list_transform(cars, lambda c: __NUMBER__)) AS number FROM read_parquet($1)
+) GROUP BY number
+"""
+
+
+def last_seen(root: Path, group: str) -> dict[str, str]:
+    """Each vehicle's latest service date across every segment on disk, not just one window."""
+    if not any((Path(root) / "segments" / group).glob("*/*.parquet")):
+        return {}
+    number = "coalesce(CAST(TRY_CAST(c AS BIGINT) AS VARCHAR), c)" if group == "bus" else "c"
+    with duckdb.connect() as con:
+        rows = con.execute(_LAST_SEEN.replace("__NUMBER__", number), [segment_glob(root, group)]).fetchall()
+    return {n: str(d) for n, d in rows}
+
+
 def _iron_horse(car_days: set[str], data_days: list[str]) -> int:
     best = run = 0
     for d in data_days:

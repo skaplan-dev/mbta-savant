@@ -4,7 +4,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CarStats } from '../../api';
 import CarPill from '../../components/CarPill';
 import StatTerm from '../../components/StatTerm';
-import { fmtInt, pctColor, tint } from '../../format';
+import { fmtDate, fmtInt, pctColor, tint } from '../../format';
 import { GROUPS, type GroupId } from '../../groups';
 import { boardStats, type Stat } from '../../stats';
 import { firstDir, sortCars, type Sort, type SortKey, type RankedRow } from './leaderboard';
@@ -71,6 +71,7 @@ function LeaderRow({
                     </td>
                 );
             })}
+            <td className={`${td} text-ink-2`}>{fmtDate(car.last_seen)}</td>
         </tr>
     );
 }
@@ -204,6 +205,15 @@ export default function LeaderboardTable({
                                     />
                                 </th>
                             ))}
+                            <th scope="col" aria-sort={aria('last-seen')} className={th}>
+                                <StatTerm id="last-seen" />
+                                <SortBtn
+                                    sort={sort}
+                                    toggle={toggle}
+                                    k="last-seen"
+                                    label="last seen"
+                                />
+                            </th>
                         </tr>
                     </thead>
                     <tbody ref={bodyRef}>

@@ -1,5 +1,5 @@
 import type { FleetSummary } from '../../api';
-import { fmtInt, fmtSaved, pacePlus, timeSaved } from '../../format';
+import { fmtPace, fmtSaved, pace, timeSaved } from '../../format';
 
 export default function FleetStrip({ fleets }: { fleets: FleetSummary[] }) {
     return (
@@ -26,8 +26,8 @@ export default function FleetStrip({ fleets }: { fleets: FleetSummary[] }) {
                                 <span className="text-ink-3 text-ui">saved</span>
                             </span>
                             <span>
-                                <b className="font-medium">{fmtInt(pacePlus(f.median))}</b>{' '}
-                                <span className="text-ink-3 text-ui">Pace+</span>
+                                <b className="font-medium">{fmtPace(pace(f.median))}</b>{' '}
+                                <span className="text-ink-3 text-ui">pace</span>
                             </span>
                         </div>
                     </li>

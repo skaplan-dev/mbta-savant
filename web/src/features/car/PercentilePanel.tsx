@@ -111,7 +111,7 @@ export default function PercentilePanel({
 
     const unrankedNote =
         reason && !info.ranked
-            ? `${reason} Time Saved, Pace+ and Door Time compare a car with its line’s average, so they aren’t shown.`
+            ? `${reason} Time Saved, Pace and Door Time compare a car with its line’s average, so they aren’t shown.`
             : reason;
 
     return (

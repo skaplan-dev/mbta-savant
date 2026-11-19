@@ -73,9 +73,20 @@ type VsAverage = Partial<Pick<CarStats, 'ttoe_vs_avg_sec' | 'speed_vs_avg_pct'>>
 export const timeSaved = ({ ttoe_vs_avg_sec: v }: VsAverage): number | null =>
     v == null ? null : -v;
 
-// Speed on a 100 scale (100 = the line's average car).
-export const pacePlus = ({ speed_vs_avg_pct: v }: VsAverage): number | null =>
-    v == null ? null : Math.round(100 + v);
+// Percent quicker than the line's average car on the same stretches (positive = faster).
+export const pace = ({ speed_vs_avg_pct: v }: VsAverage): number | null => v ?? null;
+
+export const fmtPace = (v: number | null | undefined) => signed(v, 1, '%');
+
+/** "Nov 18, 2026" from an ISO service date; a missing date is a bare dash. */
+export const fmtDate = (iso: string | null | undefined): string =>
+    iso
+        ? new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+          })
+        : '–';
 
 export function doorLabel(sec: number | null | undefined): string {
     if (sec == null) return '–';

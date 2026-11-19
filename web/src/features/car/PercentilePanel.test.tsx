@@ -61,9 +61,7 @@ describe('PercentilePanel', () => {
         expect(title()).toBe('Last 30 Days Mattapan Line Stats');
         expect(screen.getByText(/Mattapan cars aren’t ranked\./)).toBeTruthy();
         expect(
-            screen.getByText(
-                /Time Saved, Pace\+ and Door Time compare a car with its line’s average/
-            )
+            screen.getByText(/Time Saved, Pace and Door Time compare a car with its line’s average/)
         ).toBeTruthy();
     });
 });
