@@ -1,12 +1,13 @@
 import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useWindowVirtualizer } from '@tanstack/react-virtual';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CarStats } from '../../api';
 import CarPill from '../../components/CarPill';
 import StatTerm from '../../components/StatTerm';
 import { fmtInt, pctColor, tint } from '../../format';
 import { GROUPS, type GroupId } from '../../groups';
-import { boardStats } from '../../stats';
-import { firstDir, sortCars, type Sort, type SortKey } from './leaderboard';
+import { boardStats, type Stat } from '../../stats';
+import { firstDir, sortCars, type Sort, type SortKey, type RankedRow } from './leaderboard';
 
 const th =
     'border-panel-line bg-wash border-b px-2 py-2 text-left align-bottom text-ui font-medium leading-tight whitespace-nowrap aria-[sort=ascending]:text-brand aria-[sort=descending]:text-brand';
@@ -17,6 +18,62 @@ const td = 'border-panel-line border-b px-2 py-1.5 whitespace-nowrap';
 // so Car's left offset lines up; both need an opaque background so scrolled cells don't show through.
 const stickyRank = 'sticky left-0 z-[1] w-[72px] min-w-[72px]';
 const stickyCar = 'sticky left-[72px] z-[1] shadow-[1px_0_0_var(--color-panel-line)]';
+
+const VIRTUAL_MIN_ROWS = 300;
+const ROW_ESTIMATE_PX = 41;
+
+const Spacer = ({ height }: { height: number }) =>
+    height > 0 ? (
+        <tr aria-hidden="true">
+            <td style={{ height, padding: 0, border: 0 }} />
+        </tr>
+    ) : null;
+
+function LeaderRow({
+    ref,
+    index,
+    row: { car, rank },
+    group,
+    season,
+    cols,
+}: {
+    ref?: (el: HTMLTableRowElement | null) => void;
+    index: number;
+    row: RankedRow;
+    group: GroupId;
+    season: string;
+    cols: readonly Stat[];
+}) {
+    return (
+        <tr ref={ref} data-index={index}>
+            <td className={`${td} ${stickyRank} text-ink-2 bg-white`}>{rank}</td>
+            <td className={`${td} ${stickyCar} bg-white`}>
+                <CarPill group={group} number={car.number} season={season} />
+            </td>
+            <td
+                className={`${td} text-ink-2 max-w-[150px] truncate`}
+                title={car.vehicle.fleet_label}
+            >
+                {car.vehicle.fleet_label}
+            </td>
+            <td className={td}>{fmtInt(car.trips)}</td>
+            {cols.map((c) => {
+                const pct = car.pct[c.pct];
+
+                return (
+                    <td
+                        key={c.id}
+                        className={td}
+                        style={pct == null ? undefined : { background: tint(pctColor(pct)) }}
+                    >
+                        {c.text(car)}
+                        {pct != null && <small className="text-ink text-meta ml-1.5">{pct}</small>}
+                    </td>
+                );
+            })}
+        </tr>
+    );
+}
 
 // Module scope on purpose: defined inside the table it would be a new component type every render,
 // remounting the button on each sort and dropping keyboard focus.
@@ -50,13 +107,15 @@ export default function LeaderboardTable({
     group,
     season,
     ranked,
+    cols = boardStats(group),
 }: {
     group: GroupId;
     season: string;
     ranked: CarStats[];
+    /** Stat columns; the group's board stats unless a page drops some (a route board has no Routes Run). */
+    cols?: readonly Stat[];
 }) {
     const [sort, setSort] = useState<Sort>({ key: 'time-saved', dir: 'desc' });
-    const cols = boardStats(group);
     const rows = useMemo(() => sortCars(ranked, sort, group), [ranked, sort, group]);
 
     const toggle = (key: SortKey) =>
@@ -65,6 +124,41 @@ export default function LeaderboardTable({
                 ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' }
                 : { key, dir: firstDir(key, group) }
         );
+
+    // The bus board has ~1,100 rows; render only those near the viewport. Smaller boards render whole,
+    // so find-in-page still works there. Spacer rows keep the real table (and its sticky columns).
+    const virtual = rows.length > VIRTUAL_MIN_ROWS;
+    const bodyRef = useRef<HTMLTableSectionElement>(null);
+    const [margin, setMargin] = useState(0);
+
+    // The window scrolls, so the virtualizer needs the tbody's distance from the top of the page,
+    // which moves when content above it (fleet strip, route picker) loads or the layout reflows.
+    useLayoutEffect(() => {
+        const body = bodyRef.current;
+
+        if (!virtual || !body) return;
+        const measure = () => setMargin(body.getBoundingClientRect().top + window.scrollY);
+
+        measure();
+        const ro = new ResizeObserver(measure);
+
+        ro.observe(document.body);
+
+        return () => ro.disconnect();
+    }, [virtual]);
+
+    // TanStack Virtual returns a mutable instance the React Compiler can't memoize; the compiler isn't
+    // in this build, and the rule would just skip memoizing this component anyway.
+    // oxlint-disable-next-line react/incompatible-library
+    const virtualizer = useWindowVirtualizer({
+        count: rows.length,
+        estimateSize: () => ROW_ESTIMATE_PX,
+        overscan: 15,
+        scrollMargin: margin,
+        enabled: virtual,
+    });
+    const items = virtual ? virtualizer.getVirtualItems() : null;
+    const rowProps = { group, season, cols };
 
     const aria = (key: SortKey) =>
         sort.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none';
@@ -112,46 +206,31 @@ export default function LeaderboardTable({
                             ))}
                         </tr>
                     </thead>
-                    <tbody>
-                        {rows.map(({ car, rank }) => (
-                            <tr key={car.car_id}>
-                                <td className={`${td} ${stickyRank} text-ink-2 bg-white`}>
-                                    {rank}
-                                </td>
-                                <td className={`${td} ${stickyCar} bg-white`}>
-                                    <CarPill group={group} number={car.number} season={season} />
-                                </td>
-                                <td
-                                    className={`${td} text-ink-2 max-w-[150px] truncate`}
-                                    title={car.vehicle.fleet_label}
-                                >
-                                    {car.vehicle.fleet_label}
-                                </td>
-                                <td className={td}>{fmtInt(car.trips)}</td>
-                                {cols.map((c) => {
-                                    const pct = car.pct[c.pct];
-
-                                    return (
-                                        <td
-                                            key={c.id}
-                                            className={td}
-                                            style={
-                                                pct == null
-                                                    ? undefined
-                                                    : { background: tint(pctColor(pct)) }
-                                            }
-                                        >
-                                            {c.text(car)}
-                                            {pct != null && (
-                                                <small className="text-ink text-meta ml-1.5">
-                                                    {pct}
-                                                </small>
-                                            )}
-                                        </td>
-                                    );
-                                })}
-                            </tr>
-                        ))}
+                    <tbody ref={bodyRef}>
+                        {items ? (
+                            <>
+                                <Spacer height={(items[0]?.start ?? margin) - margin} />
+                                {items.map((item) => (
+                                    <LeaderRow
+                                        key={rows[item.index].car.car_id}
+                                        ref={virtualizer.measureElement}
+                                        index={item.index}
+                                        row={rows[item.index]}
+                                        {...rowProps}
+                                    />
+                                ))}
+                                <Spacer
+                                    height={
+                                        virtualizer.getTotalSize() -
+                                        ((items.at(-1)?.end ?? margin) - margin)
+                                    }
+                                />
+                            </>
+                        ) : (
+                            rows.map((row, i) => (
+                                <LeaderRow key={row.car.car_id} index={i} row={row} {...rowProps} />
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>

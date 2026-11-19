@@ -5,7 +5,7 @@ import NotFound from '../components/NotFound';
 
 export const Route = createRootRoute({
     component: () => (
-        <div className="mx-auto max-w-[1280px] px-4 sm:px-6">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6">
             <Masthead />
             <Outlet />
             <Footer />
