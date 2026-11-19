@@ -93,7 +93,7 @@ describe('LeaderboardTable', () => {
         );
         expect(
             await screen.findByText(
-                'Too close to call on this line: On-Schedule %, Dwell Time. Shown without colors.'
+                'Too close to call on this line: Dwell Time, On-Schedule %. Shown without colors.'
             )
         ).toBeTruthy();
     });
