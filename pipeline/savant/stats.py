@@ -18,7 +18,14 @@ second: Steadiness is the mean distance of each delta (clipped to +/-STEADY_CLIP
 median.
 
 Games Played and Iron Horse are counted over the group's *data days* (window days on which the group
-has any segment), so a feed outage neither lowers a car's games played nor breaks its streak.
+has any segment), so a feed outage neither lowers a car's games played nor breaks its streak. A car's
+service day counts only if it ran at least ``MIN_DAY_TRIPS`` trips that day (2 on rail, 1 on bus), and
+Games Played's denominator starts at the car's ``first_seen`` (its earliest qualifying service day ever).
+
+``steady_adj_sec`` is steadiness relative to the same segments: each car-run's deviation from the car's own
+median, minus the mean deviation of every car-run on the same (route, direction, from, to, hour bucket,
+day type) key, negated so higher is steadier. ``trip_len_sec`` is the median trip duration (first departure
+to last arrival).
 """
 
 import math
@@ -42,6 +49,15 @@ TTOE_CAP_SEC = 300
 STEADY_CLIP_SEC = 60
 DOOR_CLIP_SEC = 30
 MEMORY_LIMIT = "4GB"
+# A vehicle's day counts as a service day only with this many trips that day (default 2; a bus can legitimately run 1).
+MIN_DAY_TRIPS = {"bus": 1}
+DEFAULT_MIN_DAY_TRIPS = 2
+# Adjusted steadiness only uses segment keys with this many runs in the window (counted before unnesting).
+ADJ_MIN_RUNS = 20
+
+
+def min_day_trips(group: str) -> int:
+    return MIN_DAY_TRIPS.get(group, DEFAULT_MIN_DAY_TRIPS)
 
 
 @dataclass(frozen=True)
@@ -81,7 +97,8 @@ def windows(root: Path) -> list[Window]:
 _BUS_NUMBER = "coalesce(CAST(TRY_CAST(cars[i] AS BIGINT) AS VARCHAR), cars[i])"
 _CAR_SEG = f"""
 CREATE TEMP TABLE car_seg AS
-SELECT service_date, trip_id, route_id, travel_sec, benchmark_sec, distance_mi,
+SELECT service_date, trip_id, route_id, direction, from_stop, to_stop, hour_bucket, day_type, key_runs,
+  travel_sec, benchmark_sec, distance_mi,
   __NUMBER__ AS number, occupancy_pct[i] AS occ,
   least(travel_sec - exp_travel, {TTOE_CAP_SEC}) AS delta,
   CASE WHEN dwell_sec IS NULL OR exp_dwell IS NULL THEN NULL
@@ -90,7 +107,9 @@ SELECT service_date, trip_id, route_id, travel_sec, benchmark_sec, distance_mi,
 FROM (
   SELECT *, unnest(generate_series(1, len(cars))) AS i
   FROM (
-    SELECT service_date, trip_id, route_id, travel_sec, dwell_sec, benchmark_sec, distance_mi, cars, occupancy_pct,
+    SELECT service_date, trip_id, route_id, direction, from_stop, to_stop, hour_bucket, day_type,
+      travel_sec, dwell_sec, benchmark_sec, distance_mi, cars, occupancy_pct,
+      count(*) OVER (PARTITION BY route_id, direction, from_stop, to_stop, hour_bucket, day_type) AS key_runs,
       median(travel_sec) OVER (PARTITION BY route_id, direction, from_stop, to_stop, hour_bucket, day_type)
         AS exp_travel,
       median(dwell_sec) OVER (PARTITION BY route_id, direction, to_stop, hour_bucket, day_type) AS exp_dwell
@@ -103,13 +122,21 @@ _DATA_DAYS = "SELECT DISTINCT service_date FROM read_parquet($1) WHERE service_d
 
 
 def _per(keys: str) -> str:
-    """Per-vehicle metrics grouped by ``keys``: "number" for the line, "route_id, number" for bus routes."""
+    """Per-vehicle metrics grouped by ``keys``: "number" for the line, "route_id, number" for bus routes.
+    ``days`` lists only service days (>= __MIN__ trips that day on these keys)."""
     return f"""
 WITH clipped AS (
   SELECT *, greatest(least(delta, {STEADY_CLIP_SEC}), -{STEADY_CLIP_SEC}) AS steady_delta FROM car_seg
 ),
-own AS (SELECT {keys}, median(steady_delta) AS steady_median FROM clipped GROUP BY {keys})
-SELECT {keys},
+own AS (SELECT {keys}, median(steady_delta) AS steady_median FROM clipped GROUP BY {keys}),
+day_trips AS (
+  SELECT {keys}, service_date, count(DISTINCT trip_id) AS n FROM car_seg GROUP BY {keys}, service_date
+),
+svc AS (
+  SELECT {keys}, list(service_date ORDER BY service_date) AS days FROM day_trips WHERE n >= __MIN__ GROUP BY {keys}
+),
+agg AS (
+  SELECT {keys},
   count(DISTINCT (service_date, trip_id)) AS trips,
   avg(delta) AS seg_travel,
   CASE WHEN count(dwell_clip) = 0 THEN NULL ELSE sum(dwell_clip) / count(*) END AS seg_dwell,
@@ -119,9 +146,10 @@ SELECT {keys},
   avg(abs(steady_delta - steady_median)) AS steadiness_sec,
   sum(distance_mi) AS miles,
   avg(occ) AS crowd_load_pct,
-  count(DISTINCT route_id) AS routes,
-  list(DISTINCT service_date) AS days
-FROM clipped JOIN own USING ({keys}) GROUP BY {keys} ORDER BY {keys}
+  count(DISTINCT route_id) AS routes
+FROM clipped JOIN own USING ({keys}) GROUP BY {keys}
+)
+SELECT agg.*, coalesce(svc.days, []) AS days FROM agg LEFT JOIN svc USING ({keys}) ORDER BY {keys}
 """
 
 
@@ -134,6 +162,45 @@ _ROUTE_DAYS = "SELECT route_id, list(DISTINCT service_date ORDER BY service_date
 _GAME_LOG = """
 SELECT number, service_date, count(DISTINCT trip_id), sum(distance_mi), avg(delta), list(DISTINCT route_id ORDER BY route_id)
 FROM car_seg GROUP BY number, service_date ORDER BY number, service_date
+"""
+
+# Per car-run deviation from the car's own median clipped delta, and the mean deviation of all car-runs on the same
+# segment key. key_runs (segment runs on the key, counted before unnesting) gates which keys are eligible.
+_CAR_DEV = f"""
+CREATE TEMP TABLE car_dev AS
+WITH clipped AS (
+  SELECT *, greatest(least(delta, {STEADY_CLIP_SEC}), -{STEADY_CLIP_SEC}) AS steady_delta FROM car_seg
+),
+dev AS (
+  SELECT *, abs(steady_delta - median(steady_delta) OVER (PARTITION BY number)) AS dev FROM clipped
+)
+SELECT *, avg(dev) OVER (PARTITION BY route_id, direction, from_stop, to_stop, hour_bucket, day_type) AS typical_dev
+FROM dev
+"""
+
+
+def _adj(keys: str) -> str:
+    return f"""
+SELECT {keys},
+  CASE WHEN avg(CASE WHEN key_runs >= {ADJ_MIN_RUNS} THEN 1.0 ELSE 0.0 END) < 0.5 THEN NULL
+    ELSE -avg(dev - typical_dev) FILTER (WHERE key_runs >= {ADJ_MIN_RUNS}) END AS steady_adj_sec
+FROM car_dev GROUP BY {keys}
+"""
+
+
+# Median trip duration: first departure to last arrival, per trip, before cars are unnest.
+_TRIP_LEN = """
+SELECT median(d) FROM (
+  SELECT max(epoch(CAST(dep_time AS TIMESTAMPTZ)) + travel_sec) - min(epoch(CAST(dep_time AS TIMESTAMPTZ))) AS d
+  FROM read_parquet($1) WHERE service_date BETWEEN $2 AND $3 GROUP BY service_date, trip_id
+)
+"""
+_TRIP_LEN_ROUTE = """
+SELECT route_id, median(d) FROM (
+  SELECT route_id,
+    max(epoch(CAST(dep_time AS TIMESTAMPTZ)) + travel_sec) - min(epoch(CAST(dep_time AS TIMESTAMPTZ))) AS d
+  FROM read_parquet($1) WHERE service_date BETWEEN $2 AND $3 GROUP BY route_id, service_date, trip_id
+) GROUP BY route_id
 """
 
 # Median segments per trip, counted before cars are unnest so a multi-car train is one trip.
@@ -191,6 +258,27 @@ def last_seen(root: Path, group: str) -> dict[str, str]:
     return {n: str(d) for n, d in rows}
 
 
+_FIRST_SEEN = """
+SELECT number, min(service_date) FROM (
+  SELECT number, service_date, count(DISTINCT trip_id) AS n FROM (
+    SELECT service_date, trip_id, unnest(list_transform(cars, lambda c: __NUMBER__)) AS number FROM read_parquet($1)
+  ) GROUP BY number, service_date
+) WHERE n >= $2 GROUP BY number
+"""
+
+
+def first_seen(root: Path, group: str) -> dict[str, str]:
+    """Each vehicle's earliest *service* date (>= MIN_DAY_TRIPS trips that day) across every segment on disk."""
+    if not any((Path(root) / "segments" / group).glob("*/*.parquet")):
+        return {}
+    number = "coalesce(CAST(TRY_CAST(c AS BIGINT) AS VARCHAR), c)" if group == "bus" else "c"
+    with duckdb.connect() as con:
+        rows = con.execute(
+            _FIRST_SEEN.replace("__NUMBER__", number), [segment_glob(root, group), min_day_trips(group)]
+        ).fetchall()
+    return {n: str(d) for n, d in rows}
+
+
 def _iron_horse(car_days: set[str], data_days: list[str]) -> int:
     best = run = 0
     for d in data_days:
@@ -206,10 +294,18 @@ def qualify_threshold(trips: list[int]) -> int:
     return max(QUALIFY_MIN_TRIPS, math.ceil(QUALIFY_SHARE * statistics.median(trips)))
 
 
-def car_stats(root: Path, group: str, window: Window) -> list[dict]:
+def _eligible(data_days, first: str | None) -> list:
+    return list(data_days) if first is None else [d for d in data_days if str(d) >= first]
+
+
+def car_stats(
+    root: Path, group: str, window: Window, first_seen: dict[str, str] | None = None
+) -> list[dict]:
     if not any((Path(root) / "segments" / group).glob("*/*.parquet")):
         return []
     is_bus = group == "bus"
+    first_seen = first_seen or {}
+    mind = min_day_trips(group)
     tmp = Path(root) / ".duckdb_tmp"
     tmp.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(config={"memory_limit": MEMORY_LIMIT, "temp_directory": str(tmp)})
@@ -218,8 +314,12 @@ def car_stats(root: Path, group: str, window: Window) -> list[dict]:
         data_days = [r[0] for r in con.execute(_DATA_DAYS, args).fetchall()]
         spt = con.execute(_SEGS_PER_TRIP, args).fetchone()[0]
         route_spt = dict(con.execute(_SEGS_PER_TRIP_ROUTE, args).fetchall()) if is_bus else {}
+        trip_len = con.execute(_TRIP_LEN, args).fetchone()[0]
+        route_trip_len = dict(con.execute(_TRIP_LEN_ROUTE, args).fetchall()) if is_bus else {}
         con.execute(_CAR_SEG.replace("__NUMBER__", _BUS_NUMBER if is_bus else "cars[i]"), args)
-        per_car = con.execute(_PER_CAR)
+        con.execute(_CAR_DEV)
+        adj = dict(con.execute(_adj("number")).fetchall())
+        per_car = con.execute(_PER_CAR.replace("__MIN__", str(mind)))
         cols = [c[0] for c in per_car.description]
         cars = [dict(zip(cols, r)) for r in per_car.fetchall()]
         logs: dict[str, list[dict]] = {}
@@ -231,7 +331,8 @@ def car_stats(root: Path, group: str, window: Window) -> list[dict]:
         by_route: dict[str, list[dict]] = {}
         if is_bus:
             route_days = dict(con.execute(_ROUTE_DAYS).fetchall())
-            per_route = con.execute(_PER_ROUTE_CAR)
+            route_adj = {(r, n): v for r, n, v in con.execute(_adj("route_id, number")).fetchall()}
+            per_route = con.execute(_PER_ROUTE_CAR.replace("__MIN__", str(mind)))
             rcols = [c[0] for c in per_route.description]
             for r in per_route.fetchall():
                 row = dict(zip(rcols, r))
@@ -239,14 +340,19 @@ def car_stats(root: Path, group: str, window: Window) -> list[dict]:
                 row.pop("routes")
                 row.update(_per_trip(row, route_spt[route]))
                 route_data_days = route_days[route]
+                eligible = _eligible(route_data_days, first_seen.get(number))
                 by_route.setdefault(number, []).append(
                     {
                         "route": route,
                         **row,
                         "qualified": row["trips"] >= ROUTE_QUALIFY_MIN_TRIPS,
                         "miles": None,
-                        "games_played_pct": 100.0 * len(days) / len(route_data_days),
+                        "service_days": len(days),
+                        "eligible_days": len(eligible),
+                        "games_played_pct": 100.0 * len(days) / len(eligible) if eligible else 0.0,
                         "iron_horse_days": _iron_horse(days, route_data_days),
+                        "steady_adj_sec": route_adj.get((route, number)),
+                        "trip_len_sec": route_trip_len.get(route),
                     }
                 )
         mates: dict[str, list[list]] = {}
@@ -262,6 +368,7 @@ def car_stats(root: Path, group: str, window: Window) -> list[dict]:
     for c in cars:
         number, days = c.pop("number"), set(c.pop("days"))
         routes = c.pop("routes")
+        eligible = _eligible(data_days, first_seen.get(number))
         c.update(_per_trip(c, spt))
         out.append(
             {
@@ -270,8 +377,12 @@ def car_stats(root: Path, group: str, window: Window) -> list[dict]:
                 **c,
                 "qualified": c["trips"] >= threshold,
                 "miles": None if is_bus else c["miles"],
-                "games_played_pct": 100.0 * len(days) / len(data_days),
+                "service_days": len(days),
+                "eligible_days": len(eligible),
+                "games_played_pct": 100.0 * len(days) / len(eligible) if eligible else 0.0,
                 "iron_horse_days": _iron_horse(days, data_days),
+                "steady_adj_sec": adj.get(number),
+                "trip_len_sec": trip_len,
                 "teammates": mates.get(number, []),
                 "routes": routes if is_bus else None,
                 "game_log": logs.get(number, []),

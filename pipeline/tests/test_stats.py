@@ -9,7 +9,7 @@ D0 = date(2026, 3, 2)  # a Monday
 
 
 def seg(day, trip, cars, travel, *, route="Orange", from_stop="A", to_stop="B", group="orange",
-        dwell=None, benchmark=None, distance=1.0, occ=None, hour="midday"):
+        dwell=None, benchmark=None, distance=1.0, occ=None, hour="midday", dep="12:00:00"):
     return {
         "service_date": day.isoformat(),
         "group": group,
@@ -18,7 +18,7 @@ def seg(day, trip, cars, travel, *, route="Orange", from_stop="A", to_stop="B", 
         "trip_id": trip,
         "from_stop": from_stop,
         "to_stop": to_stop,
-        "dep_time": f"{day.isoformat()}T12:00:00-05:00",
+        "dep_time": f"{day.isoformat()}T{dep}-05:00",
         "hour_bucket": hour,
         "day_type": "weekday",
         "travel_sec": float(travel),
@@ -64,7 +64,7 @@ def test_ttoe_separates_fast_and_slow_car(tmp_path):
 def test_games_played_ignores_days_without_group_data(tmp_path):
     days = [D0 + timedelta(days=i) for i in range(10)]
     data_days = [d for i, d in enumerate(days) if i not in (3, 7)]
-    write(tmp_path, "orange", {d: [seg(d, "t", ["1500"], 100)] for d in data_days})
+    write(tmp_path, "orange", {d: [seg(d, "t", ["1500"], 100), seg(d, "u", ["1500"], 100)] for d in data_days})
     (row,) = stats.car_stats(tmp_path, "orange", window(days[0], days[-1]))
     assert row["games_played_pct"] == 100
     # outage days do not break the streak either
@@ -73,7 +73,9 @@ def test_games_played_ignores_days_without_group_data(tmp_path):
 
 def test_games_played_partial(tmp_path):
     days = [D0 + timedelta(days=i) for i in range(4)]
-    write(tmp_path, "orange", {d: [seg(d, "t", ["X"] if i == 0 else ["Y"], 100)] for i, d in enumerate(days)})
+    write(tmp_path, "orange", {
+        d: [seg(d, t, ["X"] if i == 0 else ["Y"], 100) for t in ("t", "u")] for i, d in enumerate(days)
+    })
     rows = by_number(stats.car_stats(tmp_path, "orange", window(days[0], days[-1])))
     assert rows["X"]["games_played_pct"] == pytest.approx(25)
     assert rows["Y"]["games_played_pct"] == pytest.approx(75)
@@ -97,7 +99,7 @@ def test_iron_horse_streak(tmp_path):
     by_day = {}
     for i, d in days.items():
         cars = ["IH", "OTHER"] if i in (1, 2, 3, 5) else ["OTHER"]
-        by_day[d] = [seg(d, "t", cars, 100)]
+        by_day[d] = [seg(d, "t", cars, 100), seg(d, "u", cars, 100)]
     write(tmp_path, "orange", by_day)
     rows = by_number(stats.car_stats(tmp_path, "orange", window(days[1], days[6])))
     assert rows["IH"]["iron_horse_days"] == 3
@@ -384,3 +386,108 @@ def test_dwell_averages_over_all_segments_so_trip_is_travel_plus_dwell(tmp_path)
     x, y = rows["X"], rows["Y"]
     assert "trip_time_sec" not in x
     assert y["dwell_time_sec"] is None
+
+
+def two_trips(day, cars, travel=100, **kw):
+    return [seg(day, f"t{i}", cars, travel, **kw) for i in range(2)]
+
+
+def test_rail_day_needs_two_trips(tmp_path):
+    d1 = D0 + timedelta(days=1)
+    write(tmp_path, "orange", {
+        D0: [seg(D0, "a", ["A"], 100)] + two_trips(D0, ["B"]),
+        d1: two_trips(d1, ["A"]) + two_trips(d1, ["B"], from_stop="C"),
+    })
+    rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, d1)))
+    assert rows["A"]["service_days"] == 1
+    assert rows["A"]["games_played_pct"] == pytest.approx(50.0)
+    assert rows["B"]["games_played_pct"] == pytest.approx(100.0)
+
+
+def test_bus_day_counts_one_trip(tmp_path):
+    d1 = D0 + timedelta(days=1)
+    write(tmp_path, "bus", {d: [seg(d, "t", ["0952"], 100, route="1", group="bus")] for d in (D0, d1)})
+    (row,) = stats.car_stats(tmp_path, "bus", window(D0, d1))
+    assert row["service_days"] == 2
+    assert row["by_route"][0]["service_days"] == 2
+
+
+def test_first_seen_limits_eligible_days(tmp_path):
+    days = [D0 + timedelta(days=i) for i in range(4)]
+    by_day = {d: two_trips(d, ["OLD"]) for d in days}
+    for d in days[2:]:
+        by_day[d] += two_trips(d, ["N"], from_stop="C")
+    by_day[days[1]] += [seg(days[1], "x", ["N"], 100, from_stop="C")]  # a 1-trip day before delivery doesn't count
+    write(tmp_path, "orange", by_day)
+    fs = stats.first_seen(tmp_path, "orange")
+    assert fs["N"] == days[2].isoformat()
+    w = window(days[0], days[-1])
+    n = by_number(stats.car_stats(tmp_path, "orange", w, first_seen=fs))["N"]
+    assert n["eligible_days"] == 2
+    assert n["games_played_pct"] == pytest.approx(100.0)
+    n = by_number(stats.car_stats(tmp_path, "orange", w))["N"]
+    assert n["eligible_days"] == 4
+    assert n["games_played_pct"] == pytest.approx(50.0)
+
+
+def test_first_seen_normalizes_bus_numbers_and_empty(tmp_path):
+    write(tmp_path, "bus", {D0: [seg(D0, "t", ["0952"], 100, route="1", group="bus")]})
+    assert stats.first_seen(tmp_path, "bus") == {"952": D0.isoformat()}
+    assert stats.first_seen(tmp_path, "blue") == {}
+
+
+def test_trip_len_is_median_trip_duration(tmp_path):
+    # trip = first departure to last arrival: 300, 500, 400 seconds
+    segs = [
+        seg(D0, "t1", ["A", "B"], 300, dep="12:00:00"),
+        seg(D0, "t2", ["A", "B"], 200, dep="13:00:00"),
+        seg(D0, "t2", ["A", "B"], 300, dep="13:03:20", from_stop="B", to_stop="C"),
+        seg(D0, "t3", ["A", "B"], 400, dep="14:00:00"),
+    ]
+    write(tmp_path, "orange", {D0: segs})
+    rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
+    assert rows["A"]["trip_len_sec"] == pytest.approx(400)
+    assert rows["B"]["trip_len_sec"] == pytest.approx(400)
+
+
+def test_bus_trip_len_per_route(tmp_path):
+    write(tmp_path, "bus", {D0: [
+        seg(D0, "t1", ["9"], 300, route="1", group="bus"),
+        seg(D0, "t2", ["9"], 600, route="2", group="bus"),
+    ]})
+    (row,) = stats.car_stats(tmp_path, "bus", window(D0, D0))
+    assert row["trip_len_sec"] == pytest.approx(450)
+    assert {r["route"]: r["trip_len_sec"] for r in row["by_route"]} == {"1": 300, "2": 600}
+
+
+def _runs(day, key_stop, noise, cars, n, start=0):
+    return [seg(day, f"{key_stop}{cars[0]}{start + i}", cars, 100 + noise * (1 if i % 2 else -1), from_stop=key_stop,
+                to_stop=key_stop + "z") for i in range(n)]
+
+
+def test_steady_adj_compares_with_same_segments(tmp_path):
+    segs = []
+    for car in ("X", "X2"):
+        segs += _runs(D0, "noisy", 40, [car], 20)
+    for car in ("Y", "Y2"):
+        segs += _runs(D0, "calm", 5, [car], 20)
+    write(tmp_path, "orange", {D0: segs})
+    rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
+    assert abs(rows["X"]["steady_adj_sec"]) < 0.5
+    assert abs(rows["Y"]["steady_adj_sec"]) < 0.5
+    assert abs(rows["X"]["steadiness_sec"] - rows["Y"]["steadiness_sec"]) > 20
+
+
+def test_steady_adj_null_when_thin(tmp_path):
+    segs = _runs(D0, "thin", 10, ["T"], 10) + _runs(D0, "calm", 5, ["C"], 20)
+    write(tmp_path, "orange", {D0: segs})
+    rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
+    assert rows["T"]["steady_adj_sec"] is None
+    assert rows["C"]["steady_adj_sec"] is not None
+
+
+def test_bus_by_route_has_steady_adj(tmp_path):
+    segs = [seg(D0, f"t{i}", ["7"], 100 + (10 if i % 2 else -10), route="1", group="bus") for i in range(20)]
+    write(tmp_path, "bus", {D0: segs})
+    (row,) = stats.car_stats(tmp_path, "bus", window(D0, D0))
+    assert row["by_route"][0]["steady_adj_sec"] == pytest.approx(0)
