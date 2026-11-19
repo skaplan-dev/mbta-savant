@@ -15,11 +15,17 @@
       "Type": "String",
       "Default": "",
       "Description": "ACM certificate in us-east-1 covering Hostname. Required with Hostname."
+    },
+    "ExtraHostname": {
+      "Type": "String",
+      "Default": "",
+      "Description": "Optional second hostname on the same certificate (e.g. www.example.com), served by the same site. Needs Hostname."
     }
   },
   "Conditions": {
-    "HasDomain": {
-      "Fn::Not": [{ "Fn::Equals": [{ "Ref": "Hostname" }, ""] }]
+    "HasDomain": { "Fn::Not": [{ "Fn::Equals": [{ "Ref": "Hostname" }, ""] }] },
+    "HasExtraHostname": {
+      "Fn::And": [{ "Condition": "HasDomain" }, { "Fn::Not": [{ "Fn::Equals": [{ "Ref": "ExtraHostname" }, ""] }] }]
     }
   },
   "Resources": {
@@ -85,7 +91,13 @@
       "Type": "AWS::CloudFront::Distribution",
       "Properties": {
         "DistributionConfig": {
-          "Aliases": { "Fn::If": ["HasDomain", [{ "Ref": "Hostname" }], { "Ref": "AWS::NoValue" }] },
+          "Aliases": {
+            "Fn::If": [
+              "HasDomain",
+              { "Fn::If": ["HasExtraHostname", [{ "Ref": "Hostname" }, { "Ref": "ExtraHostname" }], [{ "Ref": "Hostname" }]] },
+              { "Ref": "AWS::NoValue" }
+            ]
+          },
           "Comment": { "Fn::Sub": "MBTA Savant (${AWS::StackName})" },
           "DefaultCacheBehavior": {
             "TargetOriginId": "S3Origin",
@@ -150,6 +162,20 @@
           "HostedZoneId": "Z2FDTNDATAQYW2"
         }
       }
+    },
+    "ExtraDNSRecord": {
+      "Type": "AWS::Route53::RecordSet",
+      "Condition": "HasExtraHostname",
+      "Properties": {
+        "HostedZoneName": { "Fn::Sub": "${HostedZoneName}." },
+        "Name": { "Ref": "ExtraHostname" },
+        "Type": "A",
+        "AliasTarget": {
+          "DNSName": { "Fn::GetAtt": ["CloudFrontDistribution", "DomainName"] },
+          "EvaluateTargetHealth": false,
+          "HostedZoneId": "Z2FDTNDATAQYW2"
+        }
+      }
     }
   },
   "Outputs": {
@@ -163,13 +189,7 @@
         ]
       }
     },
-    "CloudFrontDistributionId": {
-      "Description": "CloudFront distribution ID",
-      "Value": { "Ref": "CloudFrontDistribution" }
-    },
-    "S3BucketName": {
-      "Description": "Bucket holding the site, data/ and segments/",
-      "Value": { "Ref": "FrontendBucket" }
-    }
+    "CloudFrontDistributionId": { "Description": "CloudFront distribution ID", "Value": { "Ref": "CloudFrontDistribution" } },
+    "S3BucketName": { "Description": "Bucket holding the site, data/ and segments/", "Value": { "Ref": "FrontendBucket" } }
   }
 }

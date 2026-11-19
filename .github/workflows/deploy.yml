@@ -17,6 +17,7 @@ jobs:
       SITE_HOSTNAME: ${{ vars.SITE_HOSTNAME }}
       HOSTED_ZONE: ${{ vars.HOSTED_ZONE }}
       CERTIFICATE_ARN: ${{ vars.CERTIFICATE_ARN }}
+      EXTRA_HOSTNAME: ${{ vars.EXTRA_HOSTNAME }}
 
     steps:
       - name: Checkout repo

@@ -4,6 +4,7 @@
 #   AWS_PROFILE=seth ./deploy.sh                      # CloudFront's own *.cloudfront.net address
 #   AWS_PROFILE=seth SITE_HOSTNAME=savant.example.com HOSTED_ZONE=example.com \
 #       CERTIFICATE_ARN=arn:aws:acm:us-east-1:... ./deploy.sh   # custom domain
+#   EXTRA_HOSTNAME=www.example.com                     # optional second name on the same cert
 set -euo pipefail
 
 export AWS_REGION=${AWS_REGION:-us-east-1}
@@ -15,9 +16,9 @@ STACK_NAME=${STACK_NAME:-mbta-savant}
 if [[ -n "${SITE_HOSTNAME:-}" ]]; then
     : "${HOSTED_ZONE:?HOSTED_ZONE is required with SITE_HOSTNAME}"
     : "${CERTIFICATE_ARN:?CERTIFICATE_ARN is required with SITE_HOSTNAME}"
-    DOMAIN_PARAMS="Hostname=$SITE_HOSTNAME HostedZoneName=$HOSTED_ZONE CertificateArn=$CERTIFICATE_ARN"
+    DOMAIN_PARAMS="Hostname=$SITE_HOSTNAME HostedZoneName=$HOSTED_ZONE CertificateArn=$CERTIFICATE_ARN ExtraHostname=${EXTRA_HOSTNAME:-}"
 else
-    DOMAIN_PARAMS="Hostname= HostedZoneName= CertificateArn="
+    DOMAIN_PARAMS="Hostname= HostedZoneName= CertificateArn= ExtraHostname="
 fi
 
 echo "Deploying to account $(aws sts get-caller-identity --query Account --output text) as stack $STACK_NAME"
