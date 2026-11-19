@@ -25,8 +25,8 @@ const summary = (o: Partial<GroupSummary> = {}): GroupSummary => ({
 
 const tarCar = (o: Parameters<typeof carStats>[1] = {}): Car => ({
     ...carStats('1902', {
-        tar: 1619,
-        tar_parts: { field: 1390, speed: 203, steady: 26 },
+        tar: 1414,
+        tar_parts: { field: 1400, speed: 8, steady: 6 },
         eligible_days: 100,
         service_days: 90,
         steady_adj_sec: 1.5,
@@ -43,10 +43,10 @@ describe('TarBlock', () => {
     it('leads with the TAR value and the three parts', async () => {
         await renderWithRouter(<TarBlock car={tarCar()} summary={summary()} />);
 
-        expect(screen.getByText('+1,619 trips above replacement')).toBeTruthy();
-        expect(screen.getByText('On the field +1,390')).toBeTruthy();
-        expect(screen.getByText('Speed +203')).toBeTruthy();
-        expect(screen.getByText('Steadiness +26')).toBeTruthy();
+        expect(screen.getByText('+1,414 trips above replacement')).toBeTruthy();
+        expect(screen.getByText('On the field +1,400')).toBeTruthy();
+        expect(screen.getByText('Speed +8')).toBeTruthy();
+        expect(screen.getByText('Steadiness +6')).toBeTruthy();
         expect(screen.getByRole('img', { name: /TAR: 80th percentile/ })).toBeTruthy();
     });
     it('says steadiness is not measured when its input is null', async () => {
@@ -71,7 +71,7 @@ describe('TarBlock', () => {
         const field = screen.getByText(/On the field:/).parentElement?.textContent ?? '';
 
         expect(field).toContain('100 eligible days');
-        expect(field).toContain('+1,390');
+        expect(field).toContain('+1,400');
         expect(screen.getByText(/parts may differ by a trip/)).toBeTruthy();
         expect(screen.getByRole('link', { name: 'How TAR is calculated' })).toBeTruthy();
     });
@@ -103,12 +103,7 @@ describe('TarBlock', () => {
         expect(screen.getByText(/Not enough trips/)).toBeTruthy();
     });
     it('lets a reader recompute the field part from the rendered numbers', async () => {
-        await renderWithRouter(
-            <TarBlock
-                car={tarCar({ tar: 1629, tar_parts: { field: 1400, speed: 203, steady: 26 } })}
-                summary={summary()}
-            />
-        );
+        await renderWithRouter(<TarBlock car={tarCar()} summary={summary()} />);
         fireEvent.click(screen.getByText('Show the math'));
 
         const t = screen.getByText(/On the field:/).parentElement?.textContent ?? '';
@@ -121,6 +116,32 @@ describe('TarBlock', () => {
 
         expect(share).toBe(0.9);
         expect(Math.abs((share - repl) * days * tpd - shown)).toBeLessThanOrEqual(1);
+
+        const sp = screen.getByText(/Speed:/).parentElement?.textContent ?? '';
+        const n2 = (str: string, re: RegExp) =>
+            Number((re.exec(str)?.[1] ?? 'NaN').replace(/,/g, '').replace('−', '-'));
+
+        expect(sp).toContain('(+15.0 seconds saved per trip − replacement +5.0)');
+        expect(sp).not.toContain('s seconds');
+
+        const fast = n2(sp, /\(([+−][\d.]+) seconds/);
+        const rf = n2(sp, /replacement ([+−][\d.]+)\)/);
+        const trips = n2(sp, /× ([\d,]+) trips/);
+        const len = n2(sp, /÷ ([\d,]+) s/);
+        const speedShown = n2(sp, /= ([+−]?[\d,]+)$/);
+
+        expect(Math.abs(((fast - rf) * trips) / len - speedShown)).toBeLessThanOrEqual(1);
+
+        const st =
+            screen.getByText(/Steadiness:/, { selector: 'b' }).parentElement?.textContent ?? '';
+        const sv = n2(st, /\(([+−][\d.]+) s/);
+        const rs = n2(st, /replacement ([+−][\d.]+) s\)/);
+        const segs = n2(st, /× ([\d.]+) segments/);
+        const stTrips = n2(st, /× ([\d,]+) trips/);
+        const stLen = n2(st, /÷ ([\d,]+) s/);
+        const stShown = n2(st, /= ([+−]?[\d,]+)$/);
+
+        expect(Math.abs(((sv - rs) * segs * stTrips) / stLen - stShown)).toBeLessThanOrEqual(1);
     });
     it('uses explicit operators and a real minus for negative parts', async () => {
         await renderWithRouter(
@@ -136,6 +157,17 @@ describe('TarBlock', () => {
         );
         expect(screen.getByText('On the field −451')).toBeTruthy();
     });
+    it('never prints a minus before a zero part', async () => {
+        await renderWithRouter(
+            <TarBlock
+                car={tarCar({ tar: 1400, tar_parts: { field: 1400, speed: -0.2, steady: 0 } })}
+                summary={summary()}
+            />
+        );
+        fireEvent.click(screen.getByText('Show the math'));
+
+        expect(screen.getByText(/Total:/).parentElement?.textContent).not.toContain('− 0');
+    });
     it('counts an unmeasured steadiness as 0 in the total', async () => {
         await renderWithRouter(
             <TarBlock car={tarCar({ steady_adj_sec: null })} summary={summary()} />
@@ -143,7 +175,7 @@ describe('TarBlock', () => {
         fireEvent.click(screen.getByText('Show the math'));
 
         expect(screen.getByText(/Total:/).parentElement?.textContent).toContain(
-            '+1,390 + 203 + 0 (not measured) = +1,619 trips'
+            '+1,400 + 8 + 0 (not measured) = +1,414 trips'
         );
     });
     it('does not crash or show math when tar_parts is missing', async () => {
@@ -151,7 +183,7 @@ describe('TarBlock', () => {
             <TarBlock car={tarCar({ tar_parts: undefined })} summary={summary()} />
         );
 
-        expect(screen.getByText('+1,619 trips above replacement')).toBeTruthy();
+        expect(screen.getByText('+1,414 trips above replacement')).toBeTruthy();
         expect(screen.queryByText('Show the math')).toBeNull();
     });
 });

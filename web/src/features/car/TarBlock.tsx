@@ -62,7 +62,7 @@ function TarMath({
     const join = (vals: number[]) =>
         vals
             .map((v, i) =>
-                i === 0 ? fmtTrips(v) : `${v < 0 ? '−' : '+'} ${fmtNum(Math.abs(v), 0)}`
+                i === 0 ? fmtTrips(v) : `${Math.round(v) < 0 ? '−' : '+'} ${fmtNum(Math.abs(v), 0)}`
             )
             .join(' ');
     const stTerm = canSteady ? st : 0;
@@ -84,9 +84,10 @@ function TarMath({
                     {fmtTrips(field)}
                 </li>
                 <li>
-                    <b className="text-ink font-medium">Speed:</b> ({sec(m.fast)} seconds saved per
-                    trip − replacement {sec(m.replFast)}) × {fmtNum(m.trips, 0)} trips ÷{' '}
-                    {fmtNum(m.len, 0)} s ({lenMin} min) typical trip length = {fmtTrips(speed)}
+                    <b className="text-ink font-medium">Speed:</b> ({signed(m.fast, 1)} seconds
+                    saved per trip − replacement {signed(m.replFast, 1)}) × {fmtNum(m.trips, 0)}{' '}
+                    trips ÷ {fmtNum(m.len, 0)} s ({lenMin} min) typical trip length ={' '}
+                    {fmtTrips(speed)}
                 </li>
                 <li>
                     <b className="text-ink font-medium">Steadiness:</b>{' '}
