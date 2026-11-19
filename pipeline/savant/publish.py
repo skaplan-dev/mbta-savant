@@ -53,20 +53,25 @@ def _pool(cars: list[dict], metric: str) -> list[float]:
     return [c[metric] for c in cars if c.get("qualified") and c.get("ranked") and c.get(metric) is not None]
 
 
-def too_close(cars: list[dict]) -> list[str]:
-    """Metrics (with a MIN_SPREAD) whose values are too bunched to rank these cars; [] if no car is ranked."""
+def spread(cars: list[dict]) -> dict[str, float | None]:
+    """Per MIN_SPREAD metric, the gap between the 10th- and 90th-percentile ranked cars (None with too few cars to
+    measure); {} if no car is ranked. Published so the site can say how bunched a too-close stat is."""
     if not any(c.get("ranked") for c in cars):
-        return []
-    out = []
-    for metric, floor in MIN_SPREAD.items():
+        return {}
+    out: dict[str, float | None] = {}
+    for metric in MIN_SPREAD:
         vals = _pool(cars, metric)
         if len(vals) < MIN_CARS:
-            out.append(metric)
+            out[metric] = None
             continue
         cuts = statistics.quantiles(vals, n=10)
-        if cuts[-1] - cuts[0] < floor:
-            out.append(metric)
+        out[metric] = cuts[-1] - cuts[0]
     return out
+
+
+def too_close(cars: list[dict]) -> list[str]:
+    """Metrics (with a MIN_SPREAD) whose values are too bunched to rank these cars; [] if no car is ranked."""
+    return [m for m, width in spread(cars).items() if width is None or width < MIN_SPREAD[m]]
 
 
 def add_percentiles(group: str, cars: list[dict]) -> list[dict]:
@@ -164,7 +169,8 @@ def route_boards(cars: list[dict], window: str, now: str) -> dict[str, dict]:
         rcars = add_percentiles("bus", rcars)
         boards[route] = {"group": "bus", "route": route, "window": window, "generated_at": now,
                          "qualify_min_trips": stats.ROUTE_QUALIFY_MIN_TRIPS, "segs_per_trip": segs,
-                         "typical": add_vs_typical(rcars), "too_close": too_close(rcars), "cars": rcars}
+                         "typical": add_vs_typical(rcars), "too_close": too_close(rcars), "spread": spread(rcars),
+                         "cars": rcars}
     return boards
 
 
@@ -243,7 +249,8 @@ def publish(root: Path, out: Path) -> None:
             summary = {"group": group, "window": w.key, "generated_at": now,
                        "qualify_min_trips": stats.qualify_threshold([c["trips"] for c in cars]),
                        "ranked_cars": sum(1 for c in cars if c["qualified"] and c["ranked"]),
-                       "segs_per_trip": segs_per_trip, "typical": typical, "too_close": too_close(cars)}
+                       "segs_per_trip": segs_per_trip, "typical": typical, "too_close": too_close(cars),
+                       "spread": spread(cars)}
             _write(
                 data / w.key / "groups" / f"{group}.json",
                 {**{k: v for k, v in summary.items() if k != "ranked_cars"},

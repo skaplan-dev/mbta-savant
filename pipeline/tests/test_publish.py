@@ -1,3 +1,4 @@
+import pytest
 import json
 from datetime import date
 
@@ -173,6 +174,18 @@ def test_too_close_marks_flat_metric():
     assert all(c["pct"]["games_played_pct"] is not None for c in out)
 
 
+def test_spread_is_p10_to_p90_width():
+    cars = publish.add_percentiles("orange", [car(f"140{i}", 0.0, on_time_pct=90.0 + i * 0.1) for i in range(6)])
+    sp = publish.spread(cars)
+    assert set(sp) == set(publish.MIN_SPREAD)
+    assert sp["on_time_pct"] == pytest.approx(0.56)  # statistics.quantiles(n=10), exclusive method, of 90.0..90.5
+    assert publish.spread(cars[:2])["on_time_pct"] is None  # too few cars to measure
+
+
+def test_spread_empty_when_nothing_ranked():
+    assert publish.spread(publish.add_percentiles("mattapan", [car("3087", 1)])) == {}
+
+
 def test_too_close_with_few_cars():
     out = publish.add_percentiles("orange", [car("1400", 0.0, on_time_pct=50.0), car("1401", 500.0, on_time_pct=99.0)])
     assert set(publish.too_close(out)) == set(publish.MIN_SPREAD)
@@ -201,10 +214,11 @@ def test_group_summary_is_the_small_version_of_the_group_file(tmp_path):
     g = load(out / "data/last30/groups/orange.json")
     sm = load(out / "data/last30/groups/orange.summary.json")
     assert set(sm) == {"group", "window", "generated_at", "qualify_min_trips", "ranked_cars", "segs_per_trip",
-                       "typical", "too_close"}
+                       "typical", "too_close", "spread"}
     assert sm["group"] == "orange" and sm["window"] == "last30"
     assert sm["typical"] == g["typical"] and sm["qualify_min_trips"] == g["qualify_min_trips"]
     assert sm["too_close"] == g["too_close"] and sm["segs_per_trip"] == g["segs_per_trip"]
+    assert sm["spread"] == g["spread"] and set(g["spread"]) == set(publish.MIN_SPREAD)
     assert sm["ranked_cars"] == sum(1 for c in g["cars"] if c["qualified"] and c["ranked"]) == 2
     assert (out / "data/last30/groups/orange.summary.json").stat().st_size < 1000
 
@@ -236,6 +250,7 @@ def test_route_boards_and_index(tmp_path):
     assert cars["1400"]["routes"] is None and cars["1400"]["teammates"] == []
     assert "averages" not in board and board["segs_per_trip"] == 1
     assert board["typical"]["travel_time_sec"] is not None and "travel_time_sec" in board["too_close"]
+    assert "spread" in board
     assert load(out / "data/last30/routes/index.json") == [{"route": "1", "buses": 2, "ranked_cars": 2, "trips": 100}]
     # The per-route rows live only in the route files.
     assert "by_route" not in load(out / "data/last30/cars/bus/1400.json")

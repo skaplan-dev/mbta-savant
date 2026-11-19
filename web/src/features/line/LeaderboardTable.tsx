@@ -1,13 +1,12 @@
 import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { CarStats, Metric } from '../../api';
+import type { CarStats, GroupFile, Metric } from '../../api';
 import CarPill from '../../components/CarPill';
 import StatTerm from '../../components/StatTerm';
 import { fmtDate, fmtInt, pctColor, tint } from '../../format';
 import { GROUPS, type GroupId } from '../../groups';
-import { GLOSSARY } from '../../glossary';
-import { boardStats, type Stat } from '../../stats';
+import { boardStats, tooCloseList, type Stat } from '../../stats';
 import { firstDir, sortCars, type Sort, type SortKey, type RankedRow } from './leaderboard';
 
 const th =
@@ -113,6 +112,7 @@ export default function LeaderboardTable({
     ranked,
     cols = boardStats(group),
     tooClose = [],
+    spread,
     scope = 'line',
 }: {
     group: GroupId;
@@ -122,6 +122,8 @@ export default function LeaderboardTable({
     cols?: readonly Stat[];
     /** Metrics too close to call on this line; their cells are untinted. */
     tooClose?: readonly Metric[];
+    /** How bunched each stat is (group file `spread`), for the banner. */
+    spread?: GroupFile['spread'];
     /** Whether this is a whole line's board or one bus route's, for the banner's wording. */
     scope?: 'line' | 'route';
 }) {
@@ -170,20 +172,18 @@ export default function LeaderboardTable({
     const items = virtual ? virtualizer.getVirtualItems() : null;
     const rowProps = { group, season, cols };
 
-    const tooCloseNames = cols
-        .filter((s) => tooClose.includes(s.pct))
-        .map((s) => GLOSSARY[s.id].name);
+    const tooCloseText = tooCloseList(cols, tooClose, spread, group === 'bus' ? 'buses' : 'cars');
 
     const aria = (key: SortKey) =>
         sort.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none';
 
     return (
         <section className="panel" aria-label="Leaderboard">
-            {tooCloseNames.length > 0 && (
+            {tooCloseText && (
                 <p className="text-ink-2 text-ui m-0 px-3 py-2">
                     {ranked.length < MIN_RANKED
                         ? `Too few ranked ${group === 'bus' ? 'buses' : 'cars'} on this ${scope} for percentiles; values are shown without colors.`
-                        : `Too close to call on this ${scope}: ${tooCloseNames.join(', ')}. Shown without colors.`}
+                        : `Too close to call on this ${scope}, so shown without colors: ${tooCloseText}.`}
                 </p>
             )}
             <div className="overflow-x-auto">

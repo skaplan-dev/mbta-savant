@@ -77,6 +77,7 @@ function LineView({
                     season={season}
                     ranked={ranked}
                     tooClose={file.too_close}
+                    spread={file.spread}
                 />
             )}
             {unranked.length > 0 && <NotRanked group={group} season={season} rows={unranked} />}

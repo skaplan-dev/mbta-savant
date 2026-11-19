@@ -8,7 +8,7 @@ import { barPos, fmtInt, fmtNum } from '../../format';
 import { GLOSSARY } from '../../glossary';
 import { GROUPS, type GroupId } from '../../groups';
 import { isRanked, unrankedReason } from '../../rank';
-import { panelStats, type Stat } from '../../stats';
+import { panelStats, tooCloseList, type Stat } from '../../stats';
 
 const COLS = 'grid grid-cols-[32%_minmax(0,1fr)_72px]';
 const ROW_RULE = 'border-t border-dashed border-row-rule';
@@ -26,6 +26,7 @@ function Section({
     car,
     ranked,
     tooClose,
+    spread,
     line,
     among = false,
     first = false,
@@ -36,12 +37,13 @@ function Section({
     car: Car;
     ranked: boolean;
     tooClose: readonly Metric[];
+    spread: GroupSummary['spread'];
     line: string;
     /** Buses have no line to name, so the note says "among buses". */
     among?: boolean;
     first?: boolean;
 }) {
-    const close = stats.filter((s) => tooClose.includes(s.pct));
+    const close = tooCloseList(stats, tooClose, spread, among ? 'buses' : 'cars');
 
     return (
         <>
@@ -92,11 +94,10 @@ function Section({
                     </div>
                 </div>
             ))}
-            {ranked && close.length > 0 && (
+            {ranked && close && (
                 <p className="text-ink-3 text-meta mt-2.5 mb-0 text-center">
-                    Too close to call {among ? 'among buses' : `on the ${line}`}:{' '}
-                    {close.map((s) => GLOSSARY[s.id].name).join(', ')}. Cars are within a hair of
-                    each other, so these aren’t ranked.
+                    Too close to call {among ? 'among buses' : `on the ${line}`}, so these aren’t
+                    ranked: {close}.
                 </p>
             )}
         </>
@@ -117,6 +118,7 @@ export default function PercentilePanel({
     const info = GROUPS[group];
     const ranked = isRanked(group, car);
     const tooClose = summary?.too_close ?? [];
+    const spread = summary?.spread;
     const rankedCount = summary?.ranked_cars;
 
     const rankedNote =
@@ -151,6 +153,7 @@ export default function PercentilePanel({
                     car={car}
                     ranked={ranked}
                     tooClose={tooClose}
+                    spread={spread}
                     line={info.name}
                     among={group === 'bus'}
                     first
@@ -162,6 +165,7 @@ export default function PercentilePanel({
                     car={car}
                     ranked={ranked}
                     tooClose={tooClose}
+                    spread={spread}
                     line={info.name}
                     among={group === 'bus'}
                 />

@@ -79,7 +79,26 @@ describe('PercentilePanel', () => {
         expect(screen.getByRole('img', { name: 'On-Schedule %: not ranked' })).toBeTruthy();
         expect(
             screen.getByText(
-                'Too close to call on the Red Line: On-Schedule %. Cars are within a hair of each other, so these aren’t ranked.'
+                'Too close to call on the Red Line, so these aren’t ranked: On-Schedule %.'
+            )
+        ).toBeTruthy();
+    });
+    it('says how bunched each too-close stat is', async () => {
+        await renderWithRouter(
+            <PercentilePanel
+                group="orange"
+                season="2026"
+                car={car('1400')}
+                summary={summary('orange', {
+                    too_close: ['steadiness_sec', 'on_time_pct'],
+                    spread: { steadiness_sec: 0.42, on_time_pct: 0.61 },
+                })}
+            />
+        );
+
+        expect(
+            screen.getByText(
+                'Too close to call on the Orange Line, so these aren’t ranked: Consistency (8 in 10 cars within 0.4 s of each other), On-Schedule % (8 in 10 cars within 0.6 points).'
             )
         ).toBeTruthy();
     });
@@ -95,7 +114,7 @@ describe('PercentilePanel', () => {
 
         expect(
             screen.getByText(
-                'Too close to call among buses: On-Schedule %. Cars are within a hair of each other, so these aren’t ranked.'
+                'Too close to call among buses, so these aren’t ranked: On-Schedule %.'
             )
         ).toBeTruthy();
     });

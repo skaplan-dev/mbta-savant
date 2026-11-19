@@ -108,7 +108,24 @@ describe('LeaderboardTable', () => {
         );
         expect(
             await screen.findByText(
-                'Too close to call on this line: Dwell Time, On-Schedule %. Shown without colors.'
+                'Too close to call on this line, so shown without colors: Dwell Time, On-Schedule %.'
+            )
+        ).toBeTruthy();
+    });
+
+    it('says how bunched each too-close column is', async () => {
+        await renderWithRouter(
+            <LeaderboardTable
+                group="bus"
+                season="2026"
+                ranked={five}
+                tooClose={['iron_horse_days', 'dwell_time_sec']}
+                spread={{ iron_horse_days: 2.4, dwell_time_sec: null }}
+            />
+        );
+        expect(
+            await screen.findByText(
+                'Too close to call on this line, so shown without colors: Iron Horse Streak (8 in 10 buses within 2 days of each other), Dwell Time.'
             )
         ).toBeTruthy();
     });
@@ -149,7 +166,7 @@ describe('LeaderboardTable', () => {
         );
         expect(
             await screen.findByText(
-                'Too close to call on this line: On-Schedule %. Shown without colors.'
+                'Too close to call on this line, so shown without colors: On-Schedule %.'
             )
         ).toBeTruthy();
     });
@@ -167,7 +184,7 @@ describe('LeaderboardTable', () => {
         );
         expect(
             await screen.findByText(
-                'Too close to call on this route: On-Schedule %. Shown without colors.'
+                'Too close to call on this route, so shown without colors: On-Schedule %.'
             )
         ).toBeTruthy();
     });

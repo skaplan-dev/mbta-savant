@@ -116,6 +116,7 @@ export interface GroupSummary {
     segs_per_trip?: number | null;
     typical?: GroupFile['typical'];
     too_close?: Metric[];
+    spread?: GroupFile['spread'];
 }
 
 export interface GroupFile {
@@ -129,6 +130,8 @@ export interface GroupFile {
     typical?: Partial<Record<'travel_time_sec' | 'dwell_time_sec', number | null>>;
     /** Stats where the line's cars are too close together to show percentiles. */
     too_close?: Metric[];
+    /** Gap between the 10th- and 90th-percentile ranked cars, per stat that can be too close (null: too few cars). */
+    spread?: Partial<Record<Metric, number | null>>;
     cars: CarStats[];
 }
 

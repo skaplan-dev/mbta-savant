@@ -91,6 +91,7 @@ function RouteView({
                     ranked={ranked}
                     cols={COLS}
                     tooClose={file.too_close}
+                    spread={file.spread}
                     scope="route"
                 />
             )}
