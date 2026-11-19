@@ -81,10 +81,12 @@
         "Name": { "Fn::Sub": "${AWS::StackName}-block-segments" },
         "AutoPublish": true,
         "FunctionConfig": {
-          "Comment": "Return 404 for /segments/* so raw pipeline segments are not served publicly",
+          "Comment": "Canonical-host redirect, clean URLs to prerendered pages/, 404 for /segments/*",
           "Runtime": "cloudfront-js-2.0"
         },
-        "FunctionCode": "function handler(event) {\n  var req = event.request;\n  if (req.uri.indexOf('/segments/') === 0) {\n    return { statusCode: 404, statusDescription: 'Not Found' };\n  }\n  return req;\n}\n"
+        "FunctionCode": {
+          "Fn::Sub": "// Viewer request: one canonical host, clean URLs mapped to their prerendered page, and no public segments.\nvar CANONICAL = '${Hostname}';\n\nfunction query(q) {\n  var parts = [];\n  for (var k in q) {\n    var v = q[k];\n    var all = v.multiValue ? v.multiValue : [v];\n    for (var i = 0; i < all.length; i++) parts.push(all[i].value ? k + '=' + all[i].value : k);\n  }\n  return parts.length ? '?' + parts.join('&') : '';\n}\n\nfunction handler(event) {\n  var req = event.request;\n  var uri = req.uri;\n  var host = req.headers.host ? req.headers.host.value : '';\n  if (CANONICAL && host !== CANONICAL) {\n    return {\n      statusCode: 301,\n      statusDescription: 'Moved Permanently',\n      headers: { location: { value: 'https://' + CANONICAL + uri + query(req.querystring) } }\n    };\n  }\n  if (uri.indexOf('/segments/') === 0 || uri.indexOf('/pages/') === 0) {\n    return { statusCode: 404, statusDescription: 'Not Found' };\n  }\n  // pages/ holds a copy of index.html per page with that page's title and description (savant pages).\n  if (uri === '/') {\n    req.uri = '/pages/index.html';\n  } else if (uri === '/robots.txt' || uri === '/sitemap.xml') {\n    req.uri = '/pages' + uri;\n  } else if (/^\\/(car|line|route|glossary)(\\/|$)/.test(uri) && uri.indexOf('.') === -1) {\n    req.uri = '/pages' + uri.replace(/\\/+$/, '') + '.html';\n  }\n  return req;\n}\n"
+        }
       }
     },
     "CloudFrontDistribution": {
@@ -127,8 +129,8 @@
             }
           ],
           "CustomErrorResponses": [
-            { "ErrorCode": 403, "ResponseCode": 200, "ResponsePagePath": "/index.html" },
-            { "ErrorCode": 404, "ResponseCode": 200, "ResponsePagePath": "/index.html" }
+            { "ErrorCode": 403, "ResponseCode": 404, "ResponsePagePath": "/index.html" },
+            { "ErrorCode": 404, "ResponseCode": 404, "ResponsePagePath": "/index.html" }
           ],
           "PriceClass": "PriceClass_100",
           "ViewerCertificate": {

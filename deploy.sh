@@ -38,13 +38,27 @@ output() {
 BUCKET=$(output S3BucketName)
 DISTRIBUTION_ID=$(output CloudFrontDistributionId)
 
-# data/ and segments/ are owned by the nightly pipeline; never delete them here.
+# data/ and segments/ are owned by the nightly pipeline, and pages/ is regenerated below; never delete them here.
 echo "Syncing built files to s3://$BUCKET"
 aws s3 sync web/dist/ "s3://$BUCKET" --delete \
-    --exclude "data/*" --exclude "segments/*" \
+    --exclude "data/*" --exclude "segments/*" --exclude "pages/*" \
     --cache-control "public, max-age=31536000, immutable"
 aws s3 cp web/dist/index.html "s3://$BUCKET/index.html" \
     --cache-control "no-cache, must-revalidate"
+
+# Per-page HTML for crawlers and link previews (see pipeline/savant/pages.py): rebuilt from the new
+# index.html, since the old copies point at asset files the sync above just deleted.
+if [[ -n "${SITE_HOSTNAME:-}" ]]; then
+    echo "Writing per-page HTML"
+    PAGES_TMP=$(mktemp -d)
+    aws s3 sync "s3://$BUCKET/data" "$PAGES_TMP/data" --exclude "*" \
+        --include "meta.json" --include "*/index.json" --only-show-errors
+    (cd pipeline && uv run --frozen savant pages --template ../web/dist/index.html \
+        --data "$PAGES_TMP/data" --out "$PAGES_TMP/pages" --host "$SITE_HOSTNAME")
+    aws s3 sync "$PAGES_TMP/pages" "s3://$BUCKET/pages" --delete --only-show-errors \
+        --cache-control "no-cache, must-revalidate"
+    rm -rf "$PAGES_TMP"
+fi
 
 echo "Invalidating CloudFront cache"
 aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"

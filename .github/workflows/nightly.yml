@@ -33,6 +33,8 @@ jobs:
       # Repository variables, from the deploy stack's S3BucketName and CloudFrontDistributionId outputs.
       BUCKET: ${{ vars.SAVANT_BUCKET }}
       CLOUDFRONT_ID: ${{ vars.SAVANT_DISTRIBUTION_ID }}
+      # Canonical hostname for the per-page HTML; unset skips that step.
+      SITE_HOSTNAME: ${{ vars.SITE_HOSTNAME }}
 
     steps:
       - name: Checkout repo
@@ -95,6 +97,17 @@ jobs:
           aws s3 sync ./out/data s3://$BUCKET/data --delete \
             --content-type application/json \
             --cache-control "public, max-age=3600"
-      - name: Invalidate data cache
+      # Per-page HTML (titles, descriptions, link previews), sitemap.xml and robots.txt from tonight's
+      # numbers, using the deployed index.html as the template so the pages load the live assets.
+      - name: Publish per-page HTML
+        if: env.SITE_HOSTNAME != ''
         run: |
-          aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_ID" --paths "/data/*"
+          aws s3 cp "s3://$BUCKET/index.html" /tmp/index.html
+          (cd pipeline && uv run --frozen savant pages --template /tmp/index.html \
+            --data ../out/data --out ../out/pages --host "$SITE_HOSTNAME")
+          aws s3 sync ./out/pages "s3://$BUCKET/pages" --delete \
+            --cache-control "no-cache, must-revalidate"
+      # CloudFront caches the pages under their rewritten /pages/... paths.
+      - name: Invalidate data and page cache
+        run: |
+          aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_ID" --paths "/data/*" "/pages/*"
