@@ -127,7 +127,7 @@ export default function LeaderboardTable({
     /** Whether this is a whole line's board or one bus route's, for the banner's wording. */
     scope?: 'line' | 'route';
 }) {
-    const [sort, setSort] = useState<Sort>({ key: 'time-saved', dir: 'desc' });
+    const [sort, setSort] = useState<Sort>({ key: 'tar', dir: 'desc' });
     const rows = useMemo(() => sortCars(ranked, sort, group), [ranked, sort, group]);
 
     const toggle = (key: SortKey) =>

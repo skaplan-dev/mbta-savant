@@ -6,6 +6,7 @@ import {
     EDGE_MIX,
     fmtDate,
     fmtSaved,
+    fmtTrips,
     fmtSavedPct,
     dwellSaved,
     savedPct,
@@ -51,6 +52,12 @@ describe('car stats', () => {
         expect(dwellSaved({ dwell_vs_typical_sec: null })).toBeNull();
         expect(savedPct({})).toBeNull();
     });
+    it('fmtTrips is whole trips, signed, with thousands separators', () => {
+        expect(fmtTrips(1619)).toBe('+1,619');
+        expect(fmtTrips(-451)).toBe('−451');
+        expect(fmtTrips(0)).toBe('0');
+        expect(fmtTrips(null)).toBe('–');
+    });
     it('fmtDate', () => {
         expect(fmtDate('2026-11-18')).toBe('Nov 18, 2026');
         expect(fmtDate(null)).toBe('–');
@@ -60,6 +67,7 @@ describe('car stats', () => {
 describe('stats registry', () => {
     it('orders the red board', () => {
         expect(boardStats('red').map((s) => s.id)).toEqual([
+            'tar',
             'time-saved',
             'days-in-service',
             'iron-horse',
@@ -78,6 +86,7 @@ describe('stats registry', () => {
     });
     it('panels keep registry order per section', () => {
         expect(panelStats('red', 'performance').map((s) => s.id)).toEqual([
+            'tar',
             'time-saved',
             'dwell-time',
             'consistency',
@@ -102,6 +111,8 @@ describe('stats registry', () => {
         expect(s?.brief?.(c)).toBe('+32 s');
     });
     it('glossary matches the registry', () => {
+        expect(STAT_IDS).toContain('tar');
+        expect(GLOSSARY.tar.name).toBe('TAR');
         expect(STAT_IDS).not.toContain('pace-plus');
         const removed = 'travel-time'; // merged into Time Saved
         expect(STAT_IDS).not.toContain(removed);

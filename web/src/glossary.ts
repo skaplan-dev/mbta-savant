@@ -1,6 +1,7 @@
 // Single source for stat definitions: used by the stat popovers and the Glossary page.
 
 export type StatId =
+    | 'tar'
     | 'time-saved'
     | 'dwell-time'
     | 'on-schedule'
@@ -26,6 +27,16 @@ export interface GlossaryEntry {
 }
 
 export const GLOSSARY: Record<StatId, GlossaryEntry> = {
+    tar: {
+        name: 'TAR',
+        section: 'performance',
+        short: 'Trips Above Replacement: how many more trips’ worth of service this car gave its line this season than a replacement-level car would have.',
+        lead: "Trips Above Replacement: how many more trips' worth of service this car gave its line this season than a replacement-level car would have.",
+        better: 'higher',
+        betterLabel: 'HIGHER IS BETTER',
+        calc: 'It adds up three things: how often the car showed up, how much time it saved per trip, and how steady it was, each measured against a replacement-level car (the 20th-percentile car on that part) and turned into trips. Most of the total is usually showing up, by design. Only compare TAR between cars on the same line; see How TAR is calculated for the formulas.',
+        example: '+210 means about 210 trips’ worth more than a replacement car',
+    },
     'time-saved': {
         name: 'Time Saved',
         section: 'performance',
@@ -171,6 +182,53 @@ export const HOW_RANKINGS: RankingsParagraph[] = [
     {
         lead: 'Fair comparisons.',
         body: 'A car’s times are always compared on the same stretch of track, in the same direction, at the same time of day and day of week. A car that works rush hours isn’t penalized for traffic it can’t avoid. Delays longer than five minutes count as five minutes, so one bad breakdown doesn’t decide a season.',
+    },
+];
+
+export const HOW_TAR: RankingsParagraph[] = [
+    {
+        lead: 'The idea.',
+        body: 'Baseball’s WAR asks how many wins a player added over a freely available replacement. TAR asks how many trips’ worth of service a car added over a replacement-level car on its own line. It is a season total, so a car that keeps running builds it up and a car in the shop does not.',
+    },
+    {
+        lead: 'What “replacement” means.',
+        body: 'For each of the three parts below, the replacement car is the line’s 20th-percentile car: the value that 1 in 5 ranked cars falls below, taking worse as lower. Only ranked cars count (qualified and listed on the roster). With fewer than 5 cars having a value, that part has no replacement level and counts as 0. A car’s part is how far it sits above that level, so a car below it can have a negative part.',
+    },
+    {
+        lead: 'Part 1, on the field.',
+        body: 'Days in service ÷ eligible days is the car’s service share. Field trips = (service share − replacement share) × eligible days × trips per day. In words: the extra days the car showed up compared with a replacement car over the same stretch, times what a car typically does in a day.',
+    },
+    {
+        lead: 'Part 2, speed.',
+        body: 'Seconds saved per trip is travel time saved plus dwell time saved against the line’s typical car, or travel time alone if the car has no dwell data. Speed trips = (seconds saved − replacement seconds saved) × trips ÷ typical trip length. In words: the seconds saved per trip, added up over every trip the car ran, expressed as whole trips’ worth of time.',
+    },
+    {
+        lead: 'Part 3, steadiness.',
+        body: 'Steady trips = (adjusted steadiness − replacement) × segments per trip × trips ÷ typical trip length. Adjusted steadiness is the seconds of variation saved per segment, treated like time saved because riders have to budget for variation. It is route-adjusted: a car’s variation on each segment (same route, direction, stops, hour and day type) is compared with the average car’s on that same segment, so a car is not marked down for working a rougher stretch. Only segments with at least 20 runs in the season count, and if fewer than half of a car’s runs are on such segments, the part is not measured and counts as 0.',
+    },
+    {
+        lead: 'Total.',
+        body: 'TAR = field trips + speed trips + steady trips. Each part is rounded to whole trips on its own, so the three parts shown on a car page can differ from the total by a trip. A part that is not measured counts as replacement level: neither rewarded nor penalized.',
+    },
+    {
+        lead: 'Where the conversion rates come from.',
+        body: 'Trips per day is the median, over ranked cars on the line, of each car’s trips ÷ days in service. Typical trip length is the median trip in the season, from first departure to last arrival. Segments per trip is the line’s average. Bus route boards use the same recipe with that route’s own numbers, among buses on that route.',
+    },
+    {
+        lead: 'New cars.',
+        body: 'Eligible days are the days the line reported data, counted only from the car’s first service day on. A car that joined the fleet mid-season is not penalized for days before it existed. A service day is a day the car ran at least 2 trips on rail (1 on a bus), so a car that only rolled out of the yard for one trip does not count.',
+    },
+    {
+        lead: 'Why On-Schedule % is left out.',
+        body: 'On-Schedule % is mostly the same fact as Time Saved: a faster car is more often within the schedule. Including both would count speed twice.',
+    },
+    {
+        lead: 'Worked example.',
+        body: 'Illustrative numbers, not a real car. A rail line’s replacement car ran on 70% of eligible days, a typical car makes 10 trips per day, and a typical trip takes 3,000 seconds with 25 segments. Our car was eligible for 100 days and ran on 90 of them (a 90% share), made 900 trips, saved 20 seconds a trip against a replacement’s 6, and was 0.8 seconds per segment steadier than replacement. Field: (0.90 − 0.70) × 100 × 10 = +200. Speed: (20 − 6) × 900 ÷ 3,000 = +4.2, shown as +4. Steadiness: 0.8 × 25 × 900 ÷ 3,000 = +6. TAR = 200 + 4 + 6 = +210.',
+    },
+    {
+        lead: 'Caveats.',
+        body: 'Only compare TAR between cars on the same line, never across lines: each line has its own replacement level and trip rates. TAR mostly measures availability by design, since showing up is most of what a car can give its line; a car in the shop for repairs or held as a spare scores lower through no fault of anyone running it. Dwell time is real time that riders spend waiting, but its cause is unknown: it can reflect crowds, operators or how arrivals and departures are recorded, so TAR does not assign it to anyone.',
     },
 ];
 

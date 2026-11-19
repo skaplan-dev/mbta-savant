@@ -8,7 +8,7 @@ import Loading from '../../components/Loading';
 import Search from '../../components/Search';
 import SectionHeading from '../../components/SectionHeading';
 import { useDocumentTitle } from '../../components/useDocumentTitle';
-import { fmtSaved, pctColor, timeSaved, tint } from '../../format';
+import { fmtTrips, pctColor, tint } from '../../format';
 import { GROUP_IDS, GROUPS, type GroupId } from '../../groups';
 import { homeQuery, useMeta } from '../../queries';
 import { UNRANKED_LINE_NOTE } from '../../rank';
@@ -41,9 +41,7 @@ export default function HomePage() {
             <section aria-labelledby="leaders-h" className="pb-10">
                 <SectionHeading id="leaders-h" className="m-0 mb-4">
                     Line Leaders
-                    <span className="text-ink-3 text-lead ml-3 font-normal">
-                        top 5 by Time Saved
-                    </span>
+                    <span className="text-ink-3 text-lead ml-3 font-normal">top 5 by TAR</span>
                 </SectionHeading>
                 {home.isPending ? (
                     <Loading inline />
@@ -105,12 +103,12 @@ function LeaderCard({
                                 <span
                                     className="rounded px-2 py-0.5 font-medium"
                                     style={
-                                        e.pct_travel == null
+                                        e.pct_tar == null
                                             ? undefined
-                                            : { background: tint(pctColor(e.pct_travel)) }
+                                            : { background: tint(pctColor(e.pct_tar)) }
                                     }
                                 >
-                                    {fmtSaved(timeSaved(e))}
+                                    {fmtTrips(e.tar)}
                                 </span>
                             </li>
                         ))}

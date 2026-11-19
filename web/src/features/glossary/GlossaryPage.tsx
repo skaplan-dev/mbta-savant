@@ -6,6 +6,7 @@ import SectionHeading from '../../components/SectionHeading';
 import {
     GLOSSARY,
     HOW_RANKINGS,
+    HOW_TAR,
     LEDE,
     STAT_IDS,
     type GlossaryEntry,
@@ -61,6 +62,9 @@ export default function GlossaryPage() {
                 <a className={tocA} href="#rankings">
                     How rankings work
                 </a>
+                <a className={tocA} href="#tar-calc">
+                    How TAR is calculated
+                </a>
                 {SECTIONS.map((s) => (
                     <div key={s.key}>
                         <h2 className={tocH}>{s.toc}</h2>
@@ -88,6 +92,17 @@ export default function GlossaryPage() {
                                     {p.body}
                                 </p>
                             </div>
+                        ))}
+                    </div>
+                </section>
+                <section id="tar-calc" className="scroll-mt-5">
+                    <H2>How TAR is calculated</H2>
+                    <div className="text-lead max-w-[58ch] leading-[1.5]">
+                        {HOW_TAR.map((p, i) => (
+                            <p key={i} className="my-3">
+                                {p.lead && <strong>{p.lead} </strong>}
+                                {p.body}
+                            </p>
                         ))}
                     </div>
                 </section>

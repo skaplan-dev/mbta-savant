@@ -65,6 +65,9 @@ export function signed(v: number | null | undefined, digits = 1, unit = ''): str
 /** Time Saved and Dwell Time: whole seconds per trip. */
 export const fmtSaved = (v: number | null | undefined) => signed(v, 0, ' s');
 
+/** Trips above replacement: whole trips, signed, with thousands separators ("+1,619", "−451"). */
+export const fmtTrips = (v: number | null | undefined) => signed(v, 0);
+
 export const fmtSavedPct = (v: number | null | undefined) => signed(v, 1, '%');
 
 export const pctOf = (part: number, total: number) => Math.round((part / total) * 100);

@@ -138,7 +138,26 @@ describe('LeaderboardTable', () => {
         expect(screen.queryByText(/Too close to call/)).toBeNull();
     });
 
-    it('orders columns Time Saved first and Last Seen last', async () => {
+    it('defaults to TAR descending', async () => {
+        await renderWithRouter(
+            <LeaderboardTable
+                group="red"
+                season="2026"
+                ranked={[
+                    carStats('1', { tar: -5 }),
+                    carStats('2', { tar: 300 }),
+                    carStats('3', { tar: 40 }),
+                ]}
+            />
+        );
+        await screen.findByRole('table');
+        const nums = [...document.querySelectorAll('tbody tr')].map(
+            (r) => r.querySelector('td:nth-child(2)')?.textContent?.match(/\d+/)?.[0]
+        );
+        expect(nums).toEqual(['2', '3', '1']);
+    });
+
+    it('orders columns TAR first and Last Seen last', async () => {
         await renderWithRouter(
             <LeaderboardTable group="red" season="2026" ranked={[carStats('1')]} tooClose={[]} />
         );
@@ -146,10 +165,10 @@ describe('LeaderboardTable', () => {
         const heads = [...document.querySelectorAll('thead th')].map((h) => h.textContent);
 
         expect(heads.slice(4, 8).map((h) => h?.replace(/\s/g, ''))).toEqual([
+            'TAR',
             'TimeSaved',
             'DaysinService',
             'IronHorseStreak',
-            'DwellTime',
         ]);
         expect(heads.at(-1)).toContain('Last Seen');
     });

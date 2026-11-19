@@ -1,5 +1,14 @@
 import type { CarStats, Metric } from './api';
-import { dwellSaved, fmtInt, fmtNum, fmtSaved, fmtSavedPct, savedPct, timeSaved } from './format';
+import {
+    dwellSaved,
+    fmtInt,
+    fmtNum,
+    fmtSaved,
+    fmtSavedPct,
+    fmtTrips,
+    savedPct,
+    timeSaved,
+} from './format';
 import { GLOSSARY, type StatId } from './glossary';
 import { GROUPS, type GroupId, type Mode } from './groups';
 
@@ -24,6 +33,13 @@ export interface Stat {
 }
 
 export const STATS: readonly Stat[] = [
+    {
+        id: 'tar',
+        pct: 'tar',
+        section: 'performance',
+        value: (c) => c.tar ?? null,
+        text: (c) => fmtTrips(c.tar),
+    },
     {
         id: 'time-saved',
         pct: 'travel_time_sec',
@@ -98,6 +114,7 @@ const forGroup = (group: GroupId) => STATS.filter((s) => !s.mode || s.mode === G
 
 // Leaderboard column order; the car page's panels use registry order instead.
 export const BOARD_ORDER: StatId[] = [
+    'tar',
     'time-saved',
     'days-in-service',
     'iron-horse',
@@ -109,6 +126,7 @@ export const BOARD_ORDER: StatId[] = [
 ];
 
 const SPREAD_UNIT: Partial<Record<Metric, (w: number) => string>> = {
+    tar: (w) => `${fmtInt(w)} trip${Math.round(w) === 1 ? '' : 's'}`,
     travel_time_sec: (w) => `${fmtNum(w, 1)} s`,
     dwell_time_sec: (w) => `${fmtNum(w, 1)} s`,
     steadiness_sec: (w) => `${fmtNum(w, 1)} s`,

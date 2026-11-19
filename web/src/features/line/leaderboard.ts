@@ -1,6 +1,5 @@
 import type { CarStats, GroupFile } from '../../api';
 import { byNumber, compareNullsLast } from '../../compare';
-import { timeSaved } from '../../format';
 import type { StatId } from '../../glossary';
 import type { GroupId } from '../../groups';
 import { unrankedReason } from '../../rank';
@@ -21,7 +20,7 @@ export interface UnrankedCar {
 }
 
 export interface LineCars {
-    /** Ranked cars, best Time Saved first (pct, then the value); the position is the car's rank. */
+    /** Ranked cars, best TAR first (pct, then the value); the position is the car's rank. */
     ranked: CarStats[];
     /** Cars with trips that have no percentile ranking, most trips first, and why. */
     unranked: UnrankedCar[];
@@ -47,8 +46,8 @@ export function splitCars(group: GroupId, file: GroupFile): LineCars {
 export function rankCars(cars: readonly CarStats[]): CarStats[] {
     return [...cars].sort(
         (a, b) =>
-            compareNullsLast(a.pct.travel_time_sec, b.pct.travel_time_sec, 'desc') ||
-            compareNullsLast(timeSaved(a), timeSaved(b), 'desc') ||
+            compareNullsLast(a.pct.tar, b.pct.tar, 'desc') ||
+            compareNullsLast(a.tar, b.tar, 'desc') ||
             byNumber(a, b)
     );
 }

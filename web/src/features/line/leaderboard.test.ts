@@ -12,8 +12,14 @@ const car = (number: string, saved: number, pctTtoe: number, steadiness: number 
 describe('leaderboard', () => {
     const cars = [car('1', 1, 30, 5), car('2', -3, 90, 20), car('3', -2, 80, null)];
 
-    it('ranks by Time Saved, best first', () => {
-        expect(rankCars(cars).map((c) => c.number)).toEqual(['2', '3', '1']);
+    it('ranks by TAR percentile, then TAR, then number', () => {
+        const t = (n: string, p: number | null, tar: number | null) =>
+            carStats(n, { tar, pct: { tar: p } });
+        expect(
+            rankCars([t('1', 40, 5), t('2', 90, 1), t('3', 90, 9), t('4', null, 50)]).map(
+                (c) => c.number
+            )
+        ).toEqual(['3', '2', '1', '4']);
     });
     it('sorts a stat by displayed value in either direction, nulls last', () => {
         const ranked = rankCars(cars);

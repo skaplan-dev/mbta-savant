@@ -1,6 +1,7 @@
 import type { GroupId } from './groups';
 
 export type Metric =
+    | 'tar'
     | 'travel_time_sec'
     | 'dwell_time_sec'
     | 'on_time_pct'
@@ -28,7 +29,7 @@ export interface Meta {
 /** One line's card on the home page (home.json), in that line's default season. */
 export interface HomeCard {
     season: string;
-    /** Top cars by Time Saved, best first. */
+    /** Top cars by TAR, best first. */
     leaders: IndexEntry[];
     /** Every car's number, only when none is ranked (Mattapan). */
     cars: string[];
@@ -46,6 +47,23 @@ export interface IndexEntry {
     /** Seconds per trip against the line's typical car (positive = slower). */
     travel_vs_typical_sec: number | null;
     pct_travel: number | null;
+    /** Trips above replacement and its percentile. Optional until every published index has them. */
+    tar?: number | null;
+    pct_tar?: number | null;
+}
+
+/** The line constants TAR is converted with, published per group, route and summary. */
+export interface TarConstants {
+    /** Median trip duration (first departure to last arrival), seconds. */
+    trip_len_sec?: number | null;
+    /** Median over ranked cars of trips per service day. */
+    trips_per_day?: number | null;
+    /** The 20th-percentile (replacement) value of each input. */
+    tar_replacement?: {
+        service_share: number | null;
+        fast_sec: number | null;
+        steady_adj_sec: number | null;
+    };
 }
 
 export interface Vehicle {
@@ -87,6 +105,18 @@ export interface CarStats {
     crowd_load_pct: number | null;
     /** Latest service date in any window (ISO). Optional until every published data file has it. */
     last_seen?: string | null;
+    /** Trips above replacement (null: unranked). */
+    tar?: number | null;
+    /** The three parts, each rounded separately, so they may differ from `tar` by a trip. */
+    tar_parts?: { field: number; speed: number; steady: number } | null;
+    /** Earliest service date ever (ISO). */
+    first_seen?: string | null;
+    /** Data days in the window on or after first_seen. */
+    eligible_days?: number | null;
+    /** Days in the window the car ran enough trips to count. */
+    service_days?: number | null;
+    /** Route-adjusted steadiness per segment; higher is steadier. */
+    steady_adj_sec?: number | null;
     teammates: [string, number][];
     vehicle: Vehicle;
     pct: Pct;
@@ -105,7 +135,7 @@ export interface Car extends CarStats {
 }
 
 /** The line-wide numbers a car page needs, without every car (groups/<group>.summary.json). */
-export interface GroupSummary {
+export interface GroupSummary extends TarConstants {
     group: GroupId;
     window: string;
     generated_at: string;
@@ -119,7 +149,7 @@ export interface GroupSummary {
     spread?: GroupFile['spread'];
 }
 
-export interface GroupFile {
+export interface GroupFile extends TarConstants {
     group: GroupId;
     window: string;
     generated_at: string;
