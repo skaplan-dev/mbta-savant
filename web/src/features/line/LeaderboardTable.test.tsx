@@ -25,7 +25,9 @@ describe('LeaderboardTable', () => {
             <LeaderboardTable
                 group="red"
                 season="2026"
-                ranked={[carStats('1', { trip_vs_typical_sec: -32, pct: { trip_time_sec: 87 } })]}
+                ranked={[
+                    carStats('1', { travel_vs_typical_sec: -32, pct: { travel_time_sec: 87 } }),
+                ]}
             />
         );
         expect(await screen.findByText(/\+32 s/)).toBeTruthy();
@@ -37,8 +39,8 @@ describe('LeaderboardTable', () => {
                 group="red"
                 season="2026"
                 ranked={[
-                    carStats('1', { trip_vs_typical_sec: 1 }),
-                    carStats('2', { trip_vs_typical_sec: -2 }),
+                    carStats('1', { travel_vs_typical_sec: 1 }),
+                    carStats('2', { travel_vs_typical_sec: -2 }),
                 ]}
             />
         );
@@ -130,7 +132,7 @@ describe('LeaderboardTable', () => {
             'TimeSaved',
             'DaysinService',
             'IronHorseStreak',
-            'TravelTime',
+            'DwellTime',
         ]);
         expect(heads.at(-1)).toContain('Last Seen');
     });
@@ -177,7 +179,7 @@ describe('LeaderboardTable', () => {
                 season="2026"
                 ranked={five.slice(0, 3)}
                 cols={routeBoardStats()}
-                tooClose={['on_time_pct', 'trip_time_sec']}
+                tooClose={['on_time_pct', 'travel_time_sec']}
                 scope="route"
             />
         );

@@ -1,7 +1,6 @@
 import type { GroupId } from './groups';
 
 export type Metric =
-    | 'trip_time_sec'
     | 'travel_time_sec'
     | 'dwell_time_sec'
     | 'on_time_pct'
@@ -45,8 +44,8 @@ export interface IndexEntry {
     qualified: boolean;
     ranked: boolean;
     /** Seconds per trip against the line's typical car (positive = slower). */
-    trip_vs_typical_sec: number | null;
-    pct_trip: number | null;
+    travel_vs_typical_sec: number | null;
+    pct_travel: number | null;
 }
 
 export interface Vehicle {
@@ -71,15 +70,13 @@ export interface CarStats {
     qualified: boolean;
     ranked: boolean;
     // Per-trip timing, optional until every published data file has it (the site can deploy before the nightly rebuild).
-    trip_time_sec?: number | null;
     travel_time_sec?: number | null;
     dwell_time_sec?: number | null;
-    exp_trip_sec?: number | null;
+    exp_travel_sec?: number | null;
     // Centered on the line's typical car (median of ranked cars): positive = slower; the UI negates for "saved".
-    trip_vs_typical_sec?: number | null;
     travel_vs_typical_sec?: number | null;
     dwell_vs_typical_sec?: number | null;
-    trip_vs_typical_pct?: number | null;
+    travel_vs_typical_pct?: number | null;
     on_time_pct: number | null;
     steadiness_sec: number | null;
     games_played_pct: number | null;
@@ -99,7 +96,7 @@ export interface GameLogEntry {
     date: string;
     trips: number;
     miles: number | null;
-    trip_time_sec: number | null;
+    travel_time_sec: number | null;
     routes: string[];
 }
 
@@ -129,9 +126,7 @@ export interface GroupFile {
     /** Average segments per trip on the line. */
     segs_per_trip?: number | null;
     /** The typical car's (median of ranked cars) absolute values. */
-    typical?: Partial<
-        Record<'trip_time_sec' | 'travel_time_sec' | 'dwell_time_sec', number | null>
-    >;
+    typical?: Partial<Record<'travel_time_sec' | 'dwell_time_sec', number | null>>;
     /** Stats where the line's cars are too close together to show percentiles. */
     too_close?: Metric[];
     cars: CarStats[];
@@ -153,7 +148,12 @@ export interface RouteIndexEntry {
 export interface FleetSummary {
     fleet_label: string;
     cars: number;
-    median: Partial<Record<Metric | 'trip_vs_typical_sec', number | null>>;
+    median: Partial<
+        Record<
+            Metric | 'travel_vs_typical_sec' | 'dwell_vs_typical_sec' | 'travel_vs_typical_pct',
+            number | null
+        >
+    >;
 }
 
 // window -> fleet key -> summary

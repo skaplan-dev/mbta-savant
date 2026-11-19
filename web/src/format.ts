@@ -62,7 +62,7 @@ export function signed(v: number | null | undefined, digits = 1, unit = ''): str
     return `${isZero ? '' : v > 0 ? '+' : '−'}${body}${unit}`;
 }
 
-/** Time Saved and its parts: whole seconds per trip. */
+/** Time Saved and Dwell Time: whole seconds per trip. */
 export const fmtSaved = (v: number | null | undefined) => signed(v, 0, ' s');
 
 export const fmtSavedPct = (v: number | null | undefined) => signed(v, 1, '%');
@@ -71,25 +71,17 @@ export const pctOf = (part: number, total: number) => Math.round((part / total) 
 
 // Accept fleet medians as well as cars, so every surface derives these the same way.
 type VsTypical = Partial<
-    Pick<
-        CarStats,
-        | 'trip_vs_typical_sec'
-        | 'travel_vs_typical_sec'
-        | 'dwell_vs_typical_sec'
-        | 'trip_vs_typical_pct'
-    >
+    Pick<CarStats, 'travel_vs_typical_sec' | 'dwell_vs_typical_sec' | 'travel_vs_typical_pct'>
 >;
 
 const negate = (v: number | null | undefined): number | null => (v == null ? null : -v);
 
 // Per trip vs the line's typical car; the data is centered with positive = slower, so these flip it (positive = faster).
-export const timeSaved = (c: VsTypical) => negate(c.trip_vs_typical_sec);
-
-export const travelSaved = (c: VsTypical) => negate(c.travel_vs_typical_sec);
+export const timeSaved = (c: VsTypical) => negate(c.travel_vs_typical_sec);
 
 export const dwellSaved = (c: VsTypical) => negate(c.dwell_vs_typical_sec);
 
-export const savedPct = (c: VsTypical) => negate(c.trip_vs_typical_pct);
+export const savedPct = (c: VsTypical) => negate(c.travel_vs_typical_pct);
 
 /** "Nov 18, 2026" from an ISO service date; a missing date is a bare dash. */
 export const fmtDate = (iso: string | null | undefined): string =>

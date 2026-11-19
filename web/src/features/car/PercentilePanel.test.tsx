@@ -63,9 +63,7 @@ describe('PercentilePanel', () => {
         expect(title()).toBe('Last 30 Days Mattapan Line Stats');
         expect(screen.getByText(/Mattapan cars aren’t ranked\./)).toBeTruthy();
         expect(
-            screen.getByText(
-                /Time Saved, Travel Time and Dwell Time compare a car with its line’s typical car/
-            )
+            screen.getByText(/Time Saved and Dwell Time compare a car with its line’s typical car/)
         ).toBeTruthy();
     });
     it('fades the bar of a too-close stat and says so under its section', async () => {

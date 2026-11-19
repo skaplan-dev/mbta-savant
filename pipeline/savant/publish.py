@@ -5,8 +5,8 @@ where n is the number of qualified cars with a value for the metric. Ties never 
 tied cars share a percentile. n == 1 gives 100. Unqualified cars, cars missing the metric, unranked
 metrics, and the mattapan group get None.
 
-Trip, travel and dwell time are also shown against the group's typical car (``trip_vs_typical_sec``,
-``travel_vs_typical_sec``, ``dwell_vs_typical_sec``, ``trip_vs_typical_pct``): the typical car is the
+Travel and dwell time are also shown against the group's typical car (``travel_vs_typical_sec``,
+``dwell_vs_typical_sec``, ``travel_vs_typical_pct``): the typical car is the
 median over qualified, ranked cars. These are display-only; percentiles stay on the absolute fields
 (centering does not change rank).
 
@@ -25,7 +25,6 @@ from savant import roster, stats
 from savant.groups import GROUPS
 
 METRICS: dict[str, Literal["higher", "lower"] | None] = {
-    "trip_time_sec": "lower",
     "travel_time_sec": "lower",
     "dwell_time_sec": "lower",
     "on_time_pct": "higher",
@@ -39,13 +38,12 @@ METRICS: dict[str, Literal["higher", "lower"] | None] = {
 UNRANKED_GROUPS = {"mattapan"}
 # centered field -> absolute field it is centered from
 VS_TYPICAL = {
-    "trip_vs_typical_sec": "trip_time_sec",
     "travel_vs_typical_sec": "travel_time_sec",
     "dwell_vs_typical_sec": "dwell_time_sec",
 }
 # Smallest p90 - p10 spread at which a metric can separate cars at all.
 MIN_SPREAD = {
-    "trip_time_sec": 10, "travel_time_sec": 10, "dwell_time_sec": 5, "steadiness_sec": 1.0,
+    "travel_time_sec": 10, "dwell_time_sec": 5, "steadiness_sec": 1.0,
     "on_time_pct": 2.0, "games_played_pct": 5.0, "iron_horse_days": 3,
 }
 MIN_CARS = 5
@@ -96,7 +94,7 @@ def add_percentiles(group: str, cars: list[dict]) -> list[dict]:
 
 
 def add_vs_typical(cars: list[dict]) -> dict[str, float | None]:
-    """Set each car's VS_TYPICAL fields and trip_vs_typical_pct in place; return the typical car's values
+    """Set each car's VS_TYPICAL fields and travel_vs_typical_pct in place; return the typical car's values
     keyed by absolute field. Typical = median over qualified, ranked cars."""
     typical: dict[str, float | None] = {}
     for centered, metric in VS_TYPICAL.items():
@@ -107,8 +105,8 @@ def add_vs_typical(cars: list[dict]) -> dict[str, float | None]:
             v = c.get(metric)
             c[centered] = None if med is None or v is None else v - med
     for c in cars:
-        d, exp = c.get("trip_vs_typical_sec"), c.get("exp_trip_sec")
-        c["trip_vs_typical_pct"] = None if d is None or not exp else 100 * d / exp
+        d, exp = c.get("travel_vs_typical_sec"), c.get("exp_travel_sec")
+        c["travel_vs_typical_pct"] = None if d is None or not exp else 100 * d / exp
     return typical
 
 
@@ -136,7 +134,7 @@ def _fleet(cars: list[dict]) -> dict:
         v = c["vehicle"]
         f = fleets.setdefault(v.get("fleet_key", "unknown"), {"fleet_label": v["fleet_label"], "cars": 0, "median": {}})
         f["cars"] += 1
-        for m in (*METRICS, *VS_TYPICAL, "trip_vs_typical_pct"):
+        for m in (*METRICS, *VS_TYPICAL, "travel_vs_typical_pct"):
             if c.get(m) is not None:
                 f["median"].setdefault(m, []).append(c[m])
     for f in fleets.values():
@@ -202,8 +200,8 @@ def home_cards(seasons: dict[str, str], index_by_window: dict[str, list]) -> dic
         if not entries:
             continue
         leaders = sorted(
-            (e for e in entries if _ranked_entry(group, e) and e["trip_vs_typical_sec"] is not None),
-            key=lambda e: (e["trip_vs_typical_sec"], _natural(e["number"])),
+            (e for e in entries if _ranked_entry(group, e) and e["travel_vs_typical_sec"] is not None),
+            key=lambda e: (e["travel_vs_typical_sec"], _natural(e["number"])),
         )[:HOME_LEADERS]
         out[group] = {
             "season": season,
@@ -261,7 +259,7 @@ def publish(root: Path, out: Path) -> None:
                 index_by_window[w.key].append(
                     {"car_id": c["car_id"], "group": group, "number": c["number"],
                      "fleet_label": c["vehicle"]["fleet_label"], "qualified": c["qualified"], "ranked": c["ranked"],
-                     "trip_vs_typical_sec": c["trip_vs_typical_sec"], "pct_trip": c["pct"]["trip_time_sec"]}
+                     "travel_vs_typical_sec": c["travel_vs_typical_sec"], "pct_travel": c["pct"]["travel_time_sec"]}
                 )
             fleets[group][w.key] = _fleet(cars)
         _write(data / w.key / "index.json", index_by_window[w.key])

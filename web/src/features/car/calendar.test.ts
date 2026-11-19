@@ -52,9 +52,9 @@ describe('dayScore and monthSummaries', () => {
     });
     it('rolls up months, ignoring null trip time', () => {
         const s = monthSummaries([
-            { date: '2026-04-01', trips: 10, miles: null, trip_time_sec: 4, routes: [] },
-            { date: '2026-04-02', trips: 21, miles: null, trip_time_sec: null, routes: [] },
-            { date: '2026-05-01', trips: 5, miles: null, trip_time_sec: 2, routes: [] },
+            { date: '2026-04-01', trips: 10, miles: null, travel_time_sec: 4, routes: [] },
+            { date: '2026-04-02', trips: 21, miles: null, travel_time_sec: null, routes: [] },
+            { date: '2026-05-01', trips: 5, miles: null, travel_time_sec: 2, routes: [] },
         ]);
 
         expect(s).toEqual([
@@ -65,11 +65,11 @@ describe('dayScore and monthSummaries', () => {
 });
 
 describe('dayColors', () => {
-    const day = (trip_time_sec: number | null) => ({
+    const day = (travel_time_sec: number | null) => ({
         date: '2026-03-02',
         trips: 20,
         miles: 100,
-        trip_time_sec,
+        travel_time_sec,
         routes: ['Red'],
     });
 
@@ -100,7 +100,7 @@ describe('dayColors', () => {
 });
 
 describe('dayText', () => {
-    const day = { date: '2026-03-02', trips: 20, miles: 100, trip_time_sec: 84, routes: ['Red'] };
+    const day = { date: '2026-03-02', trips: 20, miles: 100, travel_time_sec: 84, routes: ['Red'] };
 
     it('says what happened on a day that ran', () => {
         expect(dayText('2026-03-02', day, 100)).toBe(
@@ -109,7 +109,7 @@ describe('dayText', () => {
     });
     it('leaves out the time when there is nothing to compare it with', () => {
         expect(dayText('2026-03-02', day, null)).toBe('2026-03-02 · 20 trips');
-        expect(dayText('2026-03-02', { ...day, trip_time_sec: null }, 100)).toBe(
+        expect(dayText('2026-03-02', { ...day, travel_time_sec: null }, 100)).toBe(
             '2026-03-02 · 20 trips'
         );
     });

@@ -4,9 +4,9 @@ import { firstDir, rankCars, sortCars, splitCars } from './leaderboard';
 
 const car = (number: string, saved: number, pctTtoe: number, steadiness: number | null) =>
     carStats(number, {
-        trip_vs_typical_sec: saved,
+        travel_vs_typical_sec: saved,
         steadiness_sec: steadiness,
-        pct: { trip_time_sec: pctTtoe },
+        pct: { travel_time_sec: pctTtoe },
     });
 
 describe('leaderboard', () => {

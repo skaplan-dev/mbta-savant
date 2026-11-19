@@ -47,7 +47,7 @@ export function splitCars(group: GroupId, file: GroupFile): LineCars {
 export function rankCars(cars: readonly CarStats[]): CarStats[] {
     return [...cars].sort(
         (a, b) =>
-            compareNullsLast(a.pct.trip_time_sec, b.pct.trip_time_sec, 'desc') ||
+            compareNullsLast(a.pct.travel_time_sec, b.pct.travel_time_sec, 'desc') ||
             compareNullsLast(timeSaved(a), timeSaved(b), 'desc') ||
             byNumber(a, b)
     );

@@ -2,7 +2,6 @@
 
 export type StatId =
     | 'time-saved'
-    | 'travel-time'
     | 'dwell-time'
     | 'on-schedule'
     | 'consistency'
@@ -30,28 +29,18 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
     'time-saved': {
         name: 'Time Saved',
         section: 'performance',
-        short: 'Seconds this car saves on a typical trip, compared with the line’s typical car on the same segments at the same times. It adds up travel time and dwell time.',
-        lead: 'Seconds this car saves per trip, compared with the line’s typical car (the median ranked car).',
+        short: 'Seconds of travel time this car saves on a typical trip, compared with the line’s typical car on the same segments at the same times.',
+        lead: 'Seconds of travel time this car saves per trip, compared with the line’s typical car (the median ranked car).',
         better: 'higher',
         betterLabel: 'HIGHER IS BETTER',
-        calc: 'Time Saved is Travel Time plus Dwell Time. Travel time runs from leaving one stop to arriving at the next; dwell time runs from arriving at a stop to leaving it. For every segment the car runs, we compare its travel time with the median for that segment, direction, hour and day type, and do the same for dwell at each stop, counting any travel delay past five minutes as five minutes, and dwell differences beyond 30 seconds either way as 30. We total those differences over a typical trip and show the result relative to the line’s typical car (the median ranked car). Time Saved, Travel Time and Dwell Time are each compared with their own typical car, so the parts shown may not add up exactly (within about a second). The percentage is the same difference as a share of the trip’s expected time.',
+        calc: 'Travel time runs from leaving one stop to arriving at the next. For every segment the car runs, we compare its travel time with the median for that segment, direction, hour and day type, counting any delay past five minutes as five minutes. We total those differences over a typical trip and show the result relative to the line’s typical car (the median ranked car). Time at stops is not included; that’s Dwell Time, which is kept separate because it depends on crowds and operators and on how each car’s arrivals and departures are recorded. The percentage is the same difference as a share of the trip’s expected travel time.',
         example:
-            '+32 s · +1.8% means about 32 seconds less time per trip than the typical car, 1.8% of the trip',
-    },
-    'travel-time': {
-        name: 'Travel Time',
-        section: 'performance',
-        short: 'Seconds of travel time this car saves per trip compared with the line’s typical car on the same segments at the same times. A part of Time Saved.',
-        lead: 'Seconds of travel time this car saves per trip, compared with the line’s typical car.',
-        better: 'higher',
-        betterLabel: 'HIGHER IS BETTER',
-        calc: 'Travel time runs from leaving one stop to arriving at the next, so it covers time moving, not time at the platform (that’s Dwell Time). For every segment the car runs, we compare its travel time with the median for that segment, direction, hour and day type, counting any delay past five minutes as five minutes. We total those differences over a typical trip and show the result relative to the line’s typical car (the median ranked car).',
-        example: '+20 s means about 20 seconds less travel time per trip than the typical car',
+            '+32 s · +1.8% means about 32 seconds less travel time per trip than the typical car, 1.8% of the trip',
     },
     'dwell-time': {
         name: 'Dwell Time',
         section: 'performance',
-        short: 'Seconds of dwell time this car saves per trip compared with the line’s typical car at the same stops and times. A part of Time Saved.',
+        short: 'Seconds of dwell time this car saves per trip compared with the line’s typical car at the same stops and times. Separate from Time Saved.',
         lead: 'Seconds of dwell time this car saves per trip, compared with the line’s typical car at the same stops and times.',
         better: 'higher',
         betterLabel: 'HIGHER IS BETTER',

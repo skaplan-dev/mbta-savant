@@ -6,7 +6,7 @@ const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 /** How each grid looks up and describes a day. */
 export interface DayLookup {
     days: ReadonlyMap<string, GameLogEntry>;
-    /** The line's typical car's trip_time_sec for the window. */
+    /** The line's typical car's travel_time_sec for the window. */
     typical: number | null;
     /** Segments per trip on the line. */
     segs: number | null;

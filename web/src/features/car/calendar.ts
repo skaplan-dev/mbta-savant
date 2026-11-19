@@ -96,7 +96,7 @@ export function dayColors(
     segs: number | null
 ) {
     if (!day) return { fill: 'var(--color-track)', ink: 'var(--color-ink-2)' };
-    const score = dayScore(day.trip_time_sec, typical, segs);
+    const score = dayScore(day.travel_time_sec, typical, segs);
 
     return { fill: pctColor(score), ink: pctInk(score) };
 }
@@ -110,8 +110,8 @@ export function dayText(
     if (!day) return `${date} · did not run`;
 
     const saved =
-        day.trip_time_sec != null && typical != null
-            ? ` · ${fmtSaved(typical - day.trip_time_sec)} saved per trip`
+        day.travel_time_sec != null && typical != null
+            ? ` · ${fmtSaved(typical - day.travel_time_sec)} saved per trip`
             : '';
 
     return `${date} · ${day.trips} trips${saved}`;
@@ -142,7 +142,7 @@ export function monthSummaries(log: readonly GameLogEntry[], limit = 11): MonthS
         .sort(([a], [b]) => a.localeCompare(b))
         .slice(-limit)
         .map(([key, days]) => {
-            const vals = days.map((g) => g.trip_time_sec).filter((v): v is number => v != null);
+            const vals = days.map((g) => g.travel_time_sec).filter((v): v is number => v != null);
             const label = MONTHS[Number(key.slice(5)) - 1];
 
             return {

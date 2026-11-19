@@ -31,7 +31,7 @@ export default function CalendarPanel({
 }: {
     season: string;
     car: Car;
-    /** The line's typical car's trip_time_sec for this window (group file `typical`). */
+    /** The line's typical car's travel_time_sec for this window (group file `typical`). */
     typical: number | null;
     /** Segments per trip on the line (group file `segs_per_trip`). */
     segs: number | null;

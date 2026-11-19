@@ -1,14 +1,5 @@
 import type { CarStats, Metric } from './api';
-import {
-    dwellSaved,
-    fmtInt,
-    fmtNum,
-    fmtSaved,
-    fmtSavedPct,
-    savedPct,
-    timeSaved,
-    travelSaved,
-} from './format';
+import { dwellSaved, fmtInt, fmtNum, fmtSaved, fmtSavedPct, savedPct, timeSaved } from './format';
 import type { StatId } from './glossary';
 import { GROUPS, type GroupId, type Mode } from './groups';
 
@@ -35,7 +26,7 @@ export interface Stat {
 export const STATS: readonly Stat[] = [
     {
         id: 'time-saved',
-        pct: 'trip_time_sec',
+        pct: 'travel_time_sec',
         section: 'performance',
         value: timeSaved,
         text: (c) => {
@@ -44,13 +35,6 @@ export const STATS: readonly Stat[] = [
             return v == null ? '–' : `${fmtSaved(v)} · ${fmtSavedPct(savedPct(c))}`;
         },
         brief: (c) => fmtSaved(timeSaved(c)),
-    },
-    {
-        id: 'travel-time',
-        pct: 'travel_time_sec',
-        section: 'performance',
-        value: travelSaved,
-        text: (c) => fmtSaved(travelSaved(c)),
     },
     {
         id: 'dwell-time',
@@ -117,7 +101,6 @@ export const BOARD_ORDER: StatId[] = [
     'time-saved',
     'days-in-service',
     'iron-horse',
-    'travel-time',
     'dwell-time',
     'consistency',
     'on-schedule',

@@ -112,8 +112,8 @@ function GameLog({
                 <tbody>
                     {shown.map((g) => {
                         const saved =
-                            g.trip_time_sec != null && typical != null
-                                ? typical - g.trip_time_sec
+                            g.travel_time_sec != null && typical != null
+                                ? typical - g.travel_time_sec
                                 : null;
 
                         return (
@@ -137,13 +137,13 @@ function GameLog({
                                                 saved == null
                                                     ? 'var(--color-average)'
                                                     : pctColor(
-                                                          dayScore(g.trip_time_sec, typical, segs)
+                                                          dayScore(g.travel_time_sec, typical, segs)
                                                       ),
                                             color:
                                                 saved == null
                                                     ? '#000'
                                                     : pctInk(
-                                                          dayScore(g.trip_time_sec, typical, segs)
+                                                          dayScore(g.travel_time_sec, typical, segs)
                                                       ),
                                         }}
                                     >

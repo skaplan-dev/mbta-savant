@@ -5,7 +5,7 @@ import CalendarPanel from './CalendarPanel';
 
 afterEach(cleanup);
 
-const RAN = { date: '2026-03-02', trips: 20, miles: 100, trip_time_sec: 84, routes: ['Red'] };
+const RAN = { date: '2026-03-02', trips: 20, miles: 100, travel_time_sec: 84, routes: ['Red'] };
 
 function setup() {
     return render(

@@ -128,7 +128,7 @@ export default function PercentilePanel({
 
     const unrankedNote =
         reason && !info.ranked
-            ? `${reason} Time Saved, Travel Time and Dwell Time compare a car with its line’s typical car, so they aren’t shown.`
+            ? `${reason} Time Saved and Dwell Time compare a car with its line’s typical car, so they aren’t shown.`
             : reason;
 
     return (

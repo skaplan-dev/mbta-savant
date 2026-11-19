@@ -9,11 +9,11 @@ D0 = date(2026, 3, 2)
 
 def car(number, trip, qualified=True, **kw):
     base = {m: None for m in publish.METRICS}
-    base.update(trip_time_sec=trip)
+    base.update(travel_time_sec=trip)
     return {"car_id": f"orange:{number}", "number": number, "qualified": qualified, **base, **kw}
 
 
-def pcts(group, cars, metric="trip_time_sec"):
+def pcts(group, cars, metric="travel_time_sec"):
     return {c["number"]: c["pct"][metric] for c in publish.add_percentiles(group, cars)}
 
 
@@ -58,7 +58,7 @@ def test_non_roster_car_unranked_and_excluded_from_n():
     cars = [{**car(n, t), "car_id": f"green:{n}"} for n, t in
             (("3901", 1.0), ("3902", 20.0), ("3903", 40.0), ("3904", 60.0), ("3905", 80.0), ("3000", 2.0))]
     out = {c["number"]: c for c in publish.add_percentiles("green", cars)}
-    assert out["3901"]["pct"]["trip_time_sec"] == 100 and out["3901"]["ranked"] is True
+    assert out["3901"]["pct"]["travel_time_sec"] == 100 and out["3901"]["ranked"] is True
     assert out["3000"]["ranked"] is False
     assert all(v is None for v in out["3000"]["pct"].values())
 
@@ -99,7 +99,7 @@ def test_bus_and_orange_1400_are_separate_files(tmp_path):
     assert bus["car_id"] == "bus:1400" and orange["car_id"] == "orange:1400"
     assert bus["vehicle"]["model"] != orange["vehicle"]["model"]
     assert "game_log" in orange and bus["crowd_load_pct"] is None
-    assert orange["trip_vs_typical_sec"] is not None and "ttoe_sec" not in orange
+    assert orange["travel_vs_typical_sec"] is not None and "ttoe_sec" not in orange
     assert "segs_per_trip" not in orange
 
 
@@ -110,7 +110,7 @@ def test_layout(tmp_path):
     assert all("game_log" not in c for c in g["cars"])
     idx = load(out / "data/last30/index.json")
     assert {r["car_id"] for r in idx} == {"orange:1400", "orange:1401", "bus:1400", "bus:1401"}
-    assert set(idx[0]) == {"car_id", "group", "number", "fleet_label", "qualified", "ranked", "trip_vs_typical_sec", "pct_trip"}
+    assert set(idx[0]) == {"car_id", "group", "number", "fleet_label", "qualified", "ranked", "travel_vs_typical_sec", "pct_travel"}
     meta = load(out / "data/meta.json")
     assert meta["latest_service_date"] == "2026-03-02"
     assert [w["key"] for w in meta["windows"]] == ["last30", "2026"]
@@ -124,42 +124,43 @@ def _ranked(cars, group="orange"):
 
 
 def test_metrics_lists_per_trip_fields():
-    assert list(publish.METRICS)[:3] == ["trip_time_sec", "travel_time_sec", "dwell_time_sec"]
+    assert list(publish.METRICS)[:2] == ["travel_time_sec", "dwell_time_sec"]
+    assert not [k for k in publish.METRICS if k.startswith("trip")]
     assert not {"ttoe_sec", "door_time_sec", "speed_vs_expected_pct"} & set(publish.METRICS)
 
 
 def test_vs_typical_centers_on_median():
-    cars = _ranked([car("1400", 0.0, exp_trip_sec=100.0), car("1401", 1.0, exp_trip_sec=100.0),
-                    car("1402", 10.0, exp_trip_sec=100.0)])
+    cars = _ranked([car("1400", 0.0, exp_travel_sec=100.0), car("1401", 1.0, exp_travel_sec=100.0),
+                    car("1402", 10.0, exp_travel_sec=100.0)])
     typical = publish.add_vs_typical(cars)
-    assert typical["trip_time_sec"] == 1
-    assert [c["trip_vs_typical_sec"] for c in cars] == [-1, 0, 9]
-    assert [c["trip_vs_typical_pct"] for c in cars] == [-1.0, 0.0, 9.0]
-    assert typical["travel_time_sec"] is None and cars[0]["travel_vs_typical_sec"] is None
+    assert typical["travel_time_sec"] == 1
+    assert [c["travel_vs_typical_sec"] for c in cars] == [-1, 0, 9]
+    assert [c["travel_vs_typical_pct"] for c in cars] == [-1.0, 0.0, 9.0]
+    assert typical["dwell_time_sec"] is None and cars[0]["dwell_vs_typical_sec"] is None
 
 
 def test_vs_typical_non_ranked_centered_but_not_in_median():
     cars = [{**car(n, t), "car_id": f"green:{n}"} for n, t in (("3901", 4.0), ("3902", 6.0), ("3000", 100.0))]
     cars = _ranked([*cars, {**car("3903", 50.0, qualified=False), "car_id": "green:3903"}], "green")
     typical = publish.add_vs_typical(cars)
-    assert typical["trip_time_sec"] == 5.0
+    assert typical["travel_time_sec"] == 5.0
     by = {c["number"]: c for c in cars}
-    assert by["3000"]["ranked"] is False and by["3000"]["trip_vs_typical_sec"] == 95.0
-    assert by["3903"]["trip_vs_typical_sec"] == 45.0
+    assert by["3000"]["ranked"] is False and by["3000"]["travel_vs_typical_sec"] == 95.0
+    assert by["3903"]["travel_vs_typical_sec"] == 45.0
 
 
 def test_vs_typical_missing_values_and_pct_without_expected():
     cars = _ranked([car("1400", 1.0), car("1401", None)])
     publish.add_vs_typical(cars)
-    assert cars[0]["trip_vs_typical_sec"] == 0.0 and cars[0]["trip_vs_typical_pct"] is None
-    assert cars[1]["trip_vs_typical_sec"] is None
+    assert cars[0]["travel_vs_typical_sec"] == 0.0 and cars[0]["travel_vs_typical_pct"] is None
+    assert cars[1]["travel_vs_typical_sec"] is None
 
 
 def test_mattapan_has_no_typical():
     cars = _ranked([car("3087", 1.0), car("3234", 3.0)], "mattapan")
     typical = publish.add_vs_typical(cars)
-    assert typical == {"trip_time_sec": None, "travel_time_sec": None, "dwell_time_sec": None}
-    assert all(c["trip_vs_typical_sec"] is None and c["trip_vs_typical_pct"] is None for c in cars)
+    assert typical == {"travel_time_sec": None, "dwell_time_sec": None}
+    assert all(c["travel_vs_typical_sec"] is None and c["travel_vs_typical_pct"] is None for c in cars)
     assert publish.too_close(cars) == []
 
 
@@ -181,18 +182,18 @@ def test_group_file_has_typical_and_threshold(tmp_path):
     out = build(tmp_path)
     g = load(out / "data/last30/groups/orange.json")
     assert g["qualify_min_trips"] == 50 and "averages" not in g
-    assert g["typical"]["trip_time_sec"] is not None
+    assert g["typical"]["travel_time_sec"] is not None
     assert g["segs_per_trip"] == 1
-    assert isinstance(g["too_close"], list) and "trip_time_sec" in g["too_close"]  # only two cars
+    assert isinstance(g["too_close"], list) and "travel_time_sec" in g["too_close"]  # only two cars
     by = {c["number"]: c for c in g["cars"]}
-    assert by["1400"]["trip_vs_typical_sec"] == -by["1401"]["trip_vs_typical_sec"] < 0
+    assert by["1400"]["travel_vs_typical_sec"] == -by["1401"]["travel_vs_typical_sec"] < 0
     assert all("segs_per_trip" not in c for c in g["cars"])
-    assert set(g["typical"]) == {"trip_time_sec", "travel_time_sec", "dwell_time_sec"}
+    assert set(g["typical"]) == {"travel_time_sec", "dwell_time_sec"}
     fl = load(out / "data/fleets/orange.json")["last30"]
     for f in fl.values():
-        for m in ("trip_vs_typical_sec", "travel_vs_typical_sec", "dwell_vs_typical_sec", "trip_vs_typical_pct"):
+        for m in ("travel_vs_typical_sec", "dwell_vs_typical_sec", "travel_vs_typical_pct"):
             assert m in f["median"]
-    assert "trip_vs_typical_sec" not in publish.METRICS
+    assert "travel_vs_typical_sec" not in publish.METRICS
 
 
 def test_group_summary_is_the_small_version_of_the_group_file(tmp_path):
@@ -230,11 +231,11 @@ def test_route_boards_and_index(tmp_path):
     cars = {c["number"]: c for c in board["cars"]}
     assert set(cars) == {"1400", "1401"}
     assert cars["1400"]["car_id"] == "bus:1400" and cars["1400"]["vehicle"]["fleet_label"]
-    assert cars["1400"]["trip_vs_typical_sec"] < 0 < cars["1401"]["trip_vs_typical_sec"]
+    assert cars["1400"]["travel_vs_typical_sec"] < 0 < cars["1401"]["travel_vs_typical_sec"]
     assert "segs_per_trip" not in cars["1400"]
     assert cars["1400"]["routes"] is None and cars["1400"]["teammates"] == []
     assert "averages" not in board and board["segs_per_trip"] == 1
-    assert board["typical"]["trip_time_sec"] is not None and "trip_time_sec" in board["too_close"]
+    assert board["typical"]["travel_time_sec"] is not None and "travel_time_sec" in board["too_close"]
     assert load(out / "data/last30/routes/index.json") == [{"route": "1", "buses": 2, "ranked_cars": 2, "trips": 100}]
     # The per-route rows live only in the route files.
     assert "by_route" not in load(out / "data/last30/cars/bus/1400.json")
@@ -244,7 +245,7 @@ def test_route_boards_and_index(tmp_path):
 
 def entry(group, number, vs, qualified=True, ranked=True):
     return {"car_id": f"{group}:{number}", "group": group, "number": number, "fleet_label": "F",
-            "qualified": qualified, "ranked": ranked, "trip_vs_typical_sec": vs, "pct_trip": 50}
+            "qualified": qualified, "ranked": ranked, "travel_vs_typical_sec": vs, "pct_travel": 50}
 
 
 def test_default_seasons_prefer_newest_ranked_year():

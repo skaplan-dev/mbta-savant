@@ -38,7 +38,7 @@ function CarView({ group, number, data }: { group: GroupId; number: string; data
     const { tab = 'log' } = route.useSearch();
     // The line's typical car only colors the calendar and game log, so the page doesn't wait for them.
     const { data: summary } = useQuery(groupSummaryQuery(season, group));
-    const typical = summary?.typical?.trip_time_sec ?? null;
+    const typical = summary?.typical?.travel_time_sec ?? null;
     const segs = summary?.segs_per_trip ?? null;
 
     useDocumentTitle(carTitle(group, number));

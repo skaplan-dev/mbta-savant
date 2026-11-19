@@ -51,9 +51,10 @@ def test_ttoe_separates_fast_and_slow_car(tmp_path):
     write(tmp_path, "orange", {D0: segs})
     rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
     a, b = rows["A1"], rows["B1"]
-    assert a["trip_time_sec"] < 0 < b["trip_time_sec"]
+    assert a["travel_time_sec"] < 0 < b["travel_time_sec"]
     assert b["travel_time_sec"] - a["travel_time_sec"] == pytest.approx(10)
-    assert b["trip_time_sec"] == pytest.approx(b["travel_time_sec"])
+    assert "trip_time_sec" not in b and "exp_trip_sec" not in b
+    assert b["exp_travel_sec"] > 0
     assert b["dwell_time_sec"] is None
     assert a["car_id"] == "orange:A1"
     assert a["trips"] == 6
@@ -148,7 +149,7 @@ def test_rail_miles_crowd_door_teammates(tmp_path):
     assert one["routes"] is None
     (log,) = one["game_log"]
     assert log == {"date": D0.isoformat(), "trips": 3, "miles": pytest.approx(4.0),
-                   "trip_time_sec": pytest.approx(10 / 3), "routes": ["Orange"]}
+                   "travel_time_sec": pytest.approx(0.0), "routes": ["Orange"]}  # travel only; the deltas above are dwell
 
 
 def test_window_filters_dates(tmp_path):
@@ -181,7 +182,7 @@ def test_ttoe_caps_each_segment_delta_at_300(tmp_path):
     c = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))["C"]
     assert c["travel_time_sec"] == pytest.approx(30.0)
     (log,) = c["game_log"]
-    assert log["trip_time_sec"] == pytest.approx(30.0)
+    assert log["travel_time_sec"] == pytest.approx(30.0)
 
 
 def _reference(n=20):
@@ -237,20 +238,19 @@ def _trips(cars_travel, dwell_by_car=None, n=6, stops="ABCD", route="Orange", gr
     return segs
 
 
-def test_trip_time_scales_by_segments_per_trip(tmp_path):
+def test_travel_time_scales_by_segments_per_trip(tmp_path):
     write(tmp_path, "orange", {D0: _trips({"X": 100, "Y": 110})})
     rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
     assert rows["Y"]["travel_time_sec"] - rows["X"]["travel_time_sec"] == pytest.approx(30)
     assert rows["X"]["segs_per_trip"] == 3
 
 
-def test_trip_time_adds_clipped_dwell(tmp_path):
+def test_dwell_is_clipped_per_trip(tmp_path):
     write(tmp_path, "orange", {D0: _trips({"X": 100, "Y": 100, "Z": 100}, {"X": 20.0, "Y": 120.0, "Z": 20.0})})
     rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
     x, y = rows["X"], rows["Y"]
     assert y["dwell_time_sec"] - x["dwell_time_sec"] == pytest.approx(3 * 30)
-    assert y["trip_time_sec"] == pytest.approx(y["travel_time_sec"] + y["dwell_time_sec"])
-    assert y["exp_trip_sec"] == pytest.approx(3 * (100 + 20))
+    assert y["exp_travel_sec"] == pytest.approx(3 * 100)
 
 
 def test_null_dwell_keeps_travel_delta(tmp_path):
@@ -258,7 +258,7 @@ def test_null_dwell_keeps_travel_delta(tmp_path):
     rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
     for r in rows.values():
         assert r["dwell_time_sec"] is None or r["dwell_time_sec"] == 0
-    assert rows["Y"]["trip_time_sec"] - rows["X"]["trip_time_sec"] == pytest.approx(10 * 3)
+    assert rows["Y"]["travel_time_sec"] - rows["X"]["travel_time_sec"] == pytest.approx(10 * 3)
 
 
 def test_bus_route_uses_route_segments_per_trip(tmp_path):
@@ -271,12 +271,13 @@ def test_bus_route_uses_route_segments_per_trip(tmp_path):
     assert by["2"]["segs_per_trip"] == 4
 
 
-def test_game_log_has_trip_time(tmp_path):
+def test_game_log_has_travel_time(tmp_path):
     write(tmp_path, "orange", {D0: _trips({"X": 100, "Y": 110})})
     row = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))["Y"]
     log = row["game_log"][0]
     assert "ttoe_sec" not in log
-    assert log["trip_time_sec"] == pytest.approx(row["trip_time_sec"])
+    assert log["travel_time_sec"] == pytest.approx(row["travel_time_sec"])
+    assert "trip_time_sec" not in log
 
 
 def test_old_fields_removed(tmp_path):
@@ -381,5 +382,5 @@ def test_dwell_averages_over_all_segments_so_trip_is_travel_plus_dwell(tmp_path)
     write(tmp_path, "orange", {D0: segs})
     rows = by_number(stats.car_stats(tmp_path, "orange", window(D0, D0)))
     x, y = rows["X"], rows["Y"]
-    assert x["trip_time_sec"] == pytest.approx(x["travel_time_sec"] + x["dwell_time_sec"])
+    assert "trip_time_sec" not in x
     assert y["dwell_time_sec"] is None

@@ -3,7 +3,6 @@ import type { Car, CarStats, GroupFile, IndexEntry, Pct } from '../api';
 // Complete, valid records with neutral defaults, so tests state only the fields they care about.
 
 const pct = (o: Partial<Pct> = {}): Pct => ({
-    trip_time_sec: 50,
     travel_time_sec: 50,
     dwell_time_sec: 50,
     on_time_pct: 50,
@@ -23,8 +22,8 @@ export const indexEntry = (number: string, o: Partial<IndexEntry> = {}): IndexEn
     fleet_label: 'F',
     qualified: true,
     ranked: true,
-    trip_vs_typical_sec: 0,
-    pct_trip: 50,
+    travel_vs_typical_sec: 0,
+    pct_travel: 50,
     ...o,
 });
 
