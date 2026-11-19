@@ -103,7 +103,7 @@ describe('stats registry', () => {
     });
     it('glossary matches the registry', () => {
         expect(STAT_IDS).not.toContain('pace-plus');
-        const removed = ['travel', 'time'].join('-'); // merged into Time Saved
+        const removed = 'travel-time'; // merged into Time Saved
         expect(STAT_IDS).not.toContain(removed);
         expect(STATS.map((s) => s.id)).not.toContain(removed);
         expect(Object.keys(GLOSSARY)).not.toContain(removed);
