@@ -5,10 +5,13 @@ where n is the number of qualified cars with a value for the metric. Ties never 
 tied cars share a percentile. n == 1 gives 100. Unqualified cars, cars missing the metric, unranked
 metrics, and the mattapan group get None.
 
-TTOE, Speed vs Expected and Door Time are also shown against the group's average car
-(``ttoe_vs_avg_sec``, ``speed_vs_avg_pct``, ``door_vs_avg_sec``): the absolute values sit on one side of
-zero because delay and dwell distributions are skewed late. The average is the mean over qualified, ranked cars. These are display-only; percentiles
-stay on the absolute fields (centering does not change rank).
+Trip, travel and dwell time are also shown against the group's typical car (``trip_vs_typical_sec``,
+``travel_vs_typical_sec``, ``dwell_vs_typical_sec``, ``trip_vs_typical_pct``): the typical car is the
+median over qualified, ranked cars. These are display-only; percentiles stay on the absolute fields
+(centering does not change rank).
+
+A ranked metric is "too close to call" in a group when the p90 - p10 spread of its value over qualified
+ranked cars is below MIN_SPREAD, or fewer than MIN_CARS such cars have it. Its percentiles are None.
 """
 
 import json
@@ -22,11 +25,11 @@ from savant import roster, stats
 from savant.groups import GROUPS
 
 METRICS: dict[str, Literal["higher", "lower"] | None] = {
-    "ttoe_sec": "lower",
-    "speed_vs_expected_pct": "higher",
+    "trip_time_sec": "lower",
+    "travel_time_sec": "lower",
+    "dwell_time_sec": "lower",
     "on_time_pct": "higher",
     "steadiness_sec": "lower",
-    "door_time_sec": "lower",
     "games_played_pct": "higher",
     "iron_horse_days": "higher",
     "miles": "higher",
@@ -35,11 +38,37 @@ METRICS: dict[str, Literal["higher", "lower"] | None] = {
 }
 UNRANKED_GROUPS = {"mattapan"}
 # centered field -> absolute field it is centered from
-VS_AVG = {
-    "ttoe_vs_avg_sec": "ttoe_sec",
-    "speed_vs_avg_pct": "speed_vs_expected_pct",
-    "door_vs_avg_sec": "door_time_sec",
+VS_TYPICAL = {
+    "trip_vs_typical_sec": "trip_time_sec",
+    "travel_vs_typical_sec": "travel_time_sec",
+    "dwell_vs_typical_sec": "dwell_time_sec",
 }
+# Smallest p90 - p10 spread at which a metric can separate cars at all.
+MIN_SPREAD = {
+    "trip_time_sec": 10, "travel_time_sec": 10, "dwell_time_sec": 5, "steadiness_sec": 1.0,
+    "on_time_pct": 2.0, "games_played_pct": 5.0, "iron_horse_days": 3,
+}
+MIN_CARS = 5
+
+
+def _pool(cars: list[dict], metric: str) -> list[float]:
+    return [c[metric] for c in cars if c.get("qualified") and c.get("ranked") and c.get(metric) is not None]
+
+
+def too_close(cars: list[dict]) -> list[str]:
+    """Metrics (with a MIN_SPREAD) whose values are too bunched to rank these cars; [] if no car is ranked."""
+    if not any(c.get("ranked") for c in cars):
+        return []
+    out = []
+    for metric, floor in MIN_SPREAD.items():
+        vals = _pool(cars, metric)
+        if len(vals) < MIN_CARS:
+            out.append(metric)
+            continue
+        cuts = statistics.quantiles(vals, n=10)
+        if cuts[-1] - cuts[0] < floor:
+            out.append(metric)
+    return out
 
 
 def add_percentiles(group: str, cars: list[dict]) -> list[dict]:
@@ -50,8 +79,9 @@ def add_percentiles(group: str, cars: list[dict]) -> list[dict]:
     ]
     if group in UNRANKED_GROUPS:
         return out
+    close = set(too_close(out))
     for metric, direction in METRICS.items():
-        if direction is None:
+        if direction is None or metric in close:
             continue
         ranked = [c for c in out if c["ranked"] and c.get("qualified") and c.get(metric) is not None]
         n = len(ranked)
@@ -65,17 +95,21 @@ def add_percentiles(group: str, cars: list[dict]) -> list[dict]:
     return out
 
 
-def add_vs_avg(cars: list[dict]) -> dict[str, float | None]:
-    """Set each car's VS_AVG fields in place; return the averages keyed by absolute field."""
-    averages: dict[str, float | None] = {}
-    for centered, metric in VS_AVG.items():
-        vals = [c[metric] for c in cars if c.get("qualified") and c["ranked"] and c.get(metric) is not None]
-        avg = statistics.fmean(vals) if vals else None
-        averages[metric] = avg
+def add_vs_typical(cars: list[dict]) -> dict[str, float | None]:
+    """Set each car's VS_TYPICAL fields and trip_vs_typical_pct in place; return the typical car's values
+    keyed by absolute field. Typical = median over qualified, ranked cars."""
+    typical: dict[str, float | None] = {}
+    for centered, metric in VS_TYPICAL.items():
+        vals = _pool(cars, metric)
+        med = statistics.median(vals) if vals else None
+        typical[metric] = med
         for c in cars:
             v = c.get(metric)
-            c[centered] = None if avg is None or v is None else v - avg
-    return averages
+            c[centered] = None if med is None or v is None else v - med
+    for c in cars:
+        d, exp = c.get("trip_vs_typical_sec"), c.get("exp_trip_sec")
+        c["trip_vs_typical_pct"] = None if d is None or not exp else 100 * d / exp
+    return typical
 
 
 def _write(path: Path, obj) -> None:
@@ -102,7 +136,7 @@ def _fleet(cars: list[dict]) -> dict:
         v = c["vehicle"]
         f = fleets.setdefault(v.get("fleet_key", "unknown"), {"fleet_label": v["fleet_label"], "cars": 0, "median": {}})
         f["cars"] += 1
-        for m in (*METRICS, *VS_AVG):
+        for m in (*METRICS, *VS_TYPICAL, "trip_vs_typical_pct"):
             if c.get(m) is not None:
                 f["median"].setdefault(m, []).append(c[m])
     for f in fleets.values():
@@ -111,7 +145,7 @@ def _fleet(cars: list[dict]) -> dict:
 
 
 def route_boards(cars: list[dict], window: str, now: str) -> dict[str, dict]:
-    """Bus cars (with ``by_route``) -> route -> that route's board, ranked and averaged within the route.
+    """Bus cars (with ``by_route``) -> route -> that route's board, ranked and centered within the route.
 
     A route board is shaped like a group file plus ``route``, and each of its cars keeps the bus's identity
     (car_id, number, vehicle) with the per-route metrics, so the web renders it with the line leaderboard.
@@ -126,10 +160,13 @@ def route_boards(cars: list[dict], window: str, now: str) -> dict[str, dict]:
             )
     boards = {}
     for route, rcars in by_route.items():
+        segs = rcars[0].get("segs_per_trip") if rcars else None
+        for c in rcars:
+            c.pop("segs_per_trip", None)
         rcars = add_percentiles("bus", rcars)
         boards[route] = {"group": "bus", "route": route, "window": window, "generated_at": now,
-                         "qualify_min_trips": stats.ROUTE_QUALIFY_MIN_TRIPS, "averages": add_vs_avg(rcars),
-                         "cars": rcars}
+                         "qualify_min_trips": stats.ROUTE_QUALIFY_MIN_TRIPS, "segs_per_trip": segs,
+                         "typical": add_vs_typical(rcars), "too_close": too_close(rcars), "cars": rcars}
     return boards
 
 
@@ -165,8 +202,8 @@ def home_cards(seasons: dict[str, str], index_by_window: dict[str, list]) -> dic
         if not entries:
             continue
         leaders = sorted(
-            (e for e in entries if _ranked_entry(group, e) and e["ttoe_vs_avg_sec"] is not None),
-            key=lambda e: (e["ttoe_vs_avg_sec"], _natural(e["number"])),
+            (e for e in entries if _ranked_entry(group, e) and e["trip_vs_typical_sec"] is not None),
+            key=lambda e: (e["trip_vs_typical_sec"], _natural(e["number"])),
         )[:HOME_LEADERS]
         out[group] = {
             "season": season,
@@ -201,17 +238,20 @@ def publish(root: Path, out: Path) -> None:
                 )
                 c["vehicle"].setdefault("fleet_key", "unknown")
             cars = add_percentiles(group, cars)
-            averages = add_vs_avg(cars)
+            segs_per_trip = cars[0].get("segs_per_trip")
+            for c in cars:
+                c.pop("segs_per_trip", None)
+            typical = add_vs_typical(cars)
             summary = {"group": group, "window": w.key, "generated_at": now,
                        "qualify_min_trips": stats.qualify_threshold([c["trips"] for c in cars]),
                        "ranked_cars": sum(1 for c in cars if c["qualified"] and c["ranked"]),
-                       "averages": averages}
+                       "segs_per_trip": segs_per_trip, "typical": typical, "too_close": too_close(cars)}
             _write(
                 data / w.key / "groups" / f"{group}.json",
                 {**{k: v for k, v in summary.items() if k != "ranked_cars"},
                  "cars": [{k: v for k, v in c.items() if k not in ("game_log", "by_route")} for c in cars]},
             )
-            # A few hundred bytes, for pages that need the line average but not every car (the car page).
+            # A few hundred bytes, for pages that need the line's typical car but not every car (the car page).
             _write(data / w.key / "groups" / f"{group}.summary.json", summary)
             if group == "bus":
                 _write_routes(data / w.key / "routes", route_boards(cars, w.key, now))
@@ -221,7 +261,7 @@ def publish(root: Path, out: Path) -> None:
                 index_by_window[w.key].append(
                     {"car_id": c["car_id"], "group": group, "number": c["number"],
                      "fleet_label": c["vehicle"]["fleet_label"], "qualified": c["qualified"], "ranked": c["ranked"],
-                     "ttoe_sec": c["ttoe_sec"], "ttoe_vs_avg_sec": c["ttoe_vs_avg_sec"], "pct_ttoe": c["pct"]["ttoe_sec"]}
+                     "trip_vs_typical_sec": c["trip_vs_typical_sec"], "pct_trip": c["pct"]["trip_time_sec"]}
                 )
             fleets[group][w.key] = _fleet(cars)
         _write(data / w.key / "index.json", index_by_window[w.key])

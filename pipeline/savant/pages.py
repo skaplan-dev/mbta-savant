@@ -18,11 +18,11 @@ SITE = "MBTA Savant"
 HOME_TITLE = f"{SITE} — every car, every trip"
 GLOSSARY_TITLE = f"Stat Glossary · {SITE}"
 HOME_DESCRIPTION = (
-    "Every MBTA train car and bus with a stat line: time saved, pace, on-schedule rate and more, ranked "
+    "Every MBTA train car and bus with a stat line: time saved per trip, on-schedule rate and more, ranked "
     "against its line. Built nightly from the T's own arrival and departure records."
 )
 GLOSSARY_DESCRIPTION = (
-    "How MBTA Savant's stats work: Time Saved, Pace, On-Schedule %, Consistency, Door Time, Iron Horse "
+    "How MBTA Savant's stats work: Time Saved, Travel Time, Dwell Time, On-Schedule %, Consistency, Iron Horse "
     "Streak and more, and how cars are ranked against their line."
 )
 OG_IMAGE = "og.png"  # web/public/og.png, 1200x630
@@ -66,8 +66,8 @@ def car_description(entry: dict, season: str) -> str:
     fleet = entry.get("fleet_label") or ""
     who = f"{noun} {number}" + (f", {fleet}," if fleet and fleet != "Unknown fleet" else "")
     when = "over the last 30 days" if season == LAST30 else f"in {season}"
-    vs_avg = entry.get("ttoe_vs_avg_sec")
-    ranked = group not in UNRANKED_LINES and entry["ranked"] and entry["qualified"] and vs_avg is not None
+    vs_typ = entry.get("trip_vs_typical_sec")
+    ranked = group not in UNRANKED_LINES and entry["ranked"] and entry["qualified"] and vs_typ is not None
     if not ranked:
         return (
             f"{who.rstrip(',')}: trips, service calendar and day-by-day game log on the {line} {when}. "
@@ -75,12 +75,12 @@ def car_description(entry: dict, season: str) -> str:
             if group != "bus"
             else f"{who.rstrip(',')}: trips, routes and day-by-day game log {when}. Updated nightly from MBTA data."
         )
-    saved = -vs_avg  # ttoe_vs_avg_sec is time *over* the average car; the site shows it as Time Saved
-    pace = f"saves {saved:.1f} s per stop" if saved >= 0 else f"loses {-saved:.1f} s per stop"
-    average = "the average bus" if group == "bus" else f"the average {line} car"
-    pct = entry.get("pct_ttoe")
+    saved = -vs_typ  # trip_vs_typical_sec is time *over* the typical car; the site shows it as Time Saved
+    delta = f"saves {saved:.0f} s per trip" if saved >= 0 else f"loses {-saved:.0f} s per trip"
+    average = "the typical bus" if group == "bus" else f"the typical {line} car"
+    pct = entry.get("pct_trip")
     rank = f", ahead of {pct}% of them" if pct is not None else ""
-    return f"{who} {pace} against {average} {when}{rank}. Pace, on-schedule rate, streaks and game log, updated nightly."
+    return f"{who} {delta} against {average} {when}{rank}. On-schedule rate, streaks and game log, updated nightly."
 
 
 def line_description(group: str, season: str, ranked: int) -> str:
@@ -92,7 +92,7 @@ def line_description(group: str, season: str, ranked: int) -> str:
         )
     things = "buses" if group == "bus" else "cars"
     return (
-        f"{season_label(season)} {line} leaderboard: {ranked:,} {things} ranked by Time Saved, Pace, "
+        f"{season_label(season)} {line} leaderboard: {ranked:,} {things} ranked by Time Saved, Travel Time, "
         "On-Schedule %, Consistency and more. Updated nightly from MBTA data."
     )
 

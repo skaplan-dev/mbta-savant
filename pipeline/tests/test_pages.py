@@ -20,7 +20,7 @@ TEMPLATE = """<!doctype html>
 
 def entry(group, number, **kw):
     return {"car_id": f"{group}:{number}", "group": group, "number": number, "fleet_label": "Red Line #4 (CRRC)",
-            "qualified": True, "ranked": True, "ttoe_sec": 9.0, "ttoe_vs_avg_sec": -2.8, "pct_ttoe": 97, **kw}
+            "qualified": True, "ranked": True, "trip_vs_typical_sec": -31.6, "pct_trip": 97, **kw}
 
 
 def write_data(root):
@@ -34,11 +34,11 @@ def write_data(root):
     }))
     (d / "2026" / "index.json").write_text(json.dumps([
         entry("red", "1902"),
-        entry("red", "1903", qualified=False, ttoe_vs_avg_sec=None, pct_ttoe=None),
-        entry("bus", "1400", fleet_label="2014-15 New Flyer XDE40 hybrid", ttoe_vs_avg_sec=1.25, pct_ttoe=20),
+        entry("red", "1903", qualified=False, trip_vs_typical_sec=None, pct_trip=None),
+        entry("bus", "1400", fleet_label="2014-15 New Flyer XDE40 hybrid", trip_vs_typical_sec=12.4, pct_trip=20),
     ]))
     (d / "last30" / "index.json").write_text(json.dumps([
-        entry("red", "1902", ttoe_vs_avg_sec=-9.0),
+        entry("red", "1902", trip_vs_typical_sec=-9.0),
         entry("red", "1999"),
         entry("mattapan", "3260", fleet_label="Mattapan PCC", ranked=True),
     ]))
@@ -72,10 +72,10 @@ def test_build_pages_covers_every_page(tmp_path):
     # The default season wins over last30 for a car that ran in both.
     red = files["car/red/1902.html"]
     assert "<title>Car 1902 · Red Line · MBTA Savant</title>" in red
-    assert "Car 1902, Red Line #4 (CRRC), saves 2.8 s per stop against the average Red Line car in 2026, ahead of 97% of them." in red
+    assert "Car 1902, Red Line #4 (CRRC), saves 32 s per trip against the typical Red Line car in 2026, ahead of 97% of them." in red
     assert '<link rel="canonical" href="https://mbtasavant.com/car/red/1902" />' in red
 
-    assert "Bus 1400, 2014-15 New Flyer XDE40 hybrid, loses 1.2 s per stop against the average bus in 2026" in (
+    assert "Bus 1400, 2014-15 New Flyer XDE40 hybrid, loses 12 s per trip against the typical bus in 2026" in (
         files["car/bus/1400.html"])
     assert "trips, service calendar" in files["car/red/1903.html"]  # not qualified: no ranking claim
     assert "trips, service calendar" in files["car/mattapan/3260.html"]  # Mattapan is never ranked
