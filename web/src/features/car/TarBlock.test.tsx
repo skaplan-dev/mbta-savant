@@ -56,14 +56,14 @@ describe('TarBlock', () => {
 
         expect(screen.getByText('Steadiness not measured')).toBeTruthy();
     });
-    it('has no "Show the math" section, only a link to how TAR is calculated', async () => {
+    it('has no "Show the math" section and no calculation link', async () => {
         const { container } = await renderWithRouter(
             <TarBlock car={tarCar()} summary={summary()} />
         );
 
         expect(screen.queryByText('Show the math')).toBeNull();
         expect(container.querySelector('details')).toBeNull();
-        expect(screen.getByRole('link', { name: 'How TAR is calculated' })).toBeTruthy();
+        expect(screen.queryByRole('link', { name: 'How TAR is calculated' })).toBeNull();
     });
     it('shows a dash for legacy data', async () => {
         await renderWithRouter(

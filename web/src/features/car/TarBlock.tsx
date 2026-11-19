@@ -1,4 +1,3 @@
-import { Link } from '@tanstack/react-router';
 import type { Car, GroupSummary } from '../../api';
 import PercentileBar from '../../components/PercentileBar';
 import StatTerm from '../../components/StatTerm';
@@ -58,13 +57,6 @@ export default function TarBlock({
                             <span>{part('Steadiness', parts.steady, measured)}</span>
                         </p>
                     )}
-                    <Link
-                        to="/glossary"
-                        hash="tar-calc"
-                        className="text-brand text-meta mt-1 block text-center underline"
-                    >
-                        How TAR is calculated
-                    </Link>
                 </>
             )}
         </div>
