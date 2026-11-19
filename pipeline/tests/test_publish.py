@@ -310,7 +310,7 @@ def test_meta_has_default_seasons_and_home_file(tmp_path):
     assert home["orange"]["leaders"] == [] and home["orange"]["cars"] == ["1400", "1401"]
     orange = load(out / "data/last30/cars/orange/1400.json")
     assert orange["tar"] is None and orange["tar_parts"] is None
-    assert orange["new_delivery"] is True  # roster: 2018-25, first seen 2026
+    assert orange["new_delivery"] is False  # first seen on the data's first day: already running, not a new delivery
 
 
 def test_last_seen_on_car_board_and_route_files(tmp_path):

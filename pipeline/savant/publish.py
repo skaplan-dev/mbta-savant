@@ -240,7 +240,7 @@ def publish(root: Path, out: Path) -> None:
     firsts, seen, delivered = {}, {}, {}
     for group in GROUPS:
         firsts[group], seen[group] = stats.first_last_seen(root, group)
-        delivered[group] = stats.new_deliveries(firsts[group], group)
+        delivered[group] = stats.new_deliveries(firsts[group], group, stats.data_start(root, group))
     for w in wins:
         for group in GROUPS:
             cars = stats.car_stats(root, group, w, delivered[group])

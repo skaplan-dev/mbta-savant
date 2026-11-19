@@ -459,6 +459,12 @@ def test_new_deliveries_only_for_fleets_still_arriving():
     assert stats.new_deliveries(first, "bus") == {"4200": "2025-09-01"}
 
 
+def test_new_deliveries_skip_cars_running_when_data_starts():
+    # Seen on the data's first day: already in service before our records, not a new delivery.
+    first = {"1400": "2025-01-01", "1401": "2025-06-01"}
+    assert stats.new_deliveries(first, "orange", data_start="2025-01-01") == {"1401": "2025-06-01"}
+
+
 def test_old_fleet_first_seen_not_applied_but_new_fleet_is(tmp_path):
     days = [D0 + timedelta(days=i) for i in range(4)]
     by_day = {d: two_trips(d, ["OLD"]) for d in days}

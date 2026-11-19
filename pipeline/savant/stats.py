@@ -263,12 +263,14 @@ def last_seen(root: Path, group: str) -> dict[str, str]:
     return first_last_seen(root, group)[1]
 
 
-def new_deliveries(first: dict[str, str], group: str) -> dict[str, str]:
+def new_deliveries(first: dict[str, str], group: str, data_start: str | None = None) -> dict[str, str]:
     """The ``first_seen`` entries for vehicles still being delivered when first seen (roster last build year >=
-    first-seen year - 1). Old fleets absent at the start of our data, and vehicles missing from the roster, are
-    left out, so ``car_stats`` counts all data days for them."""
+    first-seen year - 1). Old fleets absent at the start of our data, vehicles missing from the roster, and vehicles
+    already running on the data's first day (``data_start``) are left out, so ``car_stats`` counts all data days."""
     out = {}
     for number, day in first.items():
+        if data_start is not None and day <= data_start:
+            continue
         v = roster.lookup(group, number)
         if v is None:
             continue
@@ -276,6 +278,12 @@ def new_deliveries(first: dict[str, str], group: str) -> dict[str, str]:
         if last is None or last >= int(day[:4]) - 1:
             out[number] = day
     return out
+
+
+def data_start(root: Path, group: str) -> str | None:
+    """The group's earliest service date on disk (ISO), from the segment file names."""
+    days = [p.stem for p in (Path(root) / "segments" / group).glob("*/*.parquet") if not p.stem.startswith(".")]
+    return min(days) if days else None
 
 
 def _iron_horse(car_days: set[str], data_days: list[str]) -> int:
