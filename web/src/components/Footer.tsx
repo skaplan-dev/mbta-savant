@@ -2,8 +2,22 @@ export default function Footer() {
     return (
         <footer className="border-panel-line text-ink-2 text-ui mt-10 flex flex-wrap justify-between gap-5 border-t pt-[18px] pb-10">
             <span>
-                A fan site, not an official MBTA assessment. Vehicle data:{' '}
-                <a href="http://roster.transithistory.org/" target="_blank" rel="noreferrer">
+                A fan site, not an official MBTA assessment. Performance data:{' '}
+                <a
+                    href="https://performancedata.mbta.com/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-bold"
+                >
+                    MBTA / MassDOT
+                </a>
+                . Vehicle data:{' '}
+                <a
+                    href="http://roster.transithistory.org/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-bold"
+                >
                     The MBTA Vehicle Inventory Page
                 </a>{' '}
                 (unofficial).
