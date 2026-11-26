@@ -69,4 +69,23 @@ describe('SeasonToggle', () => {
         expect(await screen.findByRole('link', { name: '2025' })).toBeTruthy();
         expect(screen.queryByRole('combobox')).toBeNull();
     });
+
+    it('shows the placeholder when the value is a year not in options', async () => {
+        await setup(many, '2020');
+        const select = await screen.findByRole('combobox', { name: 'Year' });
+
+        expect(select).toHaveProperty('value', '');
+        expect(select.className).not.toContain('bg-brand');
+    });
+
+    it('sorts years newest first regardless of input order', async () => {
+        await setup(['career', '2019', '2026', '2024', 'last30'], '2026');
+        const select = await screen.findByRole('combobox', { name: 'Year' });
+
+        expect(Array.from(select.querySelectorAll('option')).map((o) => o.textContent)).toEqual([
+            '2026',
+            '2024',
+            '2019',
+        ]);
+    });
 });

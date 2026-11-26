@@ -21,7 +21,7 @@ function SeasonLink({ k, on }: { k: string; on: boolean }) {
 
 export default function SeasonToggle({ options, value }: { options: string[]; value: string }) {
     const navigate = useNavigate();
-    const years = options.filter(isYearKey);
+    const years = options.filter(isYearKey).sort((a, b) => b.localeCompare(a));
     const frame = 'border-panel-line rounded-panel flex overflow-hidden border';
 
     if (options.length <= 3) {
@@ -34,7 +34,7 @@ export default function SeasonToggle({ options, value }: { options: string[]; va
         );
     }
 
-    const yearOn = isYearKey(value);
+    const yearOn = isYearKey(value) && years.includes(value);
 
     return (
         <nav aria-label="Season" className={frame}>
@@ -48,7 +48,7 @@ export default function SeasonToggle({ options, value }: { options: string[]; va
                     if (isYearKey(season))
                         void navigate({ to: '.', search: (prev) => ({ ...prev, season }) });
                 }}
-                className={`${segment} min-w-0 cursor-pointer appearance-auto text-center ${yearOn ? activeCls : idleCls}`}
+                className={`${segment} min-w-0 cursor-pointer appearance-auto border-0 text-center ${yearOn ? activeCls : idleCls}`}
             >
                 {!yearOn && (
                     <option value="" disabled>
