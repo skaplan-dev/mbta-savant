@@ -77,4 +77,28 @@ describe('leaderboard', () => {
                 .reason
         ).toContain('Mattapan');
     });
+    it('on career sorts Time Saved by % vs typical, not seconds', () => {
+        const c = (n: string, sec: number, pct: number) =>
+            carStats(n, { travel_vs_typical_sec: sec, travel_vs_typical_pct: pct });
+        const ranked = [c('1', -50, 1), c('2', 50, -4), c('3', 0, -2)];
+        const key = { key: 'time-saved', dir: 'desc' } as const;
+
+        expect(sortCars(ranked, key, 'red').map((r) => r.car.number)).toEqual(['1', '3', '2']);
+        expect(sortCars(ranked, key, 'red', true).map((r) => r.car.number)).toEqual([
+            '2',
+            '3',
+            '1',
+        ]);
+    });
+    it('sorts the career Seasons column, most first', () => {
+        const c = (n: string, s: number | null) => carStats(n, { seasons_played: s });
+        const rows = sortCars(
+            [c('1', 2), c('2', 9), c('3', null)],
+            { key: 'seasons', dir: firstDir('seasons', 'red', true) },
+            'red',
+            true
+        );
+
+        expect(rows.map((r) => r.car.number)).toEqual(['2', '1', '3']);
+    });
 });

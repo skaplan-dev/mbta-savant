@@ -154,4 +154,40 @@ describe('LeaderboardTable', () => {
         ).toBeTruthy();
         expect(screen.queryByText(/Close race/)).toBeNull();
     });
+    it('on All-time shows Seasons, a Retired pill and Time Saved as a percent', async () => {
+        await renderWithRouter(
+            <LeaderboardTable
+                group="red"
+                season="career"
+                ranked={[
+                    carStats('1', {
+                        seasons_played: 7,
+                        travel_vs_typical_sec: 0,
+                        travel_vs_typical_pct: -1.8,
+                        vehicle: { fleet_key: 'k', fleet_label: 'F', retired: '2022' },
+                    }),
+                ]}
+            />
+        );
+        expect(await screen.findByRole('columnheader', { name: /Seasons/ })).toBeTruthy();
+        expect(screen.getByText('7')).toBeTruthy();
+        expect(screen.getByText('Retired')).toBeTruthy();
+        expect(screen.getByText('+1.8%')).toBeTruthy();
+    });
+    it('on a year has no Seasons column or Retired pill', async () => {
+        await renderWithRouter(
+            <LeaderboardTable
+                group="red"
+                season="2026"
+                ranked={[
+                    carStats('1', {
+                        vehicle: { fleet_key: 'k', fleet_label: 'F', retired: '2022' },
+                    }),
+                ]}
+            />
+        );
+        await screen.findByRole('columnheader', { name: /Rank/ });
+        expect(screen.queryByRole('columnheader', { name: /Seasons/ })).toBeNull();
+        expect(screen.queryByText('Retired')).toBeNull();
+    });
 });

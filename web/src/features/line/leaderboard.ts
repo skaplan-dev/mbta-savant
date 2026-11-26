@@ -6,7 +6,7 @@ import { timeSaved } from '../../format';
 import { unrankedReason } from '../../rank';
 import { boardStats } from '../../stats';
 
-export type SortKey = 'rank' | 'car' | 'fleet' | 'trips' | StatId;
+export type SortKey = 'rank' | 'car' | 'fleet' | 'trips' | 'seasons' | StatId;
 
 export type SortDir = 'asc' | 'desc';
 
@@ -55,10 +55,10 @@ export function rankCars(cars: readonly CarStats[]): CarStats[] {
 }
 
 /** The direction a first click on a column uses: best first for stats, natural order otherwise. */
-export function firstDir(key: SortKey, group: GroupId): SortDir {
+export function firstDir(key: SortKey, group: GroupId, career = false): SortDir {
     if (key === 'car' || key === 'fleet' || key === 'rank') return 'asc';
 
-    return boardStats(group).find((c) => c.id === key)?.lowerBetter ? 'asc' : 'desc';
+    return boardStats(group, career).find((c) => c.id === key)?.lowerBetter ? 'asc' : 'desc';
 }
 
 const seenAt = (c: CarStats) => (c.last_seen ? Date.parse(c.last_seen) : null);
@@ -69,9 +69,14 @@ export interface RankedRow {
 }
 
 /** Sorts rows (already in rank order). Ties fall back to rank, so the result is stable. */
-export function sortCars(ranked: readonly CarStats[], sort: Sort, group: GroupId): RankedRow[] {
+export function sortCars(
+    ranked: readonly CarStats[],
+    sort: Sort,
+    group: GroupId,
+    career = false
+): RankedRow[] {
     const rows = ranked.map((car, i) => ({ car, rank: i + 1 }));
-    const col = boardStats(group).find((c) => c.id === sort.key);
+    const col = boardStats(group, career).find((c) => c.id === sort.key);
     const sign = sort.dir === 'asc' ? 1 : -1;
 
     const cmp = (x: RankedRow, y: RankedRow): number => {
@@ -84,6 +89,12 @@ export function sortCars(ranked: readonly CarStats[], sort: Sort, group: GroupId
                 return sign * x.car.vehicle.fleet_label.localeCompare(y.car.vehicle.fleet_label);
             case 'trips':
                 return sign * (x.car.trips - y.car.trips);
+            case 'seasons':
+                return compareNullsLast(
+                    x.car.seasons_played ?? null,
+                    y.car.seasons_played ?? null,
+                    sort.dir
+                );
             case 'last-seen':
                 return compareNullsLast(seenAt(x.car), seenAt(y.car), sort.dir);
             default:

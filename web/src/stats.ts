@@ -126,8 +126,13 @@ export const BOARD_ORDER: StatId[] = [
     'routes-run',
 ];
 
-export const boardStats = (group: GroupId): Stat[] =>
-    BOARD_ORDER.flatMap((id) => forGroup(group).filter((s) => s.id === id));
+/** The leaderboard's columns; `career` for the All-time view (Time Saved as a %). */
+export const boardStats = (group: GroupId, career = false): Stat[] =>
+    BOARD_ORDER.flatMap((id) =>
+        forGroup(group)
+            .filter((s) => s.id === id)
+            .map((s) => (career ? careerStat(s) : s))
+    );
 
 /**
  * A stat as the All-time window shows it. Career trip time is ranked on % vs typical (each season

@@ -111,6 +111,8 @@ export interface CarStats {
     tar?: number | null;
     /** The three parts, each rounded separately, so they may differ from `tar` by a trip. */
     tar_parts?: { field: number; speed: number; steady: number } | null;
+    /** Seasons the car played (All-time window only). */
+    seasons_played?: number | null;
     /** Earliest service date ever (ISO). */
     first_seen?: string | null;
     /** True when first_seen limits eligible_days (the car's fleet was still being delivered). */
