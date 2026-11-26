@@ -66,7 +66,7 @@ def cmd_backfill(args) -> int:
 
 
 def cmd_build(args) -> int:
-    publish(Path(args.root), Path(args.out))
+    publish(Path(args.root), Path(args.out), Path(args.frozen) if args.frozen else None)
     return 0
 
 
@@ -98,6 +98,7 @@ def main(argv=None) -> int:
     u = sub.add_parser("build", help="publish JSON for the site")
     u.add_argument("--root", default="./work")
     u.add_argument("--out", default="./out")
+    u.add_argument("--frozen", help="a copy of a published data/ folder: its closed years are copied, not recomputed")
     u.set_defaults(func=cmd_build)
 
     g = sub.add_parser("pages", help="per-page HTML shells, sitemap.xml and robots.txt for crawlers")

@@ -18,11 +18,11 @@ site just notes how bunched the cars are.
 import json
 import shutil
 import statistics
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Literal
 
-from savant import roster, stats, tar
+from savant import career, roster, stats, tar
 from savant.groups import GROUPS
 
 METRICS: dict[str, Literal["higher", "lower"] | None] = {
@@ -48,6 +48,9 @@ MIN_SPREAD = {
     "travel_time_sec": 10, "dwell_time_sec": 5, "steadiness_sec": 1.0,
     "on_time_pct": 2.0, "games_played_pct": 5.0, "iron_horse_days": 3, "tar": 100,
 }
+# Career trip time is a % vs each season's typical car, so its spread is in percentage points (about 10 s at a
+# typical trip length).
+CAREER_MIN_SPREAD = {**MIN_SPREAD, "travel_time_sec": 0.5}
 MIN_CARS = tar.MIN_CARS
 
 
@@ -55,13 +58,13 @@ def _pool(cars: list[dict], metric: str) -> list[float]:
     return [c[metric] for c in cars if c.get("qualified") and c.get("ranked") and c.get(metric) is not None]
 
 
-def spread(cars: list[dict]) -> dict[str, float | None]:
-    """Per MIN_SPREAD metric, the gap between the 10th- and 90th-percentile ranked cars (None with too few cars to
+def spread(cars: list[dict], min_spread: dict = MIN_SPREAD) -> dict[str, float | None]:
+    """Per ``min_spread`` metric, the gap between the 10th- and 90th-percentile ranked cars (None with too few cars to
     measure); {} if no car is ranked. Published so the site can say how bunched a too-close stat is."""
     if not any(c.get("ranked") for c in cars):
         return {}
     out: dict[str, float | None] = {}
-    for metric in MIN_SPREAD:
+    for metric in min_spread:
         vals = _pool(cars, metric)
         if len(vals) < MIN_CARS:
             out[metric] = None
@@ -71,9 +74,9 @@ def spread(cars: list[dict]) -> dict[str, float | None]:
     return out
 
 
-def too_close(cars: list[dict]) -> list[str]:
-    """Metrics (with a MIN_SPREAD) whose values are too bunched to rank these cars; [] if no car is ranked."""
-    return [m for m, width in spread(cars).items() if width is None or width < MIN_SPREAD[m]]
+def too_close(cars: list[dict], min_spread: dict = MIN_SPREAD) -> list[str]:
+    """Metrics (with a ``min_spread``) whose values are too bunched to rank these cars; [] if no car is ranked."""
+    return [m for m, width in spread(cars, min_spread).items() if width is None or width < min_spread[m]]
 
 
 def mark_ranked(group: str, cars: list[dict]) -> None:
@@ -228,35 +231,105 @@ def home_cards(seasons: dict[str, str], index_by_window: dict[str, list]) -> dic
     return out
 
 
-def publish(root: Path, out: Path) -> None:
+# A year is closed (and its folder frozen) once the latest service day is this far into the next year, beyond the
+# nightly re-ingest window.
+CLOSED_AFTER = (1, 7)
+
+
+def is_closed(year: str, latest: date) -> bool:
+    return latest >= date(int(year) + 1, *CLOSED_AFTER)
+
+
+def _index_entry(group: str, c: dict) -> dict:
+    return {"car_id": c["car_id"], "group": group, "number": c["number"],
+            "fleet_label": c["vehicle"]["fleet_label"], "qualified": c["qualified"], "ranked": c["ranked"],
+            "travel_vs_typical_sec": c["travel_vs_typical_sec"], "pct_travel": c["pct"]["travel_time_sec"],
+            "tar": c["tar"], "pct_tar": c["pct"]["tar"]}
+
+
+def _season_input(group: str, c: dict) -> dict:
+    """What career.career_cars needs from a season car record: no game log, teammates or route rows, except a bus's
+    routes over the season, kept as a single pseudo-day so career can count distinct routes."""
+    rec = {k: v for k, v in c.items() if k not in ("game_log", "teammates", "by_route")}
+    if group == "bus":
+        routes = {r for day in c.get("game_log") or [] for r in day.get("routes") or []}
+        rec["game_log"] = [{"routes": sorted(routes)}] if routes else []
+    return rec
+
+
+def _frozen_years(frozen: Path | None) -> set[str]:
+    if frozen is None or not frozen.is_dir():
+        return set()
+    return {p.parent.name for p in frozen.glob("*/frozen.json") if p.parent.name.isdigit()}
+
+
+def _copy_frozen_year(frozen: Path, data: Path, year: str, index_by_window: dict[str, list],
+                      fleets: dict[str, dict], season_recs: dict[str, dict[str, list[dict]]]) -> None:
+    """Copy a frozen year unchanged and read back what the rest of the build needs from it."""
+    src = frozen / year
+    shutil.copytree(src, data / year)
+    index_by_window[year] = json.loads((src / "index.json").read_text(encoding="utf-8"))
+    for group in GROUPS:
+        cars_dir = src / "cars" / group
+        if not cars_dir.is_dir():
+            continue  # no data for this group that year
+        season_recs[group][year] = [
+            _season_input(group, json.loads(p.read_text(encoding="utf-8"))) for p in sorted(cars_dir.glob("*.json"))
+        ]
+        fleet_file = frozen / "fleets" / f"{group}.json"
+        by_window = json.loads(fleet_file.read_text(encoding="utf-8")) if fleet_file.exists() else {}
+        if year in by_window:
+            fleets[group][year] = by_window[year]
+        else:
+            group_file = src / "groups" / f"{group}.json"
+            fleets[group][year] = _fleet(json.loads(group_file.read_text(encoding="utf-8"))["cars"])
+
+
+def publish(root: Path, out: Path, frozen: Path | None = None) -> None:
+    """Write every window's JSON under ``out``/data. Years marked frozen in ``frozen`` (a copy of an earlier build's
+    data/ folder) are copied from it instead of recomputed; closed years built here get the marker."""
     root, out = Path(root), Path(out)
+    frozen = Path(frozen) if frozen is not None else None
     data = out / "data"
+    if frozen is not None and frozen.resolve().is_relative_to(data.resolve()):
+        raise ValueError(f"frozen folder {frozen} is inside the output {data}, which is rebuilt from scratch")
     if data.exists():
         shutil.rmtree(data)  # no stale files from an earlier build; real errors raise
     now = datetime.now(timezone.utc).isoformat()
     wins = stats.windows(root)
+    latest = wins[0].end if wins else None
+    frozen_years = _frozen_years(frozen)
     fleets: dict[str, dict] = {g: {} for g in GROUPS}
     index_by_window: dict[str, list] = {w.key: [] for w in wins}
-    firsts, seen, delivered = {}, {}, {}
+    season_recs: dict[str, dict[str, list[dict]]] = {g: {} for g in GROUPS}
+    firsts, seen, delivered, starts = {}, {}, {}, {}
     for group in GROUPS:
         firsts[group], seen[group] = stats.first_last_seen(root, group)
-        delivered[group] = stats.new_deliveries(firsts[group], group, stats.data_start(root, group))
+        starts[group] = stats.data_start(root, group)
+        delivered[group] = stats.new_deliveries(firsts[group], group, starts[group])
+
+    def identify(group: str, c: dict) -> None:
+        """This build's roster and first/last-seen facts for a car record."""
+        c["last_seen"] = seen[group].get(c["number"])
+        c["first_seen"] = firsts[group].get(c["number"])
+        c["new_delivery"] = c["number"] in delivered[group]
+        v = roster.lookup(group, c["number"])
+        c["vehicle"] = {k: getattr(v, k) for k in v.__dataclass_fields__} if v else {"fleet_label": "Unknown fleet"}
+        c["vehicle"].setdefault("fleet_key", "unknown")
+
     for w in wins:
+        is_year = w.key.isdigit()
+        if frozen is not None and w.key in frozen_years:
+            _copy_frozen_year(frozen, data, w.key, index_by_window, fleets, season_recs)
+            continue
         for group in GROUPS:
             cars = stats.car_stats(root, group, w, delivered[group])
             if not cars:
                 continue
             for c in cars:
-                c["last_seen"] = seen[group].get(c["number"])
-                c["first_seen"] = firsts[group].get(c["number"])
-                c["new_delivery"] = c["number"] in delivered[group]
+                identify(group, c)
                 if group == "bus":
                     c["crowd_load_pct"] = None
-                v = roster.lookup(group, c["number"])
-                c["vehicle"] = (
-                    {k: getattr(v, k) for k in v.__dataclass_fields__} if v else {"fleet_label": "Unknown fleet"}
-                )
-                c["vehicle"].setdefault("fleet_key", "unknown")
             mark_ranked(group, cars)
             segs_per_trip = cars[0].get("segs_per_trip")
             trip_len_sec = cars[0].get("trip_len_sec")
@@ -284,24 +357,58 @@ def publish(root: Path, out: Path) -> None:
             for c in cars:
                 c.pop("by_route", None)
                 _write(data / w.key / "cars" / group / f"{c['number']}.json", c)
-                index_by_window[w.key].append(
-                    {"car_id": c["car_id"], "group": group, "number": c["number"],
-                     "fleet_label": c["vehicle"]["fleet_label"], "qualified": c["qualified"], "ranked": c["ranked"],
-                     "travel_vs_typical_sec": c["travel_vs_typical_sec"], "pct_travel": c["pct"]["travel_time_sec"],
-                     "tar": c["tar"], "pct_tar": c["pct"]["tar"]}
-                )
+                index_by_window[w.key].append(_index_entry(group, c))
             fleets[group][w.key] = _fleet(cars)
+            if is_year:
+                season_recs[group][w.key] = [_season_input(group, c) for c in cars]  # drops the game logs
         _write(data / w.key / "index.json", index_by_window[w.key])
+        if is_year and latest is not None and is_closed(w.key, latest):
+            _write(data / w.key / "frozen.json", {"built_at": now, "through": f"{w.key}-12-31"})
+
+    # All-time: every season of each car, re-identified from this build (frozen files keep old roster facts).
+    career_index: list[dict] = []
+    for group in GROUPS:
+        if not season_recs[group]:
+            continue
+        cars = career.career_cars(group, season_recs[group])
+        season_recs[group] = {}
+        for c in cars:
+            identify(group, c)
+        cars = add_percentiles(group, cars)
+        summary = {"group": group, "window": career.CAREER, "generated_at": now,
+                   "qualify_min_trips": stats.qualify_threshold([c["trips"] for c in cars]),
+                   "ranked_cars": sum(1 for c in cars if c["qualified"] and c["ranked"]),
+                   "typical": {"travel_time_sec": 0, "dwell_time_sec": 0},
+                   "too_close": too_close(cars, CAREER_MIN_SPREAD), "spread": spread(cars, CAREER_MIN_SPREAD)}
+        _write(
+            data / career.CAREER / "groups" / f"{group}.json",
+            {**{k: v for k, v in summary.items() if k != "ranked_cars"},
+             "cars": [{k: v for k, v in c.items() if k not in ("game_log", "seasons", "windows")} for c in cars]},
+        )
+        _write(data / career.CAREER / "groups" / f"{group}.summary.json", summary)
+        for c in cars:
+            # The site's car type expects a game log; a career has none.
+            _write(data / career.CAREER / "cars" / group / f"{c['number']}.json", {**c, "game_log": []})
+            career_index.append(_index_entry(group, c))
+        fleets[group][career.CAREER] = _fleet(cars)
+    if career_index:
+        index_by_window[career.CAREER] = career_index
+        _write(data / career.CAREER / "index.json", career_index)
+
     for group, by_window in fleets.items():
         if by_window:
             _write(data / "fleets" / f"{group}.json", by_window)
     seasons = default_seasons(wins, index_by_window)
     # The home page's cards, so it needn't load every car in every window.
     _write(data / "home.json", home_cards(seasons, index_by_window))
+    meta_windows = [{"key": w.key, "start": w.start, "end": w.end} for w in wins]
+    known_starts = [s for s in starts.values() if s]
+    if career_index and known_starts:
+        meta_windows.insert(0, {"key": career.CAREER, "start": min(known_starts), "end": latest})
     _write(
         data / "meta.json",
         {"generated_at": now,
-         "windows": [{"key": w.key, "start": w.start, "end": w.end} for w in wins],
-         "latest_service_date": wins[0].end if wins else None,
+         "windows": meta_windows,
+         "latest_service_date": latest,
          "default_season": seasons},
     )

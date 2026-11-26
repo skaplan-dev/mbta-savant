@@ -1,5 +1,6 @@
 import json
 from datetime import date
+from pathlib import Path
 
 import pytest
 from lamp_data import bus_file, bus_stop, rail_file, rail_trip
@@ -99,3 +100,12 @@ def test_missing_day_writes_nothing(fake, tmp_path, capsys):
 def test_bus_ingest(fake, tmp_path):
     assert cli.main(["ingest", "--date", "2026-05-01", "--groups", "bus", "--root", str(tmp_path / "w")]) == 0
     assert list((tmp_path / "w" / "segments" / "bus").rglob("*.parquet"))
+
+
+def test_build_passes_frozen(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(cli, "publish", lambda root, out, frozen=None: calls.append((root, out, frozen)))
+    assert cli.main(["build", "--root", "r", "--out", "o", "--frozen", str(tmp_path)]) == 0
+    assert calls == [(Path("r"), Path("o"), tmp_path)]
+    assert cli.main(["build", "--root", "r", "--out", "o"]) == 0
+    assert calls[-1] == (Path("r"), Path("o"), None)
