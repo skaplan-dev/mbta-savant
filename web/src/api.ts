@@ -77,6 +77,8 @@ export interface Vehicle {
     years?: string;
     length_ft?: number;
     garage?: string | null;
+    /** The year the fleet was retired, when it has been. */
+    retired?: string | null;
 }
 
 export type Pct = Record<Metric, number | null>;
@@ -134,6 +136,35 @@ export interface GameLogEntry {
 
 export interface Car extends CarStats {
     game_log: GameLogEntry[];
+}
+
+/** One season in a car's career history (career/cars/<group>/<n>.json `seasons`), newest first. */
+export interface SeasonRow {
+    season: string;
+    trips: number;
+    qualified: boolean;
+    ranked: boolean;
+    travel_vs_typical_sec: number | null;
+    travel_vs_typical_pct: number | null;
+    pct_travel: number | null;
+    on_time_pct: number | null;
+    games_played_pct: number | null;
+    miles: number | null;
+    iron_horse_days: number | null;
+    tar: number | null;
+    pct_tar: number | null;
+    fleet_label: string;
+}
+
+/**
+ * A car's All-time record: every season combined (each compared with its own year), with its
+ * per-season history. `travel_time_sec` holds the career % vs typical; `game_log` and `teammates` are empty.
+ */
+export interface CareerCar extends Car {
+    seasons: SeasonRow[];
+    /** Year windows the car has a file for, newest first (no last30, no career). */
+    windows: string[];
+    seasons_played: number;
 }
 
 /** The line-wide numbers a car page needs, without every car (groups/<group>.summary.json). */
@@ -220,6 +251,9 @@ export const fetchGroupSummary = (window: string, group: GroupId) =>
 
 export const fetchCar = (window: string, group: GroupId, number: string) =>
     getJson<Car>(`/data/${window}/cars/${group}/${number}.json`);
+
+export const fetchCareer = (group: GroupId, number: string) =>
+    getJson<CareerCar>(`/data/career/cars/${group}/${number}.json`);
 
 export const fetchFleets = (group: GroupId) => getJson<FleetsFile>(`/data/fleets/${group}.json`);
 

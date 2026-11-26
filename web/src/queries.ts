@@ -8,6 +8,7 @@ import {
 import { useCallback, useMemo } from 'react';
 import {
     fetchCar,
+    fetchCareer,
     fetchFleets,
     fetchGroup,
     fetchGroupSummary,
@@ -44,10 +45,18 @@ export const groupSummaryQuery = (window: string | undefined, group: GroupId) =>
         queryFn: window ? () => fetchGroupSummary(window, group) : skipToken,
     });
 
-export const carQuery = (window: string, group: GroupId, number: string) =>
+/** Disabled until `window` is known. */
+export const carQuery = (window: string | undefined, group: GroupId, number: string) =>
     queryOptions({
         queryKey: ['car', window, group, number],
-        queryFn: () => fetchCar(window, group, number),
+        queryFn: window ? () => fetchCar(window, group, number) : skipToken,
+    });
+
+/** A car's All-time record and season history. */
+export const careerQuery = (group: GroupId, number: string) =>
+    queryOptions({
+        queryKey: ['career', group, number],
+        queryFn: () => fetchCareer(group, number),
     });
 
 export const fleetsQuery = (group: GroupId) =>

@@ -1,4 +1,4 @@
-import type { Car, CarStats, GroupFile, IndexEntry, Pct } from '../api';
+import type { Car, CareerCar, CarStats, GroupFile, IndexEntry, Pct, SeasonRow } from '../api';
 
 // Complete, valid records with neutral defaults, so tests state only the fields they care about.
 
@@ -66,3 +66,36 @@ export const groupFile = (cars: CarStats[], o: Partial<GroupFile> = {}): GroupFi
     cars,
     ...o,
 });
+
+export const seasonRow = (season: string, o: Partial<SeasonRow> = {}): SeasonRow => ({
+    season,
+    trips: 1000,
+    qualified: true,
+    ranked: true,
+    travel_vs_typical_sec: 0,
+    travel_vs_typical_pct: 0,
+    pct_travel: 50,
+    on_time_pct: 90,
+    games_played_pct: 50,
+    miles: 10000,
+    iron_horse_days: 5,
+    tar: 100,
+    pct_tar: 50,
+    fleet_label: 'F',
+    ...o,
+});
+
+export const careerCar = (
+    number: string,
+    o: Partial<Omit<CareerCar, 'pct'>> & { pct?: Partial<Pct> } = {}
+): CareerCar => {
+    const seasons = o.seasons ?? [seasonRow('2026')];
+
+    return {
+        ...carStats(number, o),
+        game_log: [],
+        seasons,
+        windows: o.windows ?? seasons.map((s) => s.season),
+        seasons_played: o.seasons_played ?? seasons.length,
+    };
+};

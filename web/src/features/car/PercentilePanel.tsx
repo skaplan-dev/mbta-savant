@@ -9,6 +9,7 @@ import { barPos, fmtNum } from '../../format';
 import { GLOSSARY } from '../../glossary';
 import { GROUPS, type GroupId } from '../../groups';
 import { isRanked, unrankedReason } from '../../rank';
+import { CAREER } from '../../seasons';
 import { panelStats, type Stat } from '../../stats';
 import { COLS } from './shared';
 import TarBlock from './TarBlock';
@@ -106,6 +107,7 @@ export default function PercentilePanel({
     summary: GroupSummary | null | undefined;
 }) {
     const info = GROUPS[group];
+    const career = season === CAREER;
     const ranked = isRanked(group, car);
     const rankedCount = summary?.ranked_cars;
 
@@ -137,16 +139,16 @@ export default function PercentilePanel({
                 <Section
                     Icon={Gauge}
                     title="Performance"
-                    stats={panelStats(group, 'performance')}
+                    stats={panelStats(group, 'performance', career)}
                     car={car}
                     ranked={ranked}
                     first
-                    lead={ranked ? <TarBlock car={car} summary={summary} /> : null}
+                    lead={ranked ? <TarBlock car={car} summary={summary} career={career} /> : null}
                 />
                 <Section
                     Icon={TrainTrack}
                     title="Availability"
-                    stats={panelStats(group, 'availability')}
+                    stats={panelStats(group, 'availability', career)}
                     car={car}
                     ranked={ranked}
                 />
