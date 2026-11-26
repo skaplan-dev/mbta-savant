@@ -49,23 +49,27 @@ def main() -> None:
     years.sort()
 
     con = duckdb.connect()
+    present = [(g, y) for g in groups for y in years if has_files(args.root, g, y)]
     stats: dict[tuple[str, int], tuple[int, float, float]] = {}
+    for g, y in present:
+        n, dn, bn = con.execute(
+            "SELECT count(*), 100.0*avg((distance_mi IS NULL)::INT),"
+            " 100.0*avg((benchmark_sec IS NULL)::INT)"
+            f" FROM read_parquet('{glob_for(args.root, g, y)}')"
+        ).fetchone() or (0, None, None)
+        stats[(g, y)] = (n, dn if dn is not None else 0.0, bn if bn is not None else 0.0)
+
     summary: list[list[object]] = []
-    for g in groups:
-        for y in years:
-            if not has_files(args.root, g, y):
-                continue
-            n, dn, bn = con.execute(
-                "SELECT count(*), 100.0*avg((distance_mi IS NULL)::INT),"
-                " 100.0*avg((benchmark_sec IS NULL)::INT)"
-                f" FROM read_parquet('{glob_for(args.root, g, y)}')"
-            ).fetchone() or (0, 0.0, 0.0)
-            stats[(g, y)] = (n, dn or 0.0, bn or 0.0)
-            base = stats.get((g, args.baseline_year)) if y != args.baseline_year else None
-            delta = f"{dn - base[1]:+.2f}" if base and dn is not None else ""
-            if y == args.baseline_year:
-                delta = "baseline"
-            summary.append([g, y, n, f"{dn:.2f}", f"{bn:.2f}", delta])
+    for g, y in present:
+        n, dn, bn = stats[(g, y)]
+        base = stats.get((g, args.baseline_year))
+        if y == args.baseline_year:
+            delta = "baseline"
+        elif base is not None:
+            delta = f"{dn - base[1]:+.2f}"
+        else:
+            delta = "n/a"
+        summary.append([g, y, n, f"{dn:.2f}", f"{bn:.2f}", delta])
     print_table(
         f"Per group per year (delta = distance null pts vs {args.baseline_year}; flag if |delta| > 2)",
         ["group", "year", "segments", "dist_null_%", "bench_null_%", "dist_delta"],
@@ -73,22 +77,30 @@ def main() -> None:
     )
 
     for g in groups:
-        paths = [glob_for(args.root, g, y) for y in years if has_files(args.root, g, y)]
+        for y in years:
+            if (g, y) not in stats:
+                continue
+            src = f"read_parquet('{glob_for(args.root, g, y)}')"
+            rows = con.execute(
+                f"SELECT car, count(*) n FROM (SELECT unnest(cars) car FROM {src}) GROUP BY car ORDER BY n DESC"
+            ).fetchall()
+            unknown = [[c, n] for c, n in rows if roster.lookup(g, str(c)) is None]
+            print_table(f"{g} {y}: top 10 unknown car numbers (segments)", ["car", "segments"], unknown[:10])
+
+            stops = con.execute(
+                f"SELECT from_stop, to_stop, count(*) n FROM {src}"
+                " WHERE distance_mi IS NULL AND from_stop <> to_stop"
+                " GROUP BY 1, 2 ORDER BY n DESC LIMIT 20"
+            ).fetchall()
+            print_table(
+                f"{g} {y}: top 20 (from_stop, to_stop) with null distance (from != to)",
+                ["from_stop", "to_stop", "segments"], [list(r) for r in stops],
+            )
+
+        paths = [glob_for(args.root, g, y) for y in years if (g, y) in stats]
         if not paths:
             continue
         src = "read_parquet([" + ",".join(f"'{p}'" for p in paths) + "])"
-        rows = con.execute(
-            f"SELECT car, count(*) n FROM (SELECT unnest(cars) car FROM {src}) GROUP BY car ORDER BY n DESC"
-        ).fetchall()
-        unknown = [(c, n) for c, n in rows if roster.lookup(g, str(c)) is None]
-        print_table(f"{g}: top 10 unknown car numbers (segments)", ["car", "segments"], [list(r) for r in unknown[:10]])
-
-        stops = con.execute(
-            f"SELECT from_stop, to_stop, count(*) n FROM {src} WHERE distance_mi IS NULL"
-            " GROUP BY 1, 2 ORDER BY n DESC LIMIT 20"
-        ).fetchall()
-        print_table(f"{g}: top 20 (from_stop, to_stop) with null distance", ["from_stop", "to_stop", "segments"], [list(r) for r in stops])
-
         if g == "orange":
             last = con.execute(
                 f"SELECT car, max(service_date) FROM (SELECT unnest(cars) car, service_date FROM {src})"
