@@ -140,3 +140,29 @@ def test_bus_tar_description_says_among_buses():
              "qualified": True, "travel_vs_typical_sec": -5.0, "pct_travel": 70, "tar": 1600, "pct_tar": 90}
     d = pages.car_description(entry, "2026")
     assert "was worth 1,600 trips above replacement among MBTA buses in 2026" in d
+
+
+def test_season_label_all_time():
+    assert pages.season_label("career") == "All-time"
+    assert pages.season_label("last30") == "Last 30 Days"
+    assert pages.season_label("2026") == "2026"
+
+
+def test_career_window_is_never_a_default_season(tmp_path):
+    d = write_data(tmp_path)
+    (d / "career" / "routes").mkdir(parents=True)
+    (d / "career" / "index.json").write_text(json.dumps([entry("red", "1902", travel_vs_typical_sec=-50.0), entry("red", "1700")]))
+    (d / "career" / "routes" / "index.json").write_text(json.dumps([{"route": "28", "buses": 200, "ranked_cars": 150, "trips": 1}]))
+    meta = json.loads((d / "meta.json").read_text())
+    meta["windows"] = [{"key": "career"}, {"key": "last30"}, {"key": "2026"}]
+    (d / "meta.json").write_text(json.dumps(meta))
+    files = pages.build_pages(TEMPLATE, d, "mbtasavant.com")
+    assert "2026 Red Line Leaderboard" in files["line/red.html"]
+    assert "in 2026" in files["car/red/1902.html"]
+    assert "All-time" not in files["route/28.html"]
+    assert "car/red/1700.html" not in files  # career-only cars are not given pages here
+
+    meta["default_season"]["red"] = "career"
+    (d / "meta.json").write_text(json.dumps(meta))
+    files = pages.build_pages(TEMPLATE, d, "mbtasavant.com")
+    assert "2026 Red Line Leaderboard" in files["line/red.html"]

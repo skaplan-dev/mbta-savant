@@ -21,6 +21,10 @@ on:
       date:
         description: 'Date to ingest (YYYY-MM-DD). Defaults to yesterday in America/New_York.'
         required: false
+      full_rebuild:
+        description: 'Recompute every year instead of copying closed past years from the published data.'
+        type: boolean
+        default: false
 
 concurrency:
   group: nightly
@@ -111,8 +115,19 @@ jobs:
       - name: Ingest rolling window
         run: uv run --frozen savant backfill --start "$START_DATE" --end "$INGEST_DATE" --force --root ../work
         working-directory: pipeline
+      # Closed past years are copied from the published data (those with a frozen.json) instead of
+      # recomputed. Synced beside out/, not into it: publish deletes out/data before reading. Empty
+      # on scheduled runs, which count as false.
+      - name: Sync frozen years from S3
+        if: inputs.full_rebuild != true
+        run: aws s3 sync s3://$BUCKET/data ./frozen --exclude "last30/*" --exclude "career/*"
       - name: Build stats
-        run: uv run --frozen savant build --root ../work --out ../out
+        env:
+          FULL_REBUILD: ${{ inputs.full_rebuild }}
+        run: |
+          FROZEN_ARG="--frozen ../frozen"
+          if [ "$FULL_REBUILD" = true ]; then FROZEN_ARG=""; fi
+          uv run --frozen savant build --root ../work --out ../out $FROZEN_ARG
         working-directory: pipeline
       - name: Push window's segments
         run: |

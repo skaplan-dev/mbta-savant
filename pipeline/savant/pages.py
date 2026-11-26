@@ -40,10 +40,11 @@ UNRANKED_LINES = {"mattapan"}
 # Mirrors web/src/busRoutes.ts.
 SILVER_LINE = {"741": "SL1", "742": "SL2", "743": "SL3", "746": "SLW", "749": "SL5", "751": "SL4"}
 LAST30 = "last30"
+CAREER = "career"
 
 
 def season_label(key: str) -> str:
-    return "Last 30 Days" if key == LAST30 else key
+    return "Last 30 Days" if key == LAST30 else "All-time" if key == CAREER else key
 
 
 def route_label(route: str) -> str:
@@ -171,7 +172,8 @@ def build_pages(template: str, data: Path, host: str) -> dict[str, str]:
     pages["/glossary"] = ("glossary.html", GLOSSARY_TITLE, GLOSSARY_DESCRIPTION)
 
     for group, (line, _) in LINES.items():
-        season = defaults.get(group) or next((w for w in order if any(e["group"] == group for e in indexes[w])), None)
+        default = defaults.get(group)
+        season = (default if default != CAREER else None) or next((w for w in order if any(e["group"] == group for e in indexes[w])), None)
         if not season:
             continue
         ranked = sum(1 for e in indexes.get(season, []) if e["group"] == group and e["ranked"] and e["qualified"])
@@ -186,7 +188,7 @@ def build_pages(template: str, data: Path, host: str) -> dict[str, str]:
     for w in order:
         for e in indexes[w]:
             key = (e["group"], e["number"])
-            if key not in cars or (w == defaults.get(e["group"]) and cars[key][1] != w):
+            if key not in cars or (w == defaults.get(e["group"]) and w != CAREER and cars[key][1] != w):
                 cars[key] = (e, w)
     for (group, number), (entry, season) in cars.items():
         pages[f"/car/{group}/{number}"] = (
