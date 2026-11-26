@@ -9,8 +9,13 @@
 name: nightly
 
 on:
+  # GitHub's cron is best-effort: runs are often delayed by hours or dropped outright, worst
+  # at the top of the hour. So: an off-peak minute, plus two backups. The `check` job turns a
+  # scheduled run into a no-op when a run after 10:00 UTC today has already published data.
   schedule:
-    - cron: '0 10 * * *' # 05:00/06:00 Boston, after LAMP publishes
+    - cron: '17 10 * * *' # 05:17/06:17 Boston, after LAMP publishes
+    - cron: '47 13 * * *' # backup
+    - cron: '37 17 * * *' # backup
   workflow_dispatch:
     inputs:
       date:
@@ -22,7 +27,35 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    env:
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      BUCKET: ${{ vars.SAVANT_BUCKET }}
+    steps:
+      - name: Skip a scheduled run if today's data is already published
+        id: check
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          run=true
+          if [ "$EVENT" = schedule ]; then
+            gen=$(aws s3 cp "s3://$BUCKET/data/meta.json" - 2>/dev/null | jq -r '.generated_at // empty' || true)
+            cutoff=$(date -u -d "$(date -u +%F)T10:00:00Z" +%s)
+            if [ -n "$gen" ] && [ "$(date -u -d "$gen" +%s)" -ge "$cutoff" ]; then
+              echo "Data already generated at $gen; skipping."
+              run=false
+            fi
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
   nightly:
+    needs: check
+    if: needs.check.outputs.run == 'true'
     # Public repo => standard runner has 4 vCPU / 16 GB. Build peak memory was ~5 GB on a
     # synthetic half-year bus window; if the repo becomes private, a larger runner may be needed.
     runs-on: ubuntu-latest
