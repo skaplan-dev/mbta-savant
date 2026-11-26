@@ -456,6 +456,28 @@ def test_frozen_year_copied(tmp_path):
     assert tree(out / "data")["2025/cars/orange/1400.json"] == tree(first / "data")["2025/cars/orange/1400.json"]
 
 
+def test_frozen_year_group_file_gets_fresh_last_seen(tmp_path):
+    root = two_years(tmp_path)
+    first = tmp_path / "first"
+    publish.publish(root, first)
+    frozen = tmp_path / "frozen"
+    shutil.copytree(first / "data", frozen)
+    gf = frozen / "2024/groups/orange.json"
+    board = load(gf)
+    fresh = {c["number"]: c["last_seen"] for c in board["cars"]}
+    assert fresh and all(v is not None for v in fresh.values())
+    for c in board["cars"]:
+        c["last_seen"] = "1999-01-01"
+    gf.write_text(json.dumps(board))
+    out = tmp_path / "out"
+    publish.publish(root, out, frozen=frozen)
+    copied = load(out / "data/2024/groups/orange.json")
+    assert {c["number"]: c["last_seen"] for c in copied["cars"]} == fresh
+    assert {k: v for k, v in copied.items() if k != "cars"} == {k: v for k, v in board.items() if k != "cars"}
+    car = "2024/cars/orange/1400.json"
+    assert (out / "data" / car).read_bytes() == (frozen / car).read_bytes()
+
+
 def test_frozen_year_fleet_rebuilt_when_fleets_file_missing(tmp_path):
     root = two_years(tmp_path)
     first = tmp_path / "first"

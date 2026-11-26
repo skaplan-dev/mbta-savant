@@ -21,7 +21,7 @@ import {
     type RouteIndexEntry,
 } from './api';
 import type { GroupId } from './groups';
-import { orderWindows } from './seasons';
+import { CAREER, orderWindows } from './seasons';
 
 // Every fetcher resolves null for a missing file, so "missing" is data, not an error.
 
@@ -120,7 +120,10 @@ export function useAllIndexes(enabled = true) {
 export type RouteIndexes = ReadonlyMap<string, RouteIndexEntry[] | null | undefined>;
 
 /** Every window's bus route list (a few KB each); `failed` holds the queries that errored, for a retry. */
-export function useRouteIndexes(windows: string[]) {
+export function useRouteIndexes(allWindows: string[]) {
+    // Routes have no All-time file.
+    const windows = useMemo(() => allWindows.filter((w) => w !== CAREER), [allWindows]);
+
     const combine = useCallback(
         (results: UseQueryResult<RouteIndexEntry[] | null>[]) => ({
             indexes: new Map(windows.map((w, i) => [w, results[i]?.data])),

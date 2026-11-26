@@ -264,10 +264,20 @@ def _frozen_years(frozen: Path | None) -> set[str]:
 
 
 def _copy_frozen_year(frozen: Path, data: Path, year: str, index_by_window: dict[str, list],
-                      fleets: dict[str, dict], season_recs: dict[str, dict[str, list[dict]]]) -> None:
-    """Copy a frozen year unchanged and read back what the rest of the build needs from it."""
+                      fleets: dict[str, dict], season_recs: dict[str, dict[str, list[dict]]],
+                      seen: dict[str, dict[str, str]]) -> None:
+    """Copy a frozen year and read back what the rest of the build needs from it. Only each group file's
+    ``last_seen`` is refreshed from this build's ``seen`` map (so its leaderboard isn't stale); the rest is unchanged."""
     src = frozen / year
     shutil.copytree(src, data / year)
+    for group in GROUPS:
+        group_file = data / year / "groups" / f"{group}.json"
+        if not group_file.is_file():
+            continue
+        board = json.loads(group_file.read_text(encoding="utf-8"))
+        for c in board["cars"]:
+            c["last_seen"] = seen[group].get(c["number"])
+        _write(group_file, board)
     index_by_window[year] = json.loads((src / "index.json").read_text(encoding="utf-8"))
     for group in GROUPS:
         cars_dir = src / "cars" / group
@@ -320,7 +330,7 @@ def publish(root: Path, out: Path, frozen: Path | None = None) -> None:
     for w in wins:
         is_year = w.key.isdigit()
         if frozen is not None and w.key in frozen_years:
-            _copy_frozen_year(frozen, data, w.key, index_by_window, fleets, season_recs)
+            _copy_frozen_year(frozen, data, w.key, index_by_window, fleets, season_recs, seen)
             continue
         for group in GROUPS:
             cars = stats.car_stats(root, group, w, delivered[group])

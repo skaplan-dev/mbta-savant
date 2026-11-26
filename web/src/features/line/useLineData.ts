@@ -19,7 +19,9 @@ export function useLineData(group: GroupId, requested: string | undefined): Reso
     // The requested season if it exists, else the line's default (newest year with a ranked car), which the
     // pipeline works out so this page needn't load every car in every window.
     const season = meta.data
-        ? (resolveSeason(requested, windows) ?? meta.data.default_season?.[group] ?? defaultWindow(windows))
+        ? (resolveSeason(requested, windows) ??
+          meta.data.default_season?.[group] ??
+          defaultWindow(windows))
         : undefined;
 
     const file = useQuery(groupQuery(season, group));

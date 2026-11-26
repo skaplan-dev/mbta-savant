@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { parseSearch } from './search';
-import { defaultWindow, isYearKey, orderWindows, resolveSeason, seasonLabel, validateSeasonSearch } from './seasons';
+import {
+    defaultWindow,
+    isYearKey,
+    orderWindows,
+    resolveSeason,
+    seasonLabel,
+    validateSeasonSearch,
+} from './seasons';
 
 describe('validateSeasonSearch', () => {
     it('accepts years and last30', () => {
