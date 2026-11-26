@@ -1,0 +1,11 @@
+{
+  "_note": "Closed/renamed stop ids and track labels absent from stations.json, mapped to a neighbouring station. A trip A->X->C then counts A->C plus a same-station hop (no distance), so full-trip miles stay exact.",
+  "stops": {
+    "70138": "place-babck",
+    "70139": "place-babck",
+    "70142": "place-bucen",
+    "70143": "place-bucen",
+    "71199": "place-pktrm",
+    "Government Center-Brattle": "place-gover"
+  }
+}

@@ -100,9 +100,17 @@ def _name_to_station() -> dict[str, str]:
     return {st["stop_name"]: st["station"] for line in _stations().values() for st in line["stations"]}
 
 
+@cache
+def _retired_stops() -> dict[str, str]:
+    return _load("retired_stops.json")["stops"]
+
+
 def station_for_stop(stop_id: str) -> str | None:
-    """Platform id -> station; a terminal track id like ``Oak Grove-02`` (public LAMP files) by station name."""
-    found = _stop_to_station().get(stop_id)
+    """Platform id -> station; a terminal track id like ``Oak Grove-02`` (public LAMP files) by station name.
+
+    Closed/renamed ids missing from stations.json resolve via retired_stops.json.
+    """
+    found = _stop_to_station().get(stop_id) or _retired_stops().get(stop_id)
     if found is None:
         name, sep, track = stop_id.rpartition("-")
         if sep and track.isdigit():
