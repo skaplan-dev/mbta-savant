@@ -56,13 +56,25 @@ function serve(career: CareerCar | undefined, years: string[]) {
     for (const y of years) files[`/data/${y}/cars/red/1900.json`] = car('1900');
 }
 
-async function load(season: string | undefined): Promise<Resource<CarData>> {
+/** Settled: the page has left `loading`, and when ready its season file has too. */
+const settled = (r: Resource<CarData>) =>
+    r.status !== 'loading' && (r.status !== 'ready' || r.data.seasonFile.status !== 'loading');
+
+function mount(season: string | undefined) {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const wrapper = ({ children }: { children: ReactNode }) =>
         createElement(QueryClientProvider, { client }, children);
-    const { result } = renderHook(() => useCarData('red', '1900', season), { wrapper });
 
-    await waitFor(() => expect(result.current.status).not.toBe('loading'));
+    return renderHook((s: string | undefined) => useCarData('red', '1900', s), {
+        wrapper,
+        initialProps: season,
+    });
+}
+
+async function load(season: string | undefined): Promise<Resource<CarData>> {
+    const { result } = mount(season);
+
+    await waitFor(() => expect(settled(result.current)).toBe(true));
 
     return result.current;
 }
@@ -84,7 +96,7 @@ describe('useCarData', () => {
         if (r.status !== 'ready') throw new Error(r.status);
         expect(r.data.options).toEqual(['career', '2026', '2021']);
         expect(r.data.season).toBe('2026');
-        expect(r.data.car).toBeDefined();
+        expect(r.data.seasonFile.status).toBe('ready');
         expect(carFileRequests()).toEqual([CAREER_URL, '/data/2026/cars/red/1900.json']);
     });
 
@@ -113,7 +125,7 @@ describe('useCarData', () => {
 
         if (r.status !== 'ready') throw new Error(r.status);
         expect(r.data.season).toBe('2019');
-        expect(r.data.car).toBeUndefined();
+        expect(r.data.seasonFile.status).toBe('missing');
         expect(carFileRequests()).toEqual([CAREER_URL, '/data/2019/cars/red/1900.json']);
     });
 
@@ -123,8 +135,45 @@ describe('useCarData', () => {
 
         if (r.status !== 'ready') throw new Error(r.status);
         expect(r.data.season).toBe('career');
-        expect(r.data.car).toBe(r.data.career);
+        expect(r.data.seasonFile).toEqual({ status: 'ready', data: r.data.career });
         expect(carFileRequests()).toEqual([CAREER_URL]);
+    });
+
+    it('keeps the page up while a newly picked season loads, never showing the old season as the new one', async () => {
+        serve(twoSeasons(), ['2026', '2021']);
+        const { result, rerender } = mount('2026');
+
+        await waitFor(() => expect(settled(result.current)).toBe(true));
+
+        // Hold the 2021 file until the test lets it through.
+        let release = () => {};
+        const gate = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        const served = vi.mocked(fetch).getMockImplementation();
+
+        vi.mocked(fetch).mockImplementation(async (input) => {
+            if (typeof input === 'string' && input.includes('/2021/')) await gate;
+
+            return served ? served(input) : Promise.reject(new Error('no fetch'));
+        });
+
+        rerender('2021');
+        await waitFor(() => {
+            const r = result.current;
+
+            if (r.status !== 'ready') throw new Error(r.status);
+            expect(r.data.season).toBe('2021');
+            expect(r.data.seasonFile.status).toBe('loading');
+        });
+
+        release();
+        await waitFor(() => {
+            const r = result.current;
+
+            if (r.status !== 'ready') throw new Error(r.status);
+            expect(r.data.seasonFile.status).toBe('ready');
+        });
     });
 
     it('is missing without a career file', async () => {

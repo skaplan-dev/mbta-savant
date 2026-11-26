@@ -1,11 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
+import type { ReactNode } from 'react';
+import Loading from '../../components/Loading';
 import ResourceView from '../../components/ResourceView';
 import SeasonBar from '../../components/SeasonBar';
 import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { GROUPS, type GroupId } from '../../groups';
 import { groupSummaryQuery } from '../../queries';
-import { CAREER } from '../../seasons';
+import { CAREER, seasonLabel } from '../../seasons';
 import { carTitle } from '../../titles';
 import BioPanel from './BioPanel';
 import CalendarPanel from './CalendarPanel';
@@ -35,7 +37,8 @@ function CarLoader({ group, number }: { group: GroupId; number: string }) {
 }
 
 function CarView({ group, number, data }: { group: GroupId; number: string; data: CarData }) {
-    const { meta, career, options, season, car } = data;
+    const { meta, career, options, season, seasonFile } = data;
+    const car = seasonFile.status === 'ready' ? seasonFile.data : undefined;
     const allTime = season === CAREER;
     const { tab = 'log' } = route.useSearch();
     // The line's typical car only colors the calendar and game log, so the page doesn't wait for them.
@@ -78,11 +81,28 @@ function CarView({ group, number, data }: { group: GroupId; number: string; data
                         )}
                     </>
                 ) : (
-                    <section className="panel grid place-items-center p-8 text-center min-[1180px]:col-span-2">
-                        <p className="text-ink-2 text-lead m-0">
-                            {noSeasonData(GROUPS[group].noun, number, season)}
-                        </p>
-                    </section>
+                    <SeasonNote>
+                        {seasonFile.status === 'loading' ? (
+                            <Loading inline />
+                        ) : seasonFile.status === 'error' ? (
+                            <>
+                                <p role="alert" className="text-ink-2 text-lead m-0 mb-4">
+                                    Couldn&rsquo;t load {seasonLabel(season)}.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={seasonFile.retry}
+                                    className="bg-brand text-ui cursor-pointer rounded-md border-0 px-5 py-2.5 text-white"
+                                >
+                                    Try again
+                                </button>
+                            </>
+                        ) : (
+                            <p className="text-ink-2 text-lead m-0">
+                                {noSeasonData(GROUPS[group].noun, number, season)}
+                            </p>
+                        )}
+                    </SeasonNote>
                 )}
             </div>
             {car && !allTime && (
@@ -96,6 +116,15 @@ function CarView({ group, number, data }: { group: GroupId; number: string; data
                 />
             )}
         </main>
+    );
+}
+
+/** The two season panels' place while the season loads, fails or has no data for this car. */
+function SeasonNote({ children }: { children: ReactNode }) {
+    return (
+        <section className="panel grid place-items-center content-center p-8 text-center min-[1180px]:col-span-2">
+            <div>{children}</div>
+        </section>
     );
 }
 

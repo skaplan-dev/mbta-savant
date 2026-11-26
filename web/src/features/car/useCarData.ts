@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import type { Car, CareerCar, Meta } from '../../api';
 import type { GroupId } from '../../groups';
 import { carQuery, careerQuery, useWindows } from '../../queries';
@@ -12,8 +12,12 @@ export interface CarData {
     /** The seasons this car has data for, toggle order (All-time, years newest first, last30). */
     options: string[];
     season: string;
-    /** The record for `season` (the career record on All-time); absent when the car has no data that season. */
-    car: Car | undefined;
+    /**
+     * The record for `season` (the career record on All-time), loaded on its own so a season switch
+     * keeps the bio, season bar and history on screen; `missing` when the car has no data that season.
+     * It is always the file for `season`, never the previous season's while the new one loads.
+     */
+    seasonFile: Resource<Car>;
 }
 
 /** The car ran in the last-30-days window: its last service day is inside it (it then has a file there). */
@@ -66,15 +70,31 @@ export function useCarData(
 
     if (meta.isPending || careerResult.isPending) return { status: 'loading' };
 
-    const failed = failure(meta, careerResult, ...(needsFile ? [seasonResult] : []));
+    const failed = failure(meta, careerResult);
 
     if (failed) return failed;
 
     if (!meta.data || !career || season === undefined) return { status: 'missing' };
 
-    if (needsFile && seasonResult.isPending) return { status: 'loading' };
+    return {
+        status: 'ready',
+        data: {
+            meta: meta.data,
+            career,
+            options,
+            season,
+            seasonFile: needsFile ? toResource(seasonResult) : { status: 'ready', data: career },
+        },
+    };
+}
 
-    const car = season === CAREER ? career : (seasonResult.data ?? undefined);
+/** One season file's query as a resource; a 404 (null) is `missing`. */
+function toResource(q: UseQueryResult<Car | null>): Resource<Car> {
+    if (q.isPending) return { status: 'loading' };
 
-    return { status: 'ready', data: { meta: meta.data, career, options, season, car } };
+    const failed = failure(q);
+
+    if (failed) return failed;
+
+    return q.data ? { status: 'ready', data: q.data } : { status: 'missing' };
 }
