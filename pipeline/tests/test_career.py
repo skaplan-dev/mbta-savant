@@ -156,3 +156,27 @@ def test_seasons_played_counts_only_seasons_with_trips():
     c = one("orange", {"2024": [rec("1400", trips=0, qualified=False)], "2025": [rec("1400", trips=100)]})
     assert c["seasons_played"] == 1
     assert c["windows"] == ["2025", "2024"]
+
+
+def test_bus_routes_mixed_game_log_never_below_a_season_count():
+    c = one("bus", {
+        "2024": [rec("1400", group="bus", routes=6)],  # game_log stripped
+        "2025": [rec("1400", group="bus", routes=2, game_log=[{"date": "2025-01-01", "trips": 3, "routes": ["1", "66"]}])],
+    })
+    assert c["routes"] == 6
+    c = one("bus", {
+        "2024": [rec("1400", group="bus", routes=1)],
+        "2025": [rec("1400", group="bus", routes=2, game_log=[
+            {"date": "2025-01-01", "trips": 3, "routes": ["1", "66"]},
+            {"date": "2025-01-02", "trips": 3, "routes": ["39"]}])],
+    })
+    assert c["routes"] == 3
+
+
+def test_games_played_pairs_service_and_eligible_days():
+    c = one("orange", {
+        "2024": [rec("1400", service_days=None, eligible_days=100)],
+        "2025": [rec("1400", service_days=30, eligible_days=60)],
+        "2026": [rec("1400", service_days=40, eligible_days=None)],
+    })
+    assert c["games_played_pct"] == 50.0

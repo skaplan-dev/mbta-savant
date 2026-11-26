@@ -72,20 +72,18 @@ def _tar_parts(recs: list[dict]) -> dict[str, int] | None:
 
 
 def _routes(group: str, recs: list[dict]) -> int | None:
-    """Bus: distinct routes over every season's game log; with no game-log route lists, the max season count."""
+    """Bus: distinct routes over the seasons' game-log route lists, never below any season's own route count."""
     if group != "bus":
         return None
     seen: set[str] = set()
-    have_lists = False
     for r in recs:
         for day in r.get("game_log") or []:
             if day.get("routes") is not None:
-                have_lists = True
                 seen.update(day["routes"])
-    if have_lists:
-        return len(seen)
     counts = [r["routes"] for r in recs if r.get("routes") is not None]
-    return max(counts) if counts else None
+    if not seen and not counts:
+        return None
+    return max(len(seen), *counts) if counts else len(seen)
 
 
 def _career(group: str, number: str, by_season: list[tuple[str, dict]]) -> dict:
@@ -93,14 +91,15 @@ def _career(group: str, number: str, by_season: list[tuple[str, dict]]) -> dict:
     recs = [r for _, r in by_season]
     totals = {f: _sum([r.get(f) for r in recs]) for f in _SUMMED}
     means = {k: _weighted_mean(recs, f) for k, f in _WEIGHTED.items()}
-    service, eligible = totals["service_days"], totals["eligible_days"]
+    paired = [r for r in recs if r.get("service_days") is not None and r.get("eligible_days") is not None]
+    service, eligible = sum(r["service_days"] for r in paired), sum(r["eligible_days"] for r in paired)
     horse = [r["iron_horse_days"] for r in recs if r.get("iron_horse_days") is not None]
     return {
         "car_id": f"{group}:{number}",
         "number": number,
         **totals,
         "trips": totals["trips"] or 0,
-        "games_played_pct": 100.0 * service / eligible if service is not None and eligible else None,
+        "games_played_pct": 100.0 * service / eligible if eligible else None,
         "iron_horse_days": max(horse) if horse else None,
         **means,
         "travel_time_sec": means["travel_vs_typical_pct"],
