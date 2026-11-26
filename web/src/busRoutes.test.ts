@@ -43,6 +43,16 @@ describe('routeSeason', () => {
     });
 });
 
+describe('routeWindows', () => {
+    it('never offers career, even if an index exists for it', () => {
+        const indexes = new Map([
+            ['career', [e('28')]],
+            ['2025', [e('28')]],
+        ]);
+        expect(routeWindows('28', ['career', '2025'], indexes)).toEqual(['2025']);
+    });
+});
+
 describe('matchRoutes', () => {
     const routes = [e('111'), e('741'), e('28'), e('1'), e('11')];
 

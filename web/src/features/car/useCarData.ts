@@ -3,7 +3,7 @@ import type { Car, Meta } from '../../api';
 import type { GroupId } from '../../groups';
 import { carQuery, useWindows } from '../../queries';
 import { failure, type Resource } from '../../resource';
-import { isYearKey, resolveSeason } from '../../seasons';
+import { CAREER, isYearKey, resolveSeason } from '../../seasons';
 
 export interface CarFile {
     window: string;
@@ -52,7 +52,7 @@ export function useCarData(
     const season =
         resolveSeason(requested, windows, (w) =>
             files.some((f) => f.window === w && isYearKey(w) && f.car.qualified && f.car.ranked)
-        ) ?? newest.window;
+        ) ?? (files.find((f) => f.window !== CAREER) ?? newest).window;
 
     const car = files.find((f) => f.window === season)?.car;
 
