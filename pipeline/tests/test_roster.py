@@ -105,3 +105,16 @@ def test_last_build_year():
     assert last_build_year("1999–07") == 2007
     assert last_build_year("") is None
     assert last_build_year("n/a") is None
+
+
+def test_orange_hawker_retired():
+    for n in ("1200", "01319", "1250"):
+        v = lookup("orange", n)
+        assert v is not None
+        assert v.fleet_key == "orange-hawker"
+        assert v.retired == "2022"
+    assert lookup("orange", "1320") is None
+
+
+def test_in_service_not_retired():
+    assert lookup("orange", "1400").retired is None
