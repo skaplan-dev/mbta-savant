@@ -50,3 +50,27 @@ def test_terminal_track_ids_map_to_their_station():
     assert station_for_stop("Oak Grove-02") == station_for_stop("70036") == "place-ogmnl"
     assert station_for_stop("Alewife-01") == station_for_stop("70061")
     assert station_for_stop("Nowhere-01") is None
+
+
+@pytest.mark.parametrize(
+    ("stop", "station"),
+    [
+        ("70138", "place-babck"),
+        ("70139", "place-babck"),
+        ("70142", "place-bucen"),
+        ("70143", "place-bucen"),
+        ("71199", "place-pktrm"),
+        ("Government Center-Brattle", "place-gover"),
+        ("Union Square-01", "place-unsqu"),
+        ("Union Square-02", "place-unsqu"),
+    ],
+)
+def test_retired_stops_map_to_neighbouring_station(stop, station):
+    assert station_for_stop(stop) == station
+
+
+def test_closed_stop_hop_is_same_station_and_exact_miles_preserved():
+    assert station_for_stop("70136") == station_for_stop("70138") == "place-babck"
+    assert distance_miles("place-babck", "place-babck") is None
+    ahead = distance_miles("place-babck", "place-amory")
+    assert ahead is not None and ahead > 0

@@ -12,7 +12,8 @@ export type StatId =
     | 'crowding'
     | 'coupled-with'
     | 'routes-run'
-    | 'last-seen';
+    | 'last-seen'
+    | 'all-time';
 
 export interface GlossaryEntry {
     name: string;
@@ -125,6 +126,13 @@ export const GLOSSARY: Record<StatId, GlossaryEntry> = {
         better: 'none',
         betterLabel: 'NOT RANKED',
         calc: 'Weeks without a sighting usually means the shop, spare duty or retirement.',
+    },
+    'all-time': {
+        name: 'All-time',
+        section: 'fun',
+        lead: 'All-time combines every season a car played, each compared with the cars running that year; TAR is summed.',
+        better: 'none',
+        betterLabel: 'NOT RANKED',
     },
 };
 

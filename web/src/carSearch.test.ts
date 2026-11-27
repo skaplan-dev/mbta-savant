@@ -20,6 +20,22 @@ describe('mergeIndexes', () => {
         ]);
         expect(merged.find((m) => m.number === '1900')?.fleet_label).toBe('new');
     });
+    it('puts a real season ahead of All-time, which lists every car', () => {
+        const merged = mergeIndexes(
+            ['career', '2026', 'last30'],
+            new Map([
+                ['career', [indexEntry('1900'), indexEntry('1800'), indexEntry('1400')]],
+                ['2026', [indexEntry('1900')]],
+                ['last30', [indexEntry('1800')]],
+            ])
+        );
+
+        expect(merged.map((m) => `${m.number}:${m.window}`)).toEqual([
+            '1400:career',
+            '1800:last30',
+            '1900:2026',
+        ]);
+    });
     it('skips windows that are missing or still loading', () => {
         expect(
             mergeIndexes(
@@ -64,5 +80,18 @@ describe('linkSeason', () => {
         const [e] = mergeIndexes(['2025'], new Map([['2025', [indexEntry('1510')]]]));
         expect(linkSeason(e, '2026')).toBe('2025');
         expect(linkSeason(e, '2025')).toBeUndefined();
+    });
+    it('never links to All-time, even with a career index listing every car', () => {
+        const merged = mergeIndexes(
+            ['career', '2026', 'last30'],
+            new Map([
+                ['career', [indexEntry('1900'), indexEntry('1800'), indexEntry('1400')]],
+                ['2026', [indexEntry('1900')]],
+                ['last30', [indexEntry('1800')]],
+            ])
+        );
+        const seasons = merged.map((e) => linkSeason(e, '2026'));
+
+        expect(seasons).toEqual([undefined, 'last30', undefined]);
     });
 });

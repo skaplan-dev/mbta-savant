@@ -1,29 +1,36 @@
-import { useQueries } from '@tanstack/react-query';
-import type { Car, Meta } from '../../api';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import type { Car, CareerCar, Meta } from '../../api';
 import type { GroupId } from '../../groups';
-import { carQuery, useWindows } from '../../queries';
+import { carQuery, careerQuery, useWindows } from '../../queries';
 import { failure, type Resource } from '../../resource';
-import { isYearKey, resolveSeason } from '../../seasons';
-
-export interface CarFile {
-    window: string;
-    car: Car;
-}
+import { CAREER, isYearKey, LAST30, orderWindows, resolveSeason } from '../../seasons';
 
 export interface CarData {
     meta: Meta;
-    /** The windows this car has a file for, toggle order (newest year first, last30 last). */
-    files: CarFile[];
+    /** The All-time record: bio (fresh roster, so Retired shows on every season) and season history. */
+    career: CareerCar;
+    /** The seasons this car has data for, toggle order (All-time, years newest first, last30). */
+    options: string[];
     season: string;
-    /** The file for `season`; absent when a requested season has no data for this car. */
-    car: Car | undefined;
-    /** Bio and season table come from the newest file, even when the selected season is empty. */
-    bio: Car;
+    /**
+     * The record for `season` (the career record on All-time), loaded on its own so a season switch
+     * keeps the bio, season bar and history on screen; `missing` when the car has no data that season.
+     * It is always the file for `season`, never the previous season's while the new one loads.
+     */
+    seasonFile: Resource<Car>;
+}
+
+/** The car ran in the last-30-days window: its last service day is inside it (it then has a file there). */
+function ranLast30(meta: Meta, career: CareerCar): boolean {
+    const window = meta.windows.find((w) => w.key === LAST30);
+
+    return !!window && !!career.last_seen && career.last_seen >= window.start;
 }
 
 /**
- * Loads meta and every window's file for one car; all are needed for the season toggle and table.
- * The default season is the newest year where the car was ranked, else its newest file.
+ * Loads meta, the car's career file and the selected season's file only. The season options come
+ * from the career file; the default is the newest year where the car was ranked, else its newest
+ * year, else last30.
  */
 export function useCarData(
     group: GroupId,
@@ -31,33 +38,63 @@ export function useCarData(
     requested: string | undefined
 ): Resource<CarData> {
     const { meta, windows } = useWindows();
-    const results = useQueries({ queries: windows.map((w) => carQuery(w, group, number)) });
+    const careerResult = useQuery(careerQuery(group, number));
+    const career = careerResult.data;
 
-    if (meta.isPending || results.some((r) => r.isPending)) return { status: 'loading' };
+    let options: string[] = [];
+    let season: string | undefined;
 
-    const failed = failure(meta, ...results);
+    if (meta.data && career) {
+        options = orderWindows([
+            CAREER,
+            ...career.windows,
+            ...(ranLast30(meta.data, career) ? [LAST30] : []),
+        ]);
+
+        const ranked = (w: string) =>
+            career.seasons.some((s) => s.season === w && s.qualified && s.ranked);
+
+        // A requested window the site has (even one this car has no data for) wins, so the page can say so.
+        season = resolveSeason(
+            requested,
+            [...new Set([...windows, ...options])],
+            (w) => options.includes(w) && isYearKey(w) && ranked(w),
+            (w) => options.includes(w) && isYearKey(w),
+            (w) => options.includes(w) && w === LAST30
+        );
+    }
+
+    // All-time is the career record itself; only a year or last30 needs its own file.
+    const needsFile = season !== undefined && season !== CAREER;
+    const seasonResult = useQuery({ ...carQuery(season, group, number), enabled: needsFile });
+
+    if (meta.isPending || careerResult.isPending) return { status: 'loading' };
+
+    const failed = failure(meta, careerResult);
 
     if (failed) return failed;
 
-    const files = windows.flatMap((window, i) => {
-        const car = results[i]?.data;
-
-        return car ? [{ window, car }] : [];
-    });
-
-    const [newest] = files;
-
-    if (!meta.data || !newest) return { status: 'missing' };
-
-    const season =
-        resolveSeason(requested, windows, (w) =>
-            files.some((f) => f.window === w && isYearKey(w) && f.car.qualified && f.car.ranked)
-        ) ?? newest.window;
-
-    const car = files.find((f) => f.window === season)?.car;
+    if (!meta.data || !career || season === undefined) return { status: 'missing' };
 
     return {
         status: 'ready',
-        data: { meta: meta.data, files, season, car, bio: car ?? newest.car },
+        data: {
+            meta: meta.data,
+            career,
+            options,
+            season,
+            seasonFile: needsFile ? toResource(seasonResult) : { status: 'ready', data: career },
+        },
     };
+}
+
+/** One season file's query as a resource; a 404 (null) is `missing`. */
+function toResource(q: UseQueryResult<Car | null>): Resource<Car> {
+    if (q.isPending) return { status: 'loading' };
+
+    const failed = failure(q);
+
+    if (failed) return failed;
+
+    return q.data ? { status: 'ready', data: q.data } : { status: 'missing' };
 }

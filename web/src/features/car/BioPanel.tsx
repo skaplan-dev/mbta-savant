@@ -1,14 +1,25 @@
-import type { Car } from '../../api';
+import { Link } from '@tanstack/react-router';
+import type { Car, CareerCar } from '../../api';
 import LineDot from '../../components/LineDot';
 import StatTerm from '../../components/StatTerm';
 import { commonsUrl, fleetPhoto, photoSrc, type FleetPhoto } from '../../fleetPhotos';
-import { fmtDate, fmtInt, fmtNum, fmtSaved, timeSaved } from '../../format';
+import {
+    fmtDate,
+    fmtInt,
+    fmtNum,
+    fmtSaved,
+    fmtSavedPct,
+    fmtTrips,
+    pctColor,
+    savedPct,
+    timeSaved,
+    tint,
+} from '../../format';
 import { GROUPS, type GroupId } from '../../groups';
-import { isYearKey } from '../../seasons';
+import { CAREER, seasonLabel } from '../../seasons';
 import CarArt from './CarArt';
 import PartnerTable from './PartnerTable';
 import { marriedMate } from './shared';
-import type { CarFile } from './useCarData';
 
 const HERO_BG = 'linear-gradient(#eef3f5, #eef3f5 72%, #d9e3e6 72%, #d9e3e6 74%, #e4ebed 74%)';
 
@@ -51,18 +62,22 @@ export default function BioPanel({
     group,
     number,
     season,
+    career,
     car,
-    files,
 }: {
     group: GroupId;
     number: string;
     season: string;
-    car: Car;
-    files: CarFile[];
+    /** The All-time record: the bio (fresh roster) and the season history come from it. */
+    career: CareerCar;
+    /** The selected season's record, for its partners; absent when the car has no data that season. */
+    car: Car | undefined;
 }) {
     const info = GROUPS[group];
-    const v = car.vehicle;
-    const mate = info.mode === 'rail' ? marriedMate(car) : null;
+    const v = career.vehicle;
+    // Partners are per season; the career record has none, so All-time leaves them out.
+    const seasonCar = season === CAREER ? undefined : car;
+    const mate = info.mode === 'rail' && seasonCar ? marriedMate(seasonCar) : null;
     const photo = fleetPhoto(v.fleet_key);
 
     const specs = [
@@ -114,24 +129,27 @@ export default function BioPanel({
                     <Specs
                         items={[
                             !!v.years && `Built: ${v.years}`,
+                            !!v.retired && `Retired ${v.retired}`,
                             v.fleet_label || 'Unknown fleet',
-                            !!car.new_delivery &&
-                                !!car.first_seen &&
-                                `In service since: ${fmtDate(car.first_seen)}`,
-                            !!car.last_seen && `Last seen: ${fmtDate(car.last_seen)}`,
+                            !!career.new_delivery &&
+                                !!career.first_seen &&
+                                `In service since: ${fmtDate(career.first_seen)}`,
+                            !!career.last_seen && `Last seen: ${fmtDate(career.last_seen)}`,
                         ]}
                     />
                 </p>
             </div>
 
-            <SeasonTable files={files.filter((f) => isYearKey(f.window))} group={group} />
+            <SeasonTable career={career} group={group} />
 
-            <div className="min-w-0 px-[18px] pt-3 pb-5">
-                <h3 className="text-lead mt-1.5 mb-2.5 font-bold">
-                    <StatTerm id={info.partner.stat} />
-                </h3>
-                <PartnerTable car={car} group={group} season={season} compact />
-            </div>
+            {seasonCar && (
+                <div className="min-w-0 px-[18px] pt-3 pb-5">
+                    <h3 className="text-lead mt-1.5 mb-2.5 font-bold">
+                        <StatTerm id={info.partner.stat} />
+                    </h3>
+                    <PartnerTable car={seasonCar} group={group} season={season} compact />
+                </div>
+            )}
         </section>
     );
 }
@@ -143,55 +161,108 @@ const th =
 const td = 'px-1 py-[7px] text-right whitespace-nowrap first:text-left @max-[20rem]:px-0.5';
 const total = `${td} border-panel-line border-t`;
 
-// Miles drops out when the table itself is under 360px wide (the card is narrow on phones and in the
-// two-column layout), so the other columns fit without a hidden horizontal scroll. The percentile
-// panel still shows Miles Logged.
-const NARROW_HIDE = '@max-[22.5rem]:hidden';
+// Columns drop out as the table narrows (the card is narrow on phones and in the two- and
+// three-column layouts), so the rest fit without a hidden horizontal scroll; the percentile panel
+// still shows both. Miles goes under 400px; On-Sched and Streak under 312px (the
+// narrowest phones), leaving Saved/trip and TAR.
+const NARROW_HIDE = '@max-[25rem]:hidden';
+const NARROWEST_HIDE = '@max-[19.5rem]:hidden';
 
-/** One row per calendar year with a file, newest first, plus career totals. */
-function SeasonTable({ files, group }: { files: CarFile[]; group: GroupId }) {
-    if (!files.length) return null;
+const link = 'text-brand underline';
+
+/** The TAR cell, tinted by its percentile as on the leaderboard. */
+function TarCell({
+    tar,
+    pct,
+    className,
+}: {
+    tar: number | null;
+    pct: number | null;
+    className: string;
+}) {
+    return (
+        <td
+            className={className}
+            style={pct == null ? undefined : { background: tint(pctColor(pct)) }}
+        >
+            {fmtTrips(tar)}
+        </td>
+    );
+}
+
+/**
+ * One row per season from the career file, newest first, plus the All-time record. Each season
+ * links to that season of the page. Saved/trip is seconds in a season and a percentage All-time,
+ * since each season is compared with its own year.
+ */
+function SeasonTable({ career, group }: { career: CareerCar; group: GroupId }) {
+    if (!career.seasons.length) return null;
     const { showMiles } = GROUPS[group];
-    const cars = files.map((f) => f.car);
-    const trips = cars.reduce((t, c) => t + c.trips, 0);
-    const miles = cars.reduce((t, c) => t + (c.miles ?? 0), 0);
-    const ironHorse = Math.max(...cars.map((c) => c.iron_horse_days ?? 0));
 
     return (
         <div className="@container mx-3.5 mt-[18px] mb-2 overflow-x-auto">
-            <table className="text-meta w-full border-collapse">
+            <table className="text-meta w-full border-collapse" aria-label="Seasons">
                 <thead>
                     <tr>
                         <th className={th}>Season</th>
                         <th className={th}>Trips</th>
                         {showMiles && <th className={`${th} ${NARROW_HIDE}`}>Miles</th>}
                         <th className={th}>Saved/trip</th>
-                        <th className={th}>On-Sched</th>
-                        <th className={`${th} leading-tight whitespace-normal!`}>Streak</th>
+                        <th className={`${th} ${NARROWEST_HIDE}`}>On-Sched</th>
+                        <th className={th}>TAR</th>
+                        <th className={`${th} leading-tight whitespace-normal! ${NARROWEST_HIDE}`}>
+                            Streak
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
-                    {files.map(({ window, car: c }) => (
-                        <tr key={window}>
-                            <td className={td}>{window}</td>
-                            <td className={td}>{fmtInt(c.trips)}</td>
+                    {career.seasons.map((s) => (
+                        <tr key={s.season}>
+                            <td className={td}>
+                                <Link
+                                    to="."
+                                    search={(prev) => ({ ...prev, season: s.season })}
+                                    className={link}
+                                >
+                                    {seasonLabel(s.season)}
+                                </Link>
+                            </td>
+                            <td className={td}>{fmtInt(s.trips)}</td>
                             {showMiles && (
-                                <td className={`${td} ${NARROW_HIDE}`}>{fmtInt(c.miles)}</td>
+                                <td className={`${td} ${NARROW_HIDE}`}>{fmtInt(s.miles)}</td>
                             )}
-                            <td className={td}>{fmtSaved(timeSaved(c))}</td>
-                            <td className={td}>{fmtNum(c.on_time_pct, 1, '%')}</td>
-                            <td className={td}>{c.iron_horse_days ?? '–'}</td>
+                            <td className={td}>{fmtSaved(timeSaved(s))}</td>
+                            <td className={`${td} ${NARROWEST_HIDE}`}>
+                                {fmtNum(s.on_time_pct, 1, '%')}
+                            </td>
+                            <TarCell tar={s.tar} pct={s.pct_tar} className={td} />
+                            <td className={`${td} ${NARROWEST_HIDE}`}>
+                                {s.iron_horse_days ?? '–'}
+                            </td>
                         </tr>
                     ))}
                     <tr className="bg-wash font-bold">
-                        <td className={total}>Total</td>
-                        <td className={total}>{fmtInt(trips)}</td>
+                        <td className={total}>
+                            <Link
+                                to="."
+                                search={(prev) => ({ ...prev, season: CAREER })}
+                                className={link}
+                            >
+                                {seasonLabel(CAREER)}
+                            </Link>
+                        </td>
+                        <td className={total}>{fmtInt(career.trips)}</td>
                         {showMiles && (
-                            <td className={`${total} ${NARROW_HIDE}`}>{fmtInt(miles)}</td>
+                            <td className={`${total} ${NARROW_HIDE}`}>{fmtInt(career.miles)}</td>
                         )}
-                        <td className={total} />
-                        <td className={total} />
-                        <td className={total}>{ironHorse}</td>
+                        <td className={total}>{fmtSavedPct(savedPct(career))}</td>
+                        <td className={`${total} ${NARROWEST_HIDE}`}>
+                            {fmtNum(career.on_time_pct, 1, '%')}
+                        </td>
+                        <TarCell tar={career.tar ?? null} pct={career.pct.tar} className={total} />
+                        <td className={`${total} ${NARROWEST_HIDE}`}>
+                            {career.iron_horse_days ?? '–'}
+                        </td>
                     </tr>
                 </tbody>
             </table>

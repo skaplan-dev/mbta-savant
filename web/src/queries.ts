@@ -8,6 +8,7 @@ import {
 import { useCallback, useMemo } from 'react';
 import {
     fetchCar,
+    fetchCareer,
     fetchFleets,
     fetchGroup,
     fetchGroupSummary,
@@ -20,7 +21,7 @@ import {
     type RouteIndexEntry,
 } from './api';
 import type { GroupId } from './groups';
-import { orderWindows } from './seasons';
+import { CAREER, orderWindows } from './seasons';
 
 // Every fetcher resolves null for a missing file, so "missing" is data, not an error.
 
@@ -44,10 +45,18 @@ export const groupSummaryQuery = (window: string | undefined, group: GroupId) =>
         queryFn: window ? () => fetchGroupSummary(window, group) : skipToken,
     });
 
-export const carQuery = (window: string, group: GroupId, number: string) =>
+/** Disabled until `window` is known. */
+export const carQuery = (window: string | undefined, group: GroupId, number: string) =>
     queryOptions({
         queryKey: ['car', window, group, number],
-        queryFn: () => fetchCar(window, group, number),
+        queryFn: window ? () => fetchCar(window, group, number) : skipToken,
+    });
+
+/** A car's All-time record and season history. */
+export const careerQuery = (group: GroupId, number: string) =>
+    queryOptions({
+        queryKey: ['career', group, number],
+        queryFn: () => fetchCareer(group, number),
     });
 
 export const fleetsQuery = (group: GroupId) =>
@@ -111,7 +120,10 @@ export function useAllIndexes(enabled = true) {
 export type RouteIndexes = ReadonlyMap<string, RouteIndexEntry[] | null | undefined>;
 
 /** Every window's bus route list (a few KB each); `failed` holds the queries that errored, for a retry. */
-export function useRouteIndexes(windows: string[]) {
+export function useRouteIndexes(allWindows: string[]) {
+    // Routes have no All-time file.
+    const windows = useMemo(() => allWindows.filter((w) => w !== CAREER), [allWindows]);
+
     const combine = useCallback(
         (results: UseQueryResult<RouteIndexEntry[] | null>[]) => ({
             indexes: new Map(windows.map((w, i) => [w, results[i]?.data])),

@@ -126,11 +126,33 @@ export const BOARD_ORDER: StatId[] = [
     'routes-run',
 ];
 
-export const boardStats = (group: GroupId): Stat[] =>
-    BOARD_ORDER.flatMap((id) => forGroup(group).filter((s) => s.id === id));
+/** The leaderboard's columns; `career` for the All-time view (Time Saved as a %). */
+export const boardStats = (group: GroupId, career = false): Stat[] =>
+    BOARD_ORDER.flatMap((id) =>
+        forGroup(group)
+            .filter((s) => s.id === id)
+            .map((s) => (career ? careerStat(s) : s))
+    );
 
-export const panelStats = (group: GroupId, section: Stat['section']): Stat[] =>
-    forGroup(group).filter((s) => s.section === section && !s.boardOnly);
+/**
+ * A stat as the All-time window shows it. Career trip time is ranked on % vs typical (each season
+ * against its own year), so Time Saved is a percentage there; the rest read the same.
+ */
+export const careerStat = (s: Stat): Stat =>
+    s.id === 'time-saved'
+        ? {
+              ...s,
+              value: savedPct,
+              text: (c) => fmtSavedPct(savedPct(c)),
+              brief: (c) => fmtSavedPct(savedPct(c)),
+          }
+        : s;
+
+/** The car page's percentile rows; `career` for the All-time view. */
+export const panelStats = (group: GroupId, section: Stat['section'], career = false): Stat[] =>
+    forGroup(group)
+        .filter((s) => s.section === section && !s.boardOnly)
+        .map((s) => (career ? careerStat(s) : s));
 
 /** A route board's columns: the bus board without Routes Run, which is always one route there. */
 export const routeBoardStats = (): Stat[] => boardStats('bus').filter((s) => s.id !== 'routes-run');

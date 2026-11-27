@@ -19,6 +19,7 @@ class Vehicle:
     years: str
     length_ft: float
     garage: str | None
+    retired: str | None = None
 
 
 @cache
@@ -42,7 +43,7 @@ def lookup(group: str, number: str) -> Vehicle | None:
             return Vehicle(
                 group=group, number=str(number), fleet_key=s["fleet_key"], fleet_label=s["fleet_label"],
                 builder=s["builder"], model=s["model"], propulsion=s["propulsion"], years=s["years"],
-                length_ft=s["length_ft"], garage=garage,
+                length_ft=s["length_ft"], garage=garage, retired=s.get("retired"),
             )
     return None
 

@@ -1,5 +1,5 @@
 {
- "source": "The MBTA Vehicle Inventory Page, 11/17/26 version",
+ "source": "The MBTA Vehicle Inventory Page, 11/17/26 version; retired series added from public fleet histories",
  "series": [
   {
    "group": "blue",
@@ -12,6 +12,19 @@
    "propulsion": "electric",
    "years": "2007–09",
    "length_ft": 48.5
+  },
+  {
+   "group": "orange",
+   "from": "01200",
+   "to": "01319",
+   "fleet_key": "orange-hawker",
+   "fleet_label": "Orange Line #12 (Hawker Siddeley)",
+   "builder": "Hawker Siddeley",
+   "model": "#12",
+   "propulsion": "electric",
+   "years": "1979–81",
+   "length_ft": 65,
+   "retired": "2022"
   },
   {
    "group": "orange",

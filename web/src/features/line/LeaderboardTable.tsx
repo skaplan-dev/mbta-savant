@@ -6,6 +6,7 @@ import CarPill from '../../components/CarPill';
 import StatTerm from '../../components/StatTerm';
 import { fmtDate, fmtInt, pctColor, tint } from '../../format';
 import { GROUPS, type GroupId } from '../../groups';
+import { CAREER } from '../../seasons';
 import { boardStats, type Stat } from '../../stats';
 import { firstDir, sortCars, type Sort, type SortKey, type RankedRow } from './leaderboard';
 
@@ -36,6 +37,7 @@ function LeaderRow({
     group,
     season,
     cols,
+    career,
 }: {
     ref?: (el: HTMLTableRowElement | null) => void;
     index: number;
@@ -43,6 +45,7 @@ function LeaderRow({
     group: GroupId;
     season: string;
     cols: readonly Stat[];
+    career: boolean;
 }) {
     return (
         <tr ref={ref} data-index={index}>
@@ -55,8 +58,14 @@ function LeaderRow({
                 title={car.vehicle.fleet_label}
             >
                 {car.vehicle.fleet_label}
+                {career && car.vehicle.retired && (
+                    <span className="bg-wash border-panel-line text-ink-2 text-meta ml-1.5 rounded-full border px-1.5 py-px align-middle">
+                        Retired
+                    </span>
+                )}
             </td>
             <td className={td}>{fmtInt(car.trips)}</td>
+            {career && <td className={td}>{fmtInt(car.seasons_played)}</td>}
             {cols.map((c) => {
                 const pct = car.pct[c.pct];
 
@@ -110,7 +119,7 @@ export default function LeaderboardTable({
     group,
     season,
     ranked,
-    cols = boardStats(group),
+    cols = boardStats(group, season === CAREER),
     scope = 'line',
 }: {
     group: GroupId;
@@ -122,13 +131,17 @@ export default function LeaderboardTable({
     scope?: 'line' | 'route';
 }) {
     const [sort, setSort] = useState<Sort>({ key: 'tar', dir: 'desc' });
-    const rows = useMemo(() => sortCars(ranked, sort, group), [ranked, sort, group]);
+    const career = season === CAREER;
+    const rows = useMemo(
+        () => sortCars(ranked, sort, group, career),
+        [ranked, sort, group, career]
+    );
 
     const toggle = (key: SortKey) =>
         setSort((s) =>
             s.key === key
                 ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' }
-                : { key, dir: firstDir(key, group) }
+                : { key, dir: firstDir(key, group, career) }
         );
 
     // The bus board has ~1,100 rows; render only those near the viewport. Smaller boards render whole,
@@ -164,7 +177,7 @@ export default function LeaderboardTable({
         enabled: virtual,
     });
     const items = virtual ? virtualizer.getVirtualItems() : null;
-    const rowProps = { group, season, cols };
+    const rowProps = { group, season, cols, career };
 
     const aria = (key: SortKey) =>
         sort.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none';
@@ -204,6 +217,17 @@ export default function LeaderboardTable({
                                 Trips
                                 <SortBtn sort={sort} toggle={toggle} k="trips" label="trips" />
                             </th>
+                            {career && (
+                                <th scope="col" aria-sort={aria('seasons')} className={th}>
+                                    Seasons
+                                    <SortBtn
+                                        sort={sort}
+                                        toggle={toggle}
+                                        k="seasons"
+                                        label="seasons"
+                                    />
+                                </th>
+                            )}
                             {cols.map((c) => (
                                 <th key={c.id} scope="col" aria-sort={aria(c.id)} className={th}>
                                     <StatTerm id={c.id} />

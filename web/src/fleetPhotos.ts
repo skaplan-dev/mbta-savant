@@ -41,6 +41,11 @@ const PHOTOS: Record<string, Omit<FleetPhoto, 'photo'>> = {
         license: 'CC BY 4.0',
         commons: 'Inbound MBTA Orange Line train at Forest Hills April 2025.jpg',
     },
+    'orange-hawker': {
+        artist: 'Pi.1415926535',
+        license: 'CC BY-SA 3.0',
+        commons: 'MBTA Orange Line train at Stony Brook, July 2016.JPG',
+    },
     'blue-siemens': {
         artist: '4300streetcar',
         license: 'CC BY 4.0',

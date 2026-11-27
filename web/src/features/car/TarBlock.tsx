@@ -6,8 +6,18 @@ import { fmtNum, fmtTrips } from '../../format';
 
 type Parts = NonNullable<Car['tar_parts']>;
 
-/** Steadiness is measured only when the car, the replacement level and segments per trip are all present. */
-function steadyMeasured(car: Car, summary: GroupSummary | null | undefined): boolean {
+/**
+ * Steadiness is measured only when the car, the replacement level and segments per trip are all
+ * present. All-time TAR is the seasons' TAR summed, so the career summary carries no replacement
+ * level; there the summed part stands as published.
+ */
+function steadyMeasured(
+    car: Car,
+    summary: GroupSummary | null | undefined,
+    career: boolean
+): boolean {
+    if (career) return true;
+
     return (
         car.steady_adj_sec != null &&
         summary?.tar_replacement?.steady_adj_sec != null &&
@@ -26,13 +36,16 @@ function headline(tar: number): string {
 export default function TarBlock({
     car,
     summary,
+    career = false,
 }: {
     car: Car;
     summary: GroupSummary | null | undefined;
+    /** The All-time record (TAR summed over seasons). */
+    career?: boolean;
 }) {
     const tar = car.tar ?? null;
     const parts: Parts | null = car.tar_parts ?? null;
-    const measured = steadyMeasured(car, summary);
+    const measured = steadyMeasured(car, summary, career);
     const part = (label: string, v: number | undefined, ok = true) =>
         parts && ok ? `${label} ${fmtTrips(v)}` : `${label} not measured`;
 

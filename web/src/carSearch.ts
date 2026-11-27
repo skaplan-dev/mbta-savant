@@ -1,6 +1,7 @@
 import type { IndexEntry } from './api';
 import { compareNumeric } from './compare';
 import { GROUP_IDS } from './groups';
+import { CAREER } from './seasons';
 
 export interface SearchEntry extends Pick<
     IndexEntry,
@@ -19,8 +20,10 @@ export function mergeIndexes(
     indexes: ReadonlyMap<string, readonly IndexEntry[] | null | undefined>
 ): SearchEntry[] {
     const seen = new Map<string, SearchEntry>();
+    // All-time lists every car; visit it last so a car's window is a real season whenever one has it.
+    const order = [...windows.filter((w) => w !== CAREER), ...windows.filter((w) => w === CAREER)];
 
-    for (const window of windows) {
+    for (const window of order) {
         for (const { car_id, group, number, fleet_label } of indexes.get(window) ?? []) {
             const key = `${group}:${number}`;
 
@@ -47,6 +50,9 @@ export function matchCars(
     return [...exact, ...hits.filter((e) => e.number !== term)].slice(0, max);
 }
 
-/** The `?season=` a result links to: none for the default window, else the window that has the car. */
+/**
+ * The `?season=` a result links to: none for the default window, else the window that has the car.
+ * Never All-time: the car page then picks its usual season.
+ */
 export const linkSeason = (e: SearchEntry, defaultWindow: string | undefined) =>
-    e.window === defaultWindow ? undefined : e.window;
+    e.window === defaultWindow || e.window === CAREER ? undefined : e.window;

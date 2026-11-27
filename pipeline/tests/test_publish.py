@@ -1,5 +1,7 @@
-import pytest
 import json
+import shutil
+
+import pytest
 from datetime import date
 
 from savant import publish
@@ -123,7 +125,7 @@ def test_layout(tmp_path):
     assert set(idx[0]) == {"car_id", "group", "number", "fleet_label", "qualified", "ranked", "travel_vs_typical_sec", "pct_travel", "tar", "pct_tar"}
     meta = load(out / "data/meta.json")
     assert meta["latest_service_date"] == "2026-03-02"
-    assert [w["key"] for w in meta["windows"]] == ["last30", "2026"]
+    assert [w["key"] for w in meta["windows"]] == ["career", "last30", "2026"]
     fl = load(out / "data/fleets/orange.json")
     assert "last30" in fl
     publish.publish(tmp_path / "root", out)  # overwrite is fine
@@ -344,3 +346,181 @@ def test_tar_non_null_with_enough_ranked_cars(tmp_path):
     rb = load(out / "data/last30/routes/1.json")
     assert rb["tar_replacement"]["fast_sec"] is not None
     assert any(c["tar"] is not None for c in rb["cars"])
+
+
+# --- career window and frozen years ---
+
+Y1, Y2 = date(2024, 3, 4), date(2025, 3, 3)
+
+
+def two_years(tmp_path, days=(Y1, Y2), name="root"):
+    """Orange and bus segments for 1400/1401 on each of ``days`` (one service day per year)."""
+    root = tmp_path / name
+    for group, route in (("orange", "Orange"), ("bus", "1")):
+        for day in days:
+            segs = [seg(day, f"{n}-{i}", [n], t, group, route)
+                    for i in range(50) for n, t in (("1400", 100), ("1401", 110))]
+            write_day(segs, root, group, day)
+    return root
+
+
+def tree(data):
+    """Every JSON file under ``data`` by relative path, with build timestamps dropped."""
+    out = {}
+    for p in sorted(data.rglob("*.json")):
+        obj = load(p)
+        if isinstance(obj, dict):
+            obj = {k: v for k, v in obj.items() if k not in ("generated_at", "built_at")}
+        out[str(p.relative_to(data))] = obj
+    return out
+
+
+def test_career_min_spread_trip_time_in_points():
+    assert publish.CAREER_MIN_SPREAD == {**publish.MIN_SPREAD, "travel_time_sec": 0.5}
+    cars = publish.add_percentiles("orange", [car(f"140{i}", i * 0.2) for i in range(6)])  # spread ~1.1
+    assert "travel_time_sec" in publish.too_close(cars)
+    assert "travel_time_sec" not in publish.too_close(cars, publish.CAREER_MIN_SPREAD)
+    assert set(publish.spread(cars, publish.CAREER_MIN_SPREAD)) == set(publish.CAREER_MIN_SPREAD)
+
+
+def test_build_writes_career(tmp_path):
+    out = tmp_path / "out"
+    publish.publish(two_years(tmp_path), out)
+    d = out / "data"
+    g = load(d / "career/groups/orange.json")
+    assert g["window"] == "career" and g["group"] == "orange"
+    assert g["typical"] == {"travel_time_sec": 0, "dwell_time_sec": 0}
+    assert all(not {"seasons", "windows", "game_log"} & set(c) for c in g["cars"])
+    sm = load(d / "career/groups/orange.summary.json")
+    assert sm["typical"] == {"travel_time_sec": 0, "dwell_time_sec": 0} and sm["ranked_cars"] == 2
+    assert set(sm["spread"]) == set(publish.CAREER_MIN_SPREAD) and isinstance(sm["too_close"], list)
+    assert sm["qualify_min_trips"] == g["qualify_min_trips"]
+    c = load(d / "career/cars/orange/1400.json")
+    assert len(c["seasons"]) == 2 and c["windows"] == ["2025", "2024"]
+    assert c["trips"] == 100 and c["seasons_played"] == 2
+    assert c["game_log"] == [] and c["teammates"] == []
+    assert c["vehicle"]["fleet_label"] and c["ranked"] is True and c["qualified"] is True
+    assert c["last_seen"] == "2025-03-03" and c["first_seen"] == "2024-03-04"
+    assert set(c["pct"]) == set(publish.METRICS) and c["pct"]["travel_time_sec"] is not None
+    bus = load(d / "career/cars/bus/1400.json")
+    assert bus["routes"] == 1 and bus["game_log"] == []
+    idx = load(d / "career/index.json")
+    assert {e["car_id"] for e in idx} == {"orange:1400", "orange:1401", "bus:1400", "bus:1401"}
+    assert "career" in load(d / "fleets/orange.json")
+    assert not (d / "career/routes").exists()
+    meta = load(d / "meta.json")
+    assert meta["windows"][0] == {"key": "career", "start": "2024-03-04", "end": "2025-03-03"}
+    assert [w["key"] for w in meta["windows"]] == ["career", "last30", "2025", "2024"]
+    assert meta["default_season"]["orange"] == "2025"
+    assert all(v.isdigit() or v == "last30" for v in meta["default_season"].values())
+    assert all(card["season"] != "career" for card in load(d / "home.json").values())
+
+
+def test_closed_year_gets_frozen_marker(tmp_path):
+    out = tmp_path / "out"
+    publish.publish(two_years(tmp_path), out)
+    marker = load(out / "data/2024/frozen.json")
+    assert marker["through"] == "2024-12-31" and "built_at" in marker
+    assert not (out / "data/2025/frozen.json").exists()
+    assert not (out / "data/last30/frozen.json").exists()
+
+
+@pytest.mark.parametrize(("latest", "closed"), [(date(2027, 1, 6), False), (date(2027, 1, 7), True)])
+def test_closed_boundary(tmp_path, latest, closed):
+    out = tmp_path / "out"
+    publish.publish(two_years(tmp_path, days=(date(2026, 6, 1), latest)), out)
+    assert (out / "data/2026/frozen.json").exists() is closed
+
+
+def test_frozen_year_copied(tmp_path):
+    root = two_years(tmp_path)
+    first = tmp_path / "first"
+    publish.publish(root, first)
+    frozen = tmp_path / "frozen"
+    shutil.copytree(first / "data", frozen)
+    f = frozen / "2024/cars/orange/1400.json"
+    rec = load(f)
+    rec["miles"] = 9999.0
+    f.write_text(json.dumps(rec))
+    out = tmp_path / "out"
+    publish.publish(root, out, frozen=frozen)
+    assert (out / "data/2024/cars/orange/1400.json").read_bytes() == f.read_bytes()
+    assert (out / "data/2024/frozen.json").exists()
+    career = load(out / "data/career/cars/orange/1400.json")
+    y2025 = load(out / "data/2025/cars/orange/1400.json")
+    assert career["miles"] == 9999.0 + y2025["miles"]
+    assert [s["miles"] for s in career["seasons"]] == [y2025["miles"], 9999.0]
+    # The frozen year's index and fleet entries come from the copy.
+    assert load(out / "data/fleets/orange.json")["2024"] == load(frozen / "fleets/orange.json")["2024"]
+    assert load(out / "data/2024/index.json") == load(frozen / "2024/index.json")
+    assert tree(out / "data")["2025/cars/orange/1400.json"] == tree(first / "data")["2025/cars/orange/1400.json"]
+
+
+def test_frozen_year_group_file_gets_fresh_last_seen(tmp_path):
+    root = two_years(tmp_path)
+    first = tmp_path / "first"
+    publish.publish(root, first)
+    frozen = tmp_path / "frozen"
+    shutil.copytree(first / "data", frozen)
+    gf = frozen / "2024/groups/orange.json"
+    board = load(gf)
+    fresh = {c["number"]: c["last_seen"] for c in board["cars"]}
+    assert fresh and all(v is not None for v in fresh.values())
+    for c in board["cars"]:
+        c["last_seen"] = "1999-01-01"
+    gf.write_text(json.dumps(board))
+    out = tmp_path / "out"
+    publish.publish(root, out, frozen=frozen)
+    copied = load(out / "data/2024/groups/orange.json")
+    assert {c["number"]: c["last_seen"] for c in copied["cars"]} == fresh
+    assert {k: v for k, v in copied.items() if k != "cars"} == {k: v for k, v in board.items() if k != "cars"}
+    car = "2024/cars/orange/1400.json"
+    assert (out / "data" / car).read_bytes() == (frozen / car).read_bytes()
+
+
+def test_frozen_year_fleet_rebuilt_when_fleets_file_missing(tmp_path):
+    root = two_years(tmp_path)
+    first = tmp_path / "first"
+    publish.publish(root, first)
+    frozen = tmp_path / "frozen"
+    shutil.copytree(first / "data", frozen)
+    shutil.rmtree(frozen / "fleets")
+    out = tmp_path / "out"
+    publish.publish(root, out, frozen=frozen)
+    assert load(out / "data/fleets/orange.json")["2024"] == load(first / "data/fleets/orange.json")["2024"]
+
+
+def test_unmarked_year_recomputed(tmp_path):
+    root = two_years(tmp_path)
+    first = tmp_path / "first"
+    publish.publish(root, first)
+    frozen = tmp_path / "frozen"
+    shutil.copytree(first / "data", frozen)
+    (frozen / "2024/frozen.json").unlink()
+    f = frozen / "2024/cars/orange/1400.json"
+    f.write_text(json.dumps({**load(f), "miles": 9999.0}))
+    out = tmp_path / "out"
+    publish.publish(root, out, frozen=frozen)
+    assert tree(out / "data") == tree(first / "data")
+
+
+@pytest.mark.parametrize("make", [True, False])
+def test_frozen_dir_empty_recomputes(tmp_path, make):
+    root = two_years(tmp_path)
+    plain = tmp_path / "plain"
+    publish.publish(root, plain)
+    frozen = tmp_path / "frozen"
+    if make:
+        frozen.mkdir()
+    out = tmp_path / "out"
+    publish.publish(root, out, frozen=frozen)
+    assert tree(out / "data") == tree(plain / "data")
+
+
+def test_frozen_inside_output_rejected(tmp_path):
+    root = two_years(tmp_path)
+    out = tmp_path / "out"
+    publish.publish(root, out)
+    with pytest.raises(ValueError):
+        publish.publish(root, out, frozen=out / "data")
+    assert (out / "data/2024/frozen.json").exists()  # nothing deleted
