@@ -1,67 +1,62 @@
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Menu, MenuButton, MenuItem, MenuItems, MenuSeparator } from '@headlessui/react';
+import { Link } from '@tanstack/react-router';
+import { Check, ChevronDown } from 'lucide-react';
 import { CAREER, isYearKey, LAST30, seasonLabel } from '../seasons';
 
-const segment =
-    'border-panel-line text-ui sm:text-lead flex flex-1 items-center justify-center border-r px-2 py-2.5 whitespace-nowrap no-underline last:border-r-0 sm:flex-none sm:px-[22px] sm:py-0';
-const activeCls = 'bg-brand text-white';
-const idleCls = 'text-ink hover:bg-wash bg-white';
+const item =
+    'text-ui sm:text-lead text-ink flex items-center justify-between gap-6 px-4 py-2 no-underline data-[focus]:bg-wash';
 
-function SeasonLink({ k, on }: { k: string; on: boolean }) {
+function SeasonItem({ k, on }: { k: string; on: boolean }) {
     return (
-        <Link
-            to="."
-            search={(prev) => ({ ...prev, season: k })}
-            aria-current={on ? 'page' : undefined}
-            className={`${segment} ${on ? activeCls : idleCls}`}
-        >
-            {seasonLabel(k)}
-        </Link>
+        <MenuItem>
+            <Link
+                to="."
+                search={(prev) => ({ ...prev, season: k })}
+                aria-current={on ? 'page' : undefined}
+                className={`${item} ${on ? 'font-bold' : ''}`}
+            >
+                {seasonLabel(k)}
+                {on ? (
+                    <Check aria-hidden="true" className="text-brand size-4" />
+                ) : (
+                    <span className="size-4" />
+                )}
+            </Link>
+        </MenuItem>
     );
 }
 
+/** The season picker: one dropdown listing All-time, the years newest first, then Last 30 Days. */
 export default function SeasonToggle({ options, value }: { options: string[]; value: string }) {
-    const navigate = useNavigate();
     const years = options.filter(isYearKey).sort((a, b) => b.localeCompare(a));
-    const frame = 'border-panel-line rounded-panel flex overflow-hidden border';
-
-    if (options.length <= 3) {
-        return (
-            <nav aria-label="Season" className={frame}>
-                {options.map((k) => (
-                    <SeasonLink key={k} k={k} on={k === value} />
-                ))}
-            </nav>
-        );
-    }
-
-    const yearOn = isYearKey(value) && years.includes(value);
+    const groups = [
+        options.includes(CAREER) ? [CAREER] : [],
+        years,
+        options.includes(LAST30) ? [LAST30] : [],
+    ].filter((g) => g.length > 0);
 
     return (
-        <nav aria-label="Season" className={frame}>
-            {options.includes(CAREER) && <SeasonLink k={CAREER} on={value === CAREER} />}
-            <select
-                aria-label="Year"
-                value={yearOn ? value : ''}
-                onChange={(e) => {
-                    const season = e.target.value;
-
-                    if (isYearKey(season))
-                        void navigate({ to: '.', search: (prev) => ({ ...prev, season }) });
-                }}
-                className={`${segment} min-w-0 cursor-pointer appearance-auto border-0 text-center ${yearOn ? activeCls : idleCls}`}
+        <Menu as="nav" aria-label="Season" className="flex">
+            <MenuButton
+                aria-label={`Season: ${seasonLabel(value)}`}
+                className="border-panel-line rounded-panel text-lead hover:bg-wash data-[open]:bg-wash flex w-full cursor-pointer items-center justify-between gap-3 border bg-white px-[22px] py-2.5 font-medium sm:w-auto sm:min-w-[200px]"
             >
-                {!yearOn && (
-                    <option value="" disabled>
-                        Year
-                    </option>
-                )}
-                {years.map((y) => (
-                    <option key={y} value={y} className="text-ink bg-white">
-                        {y}
-                    </option>
+                {seasonLabel(value)}
+                <ChevronDown aria-hidden="true" className="text-ink-2 size-5" />
+            </MenuButton>
+            <MenuItems
+                anchor={{ to: 'bottom end', gap: 6 }}
+                className="border-panel-line rounded-panel z-20 max-h-[min(70vh,28rem)] min-w-[var(--button-width)] overflow-y-auto border bg-white py-1 shadow-[var(--shadow-panel)] focus:outline-none"
+            >
+                {groups.map((g, i) => (
+                    <div key={g[0]}>
+                        {i > 0 && <MenuSeparator className="bg-panel-line my-1 h-px" />}
+                        {g.map((k) => (
+                            <SeasonItem key={k} k={k} on={k === value} />
+                        ))}
+                    </div>
                 ))}
-            </select>
-            {options.includes(LAST30) && <SeasonLink k={LAST30} on={value === LAST30} />}
-        </nav>
+            </MenuItems>
+        </Menu>
     );
 }
